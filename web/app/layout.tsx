@@ -6,7 +6,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Complyze \u2014 AI Governance Platform",
+  title: "Complyze — AI Governance Platform",
   description:
     "Scan, classify, and govern AI tools across your enterprise. Board-ready risk reporting.",
 };
@@ -35,8 +35,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.className}>
-      <body>
-        {/* \u2500\u2500 Header \u2500\u2500 */}
+            <body>
+        {/* ── Header ── */}
         <header className="no-print bg-brand-800 shadow-lg">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
             <Link href="/" className="flex items-center gap-3">
@@ -70,7 +70,7 @@ export default function RootLayout({
           </div>
         </header>
 
-        {/* \u2500\u2500 Main Content \u2500\u2500 */}
+        {/* ── Main Content ── */}
         <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
       </body>
     </html>
