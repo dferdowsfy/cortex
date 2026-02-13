@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complyze AI Governance Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Complyze AI Governance Platform</h1>
+            <p class="subtitle">Intelligent Tool Discovery & Risk Assessment</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">12</div>
+                <div class="stat-label">Active Tools</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #10b981;">98%</div>
+                <div class="stat-label">Compliance Score</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #f59e0b;">3</div>
+                <div class="stat-label">Review Pending</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Auto Discover Card -->
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-search-location"></i>
+                </div>
+                <h2>Auto Discover</h2>
+                <p>Automatically scan your environment to detect unauthorized AI tools and shadow IT usage.</p>
+                <button class="btn btn-primary" onclick="triggerAction('Auto Discover')">
+                    <i class="fas fa-play" style="margin-right: 0.5rem;"></i> Start Discovery
+                </button>
+            </div>
+
+            <!-- Scan New Tool Card -->
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-microchip"></i>
+                </div>
+                <h2>Scan New Tool</h2>
+                <p>Manually input a tool name or URL to perform a comprehensive risk and compliance scan.</p>
+                <button class="btn btn-primary" onclick="triggerAction('Scan New Tool')">
+                    <i class="fas fa-scan" style="margin-right: 0.5rem;"></i> Scan Tool
+                </button>
+            </div>
+
+            <!-- Generate Report Card -->
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h2>Generate Report</h2>
+                <p>Create detailed governance reports for stakeholders, auditors, and internal review.</p>
+                <button class="btn btn-primary" onclick="triggerAction('Generate Report')">
+                    <i class="fas fa-download" style="margin-right: 0.5rem;"></i> Generate PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Status Log Area -->
+        <div id="status-log">
+            <div class="log-entry">
+                <span class="log-time">[System]</span> Ready. Waiting for user action...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function triggerAction(actionName) {
+            const logArea = document.getElementById('status-log');
+            const time = new Date().toLocaleTimeString();
+
+            const newEntry = document.createElement('div');
+            newEntry.className = 'log-entry';
+            newEntry.innerHTML = `<span class="log-time">[${time}]</span> Executing: <strong>${actionName}</strong>...`;
+
+            logArea.prepend(newEntry);
+
+            // Simulate processing
+            setTimeout(() => {
+                const completeEntry = document.createElement('div');
+                completeEntry.className = 'log-entry';
+                completeEntry.innerHTML = `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> ${actionName} completed successfully.`;
+                completeEntry.style.color = '#10b981';
+                logArea.prepend(completeEntry);
+            }, 1500);
+        }
+    </script>
+</body>
+
+</html>

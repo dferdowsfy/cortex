@@ -7,3 +7,5 @@ coverage/
 *.tgz
 .next/
 .turbo/
+web/certs/
+*.bak

@@ -166,15 +166,40 @@ function DiscoveredRow({
 
 /* ── Page ── */
 
+interface ProxySummary {
+  activity_score: number;
+  total_requests: number;
+  total_violations: number;
+  sensitive_prompt_pct: number;
+  proxy_enabled: boolean;
+}
+
 export default function Dashboard() {
   const [tools, setTools] = useState<StoredTool[]>([]);
   const [discovered, setDiscovered] = useState<DiscoveredTool[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
+  const [proxySummary, setProxySummary] = useState<ProxySummary | null>(null);
 
   useEffect(() => {
     setTools(loadTools());
     setDiscovered(loadDiscovered());
+
+    // Fetch proxy summary for the Activity-Informed Risk badge
+    Promise.all([
+      fetch("/api/proxy/activity?period=7d").then((r) => r.json()),
+      fetch("/api/proxy/settings").then((r) => r.json()),
+    ])
+      .then(([activityData, settingsData]) => {
+        setProxySummary({
+          activity_score: activityData.summary?.activity_score || 0,
+          total_requests: activityData.summary?.total_requests || 0,
+          total_violations: activityData.summary?.total_violations || 0,
+          sensitive_prompt_pct: activityData.summary?.sensitive_prompt_pct || 0,
+          proxy_enabled: settingsData.proxy_enabled || false,
+        });
+      })
+      .catch(() => { });
   }, []);
 
   const stats = {
@@ -300,6 +325,48 @@ export default function Dashboard() {
           <StatCard label="High" value={stats.high} color="text-orange-600" />
           <StatCard label="Moderate" value={stats.moderate} color="text-yellow-600" />
           <StatCard label="Low" value={stats.low} color="text-green-600" />
+        </div>
+      )}
+
+      {/* ── Activity-Informed Risk Score Badge ── */}
+      {proxySummary?.proxy_enabled && (
+        <div className="card border-brand-200 bg-gradient-to-r from-brand-50 via-white to-brand-50/30">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 border-2 border-brand-200">
+                <span
+                  className={`text-xl font-bold ${proxySummary.activity_score >= 70 ? "text-red-600" :
+                      proxySummary.activity_score >= 50 ? "text-orange-600" :
+                        proxySummary.activity_score >= 30 ? "text-yellow-600" :
+                          "text-green-600"
+                    }`}
+                >
+                  {proxySummary.activity_score}
+                </span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-gray-900">Activity-Informed Risk Score</p>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                    LIVE
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Based on {proxySummary.total_requests} requests · {proxySummary.total_violations} violations · {proxySummary.sensitive_prompt_pct}% sensitive
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/monitoring"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-4 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 transition-colors"
+            >
+              View Monitoring
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
+          </div>
         </div>
       )}
 
