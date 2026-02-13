@@ -28,6 +28,38 @@ Complyze automatically discovers AI tools on employee machines, assesses their r
 - One-click scan wizard
 - Board report generator (print/PDF ready)
 
+## 🚀 Deployment
+
+The Complyze dashboard is deployed publicly at: **[https://web-one-beta-35.vercel.app](https://web-one-beta-35.vercel.app)**
+
+## 🛡️ AI Traffic Interceptor (Proxy)
+
+Complyze includes a transparent MITM proxy that allows organizations to monitor and govern AI usage across desktop apps, browsers, and CLI tools.
+
+### Features
+- **Deep Inspection**: Full prompt visibility for AI APIs (OpenAI, Anthropic, etc.)
+- **Desktop App Bypass**: Metadata-only logging for cert-pinned apps (ChatGPT Desktop, Claude Desktop)
+- **Automatic Governance**: Logs all traffic to the Complyze monitoring API
+
+### Launching the Proxy
+
+To start monitoring your local traffic:
+
+1. **One-Click Launch**:
+   ```bash
+   npm run launch
+   ```
+   This starts both the local proxy and the desktop menu bar app.
+
+2. **System Setup**:
+   - Run `node web/scripts/proxy-server.js` (handled by launch script).
+   - Trust the auto-generated CA cert: `web/certs/ca-cert.pem`.
+   - Set your system HTTPS proxy to `127.0.0.1:8080`.
+
+3. **Desktop App**:
+   - Toggle the proxy on/off with one click from your macOS menu bar.
+   - Points automatically to your local dashboard or can be configured for production.
+
 ## Quick Start
 
 ### Prerequisites

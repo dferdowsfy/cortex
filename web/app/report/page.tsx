@@ -231,21 +231,21 @@ function ReportDisplay({ report }: { report: Record<string, unknown> }) {
           Executive Narrative
         </h2>
 
-        {narrative.executive_overview && (
+        {!!narrative.executive_overview && (
           <NarrativeBlock
             icon="📋"
             title="Executive Overview"
             content={narrative.executive_overview as string}
           />
         )}
-        {narrative.portfolio_overview && (
+        {!!narrative.portfolio_overview && (
           <NarrativeBlock
             icon="🗂️"
             title="Portfolio Overview"
             content={narrative.portfolio_overview as string}
           />
         )}
-        {narrative.risk_posture_analysis && (
+        {!!narrative.risk_posture_analysis && (
           <NarrativeBlock
             icon="📊"
             title="Risk Posture Analysis"
@@ -260,7 +260,7 @@ function ReportDisplay({ report }: { report: Record<string, unknown> }) {
           <h2 className="text-lg font-bold text-gray-900 mb-2">
             Critical &amp; High Findings
           </h2>
-          {critFindings.narrative && (
+          {!!critFindings.narrative && (
             <p className="text-sm text-gray-600 mb-4">
               {critFindings.narrative as string}
             </p>
@@ -306,14 +306,14 @@ function ReportDisplay({ report }: { report: Record<string, unknown> }) {
 
       {/* ── Remediation & Outlook ── */}
       <div className="card space-y-6">
-        {narrative.remediation_progress && (
+        {!!narrative.remediation_progress && (
           <NarrativeBlock
             icon="🔧"
             title="Remediation Progress"
             content={narrative.remediation_progress as string}
           />
         )}
-        {narrative.outlook_and_next_steps && (
+        {!!narrative.outlook_and_next_steps && (
           <NarrativeBlock
             icon="🔮"
             title="Outlook & Next Steps"
@@ -328,7 +328,7 @@ function ReportDisplay({ report }: { report: Record<string, unknown> }) {
           <h2 className="text-lg font-bold text-gray-900 mb-2">
             Leadership Action Items
           </h2>
-          {leadership.narrative && (
+          {!!leadership.narrative && (
             <p className="text-sm text-gray-600 mb-4">
               {leadership.narrative as string}
             </p>
@@ -351,19 +351,18 @@ function ReportDisplay({ report }: { report: Record<string, unknown> }) {
                       {item.description as string}
                     </p>
                     <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
-                        urgencyColor[(item.urgency as string) || ""] ||
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${urgencyColor[(item.urgency as string) || ""] ||
                         "bg-gray-100 text-gray-700"
-                      }`}
+                        }`}
                     >
                       {item.urgency as string}
                     </span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
-                    {item.estimated_cost && (
+                    {!!item.estimated_cost && (
                       <span>Est. cost: {item.estimated_cost as string}</span>
                     )}
-                    {item.action_type && (
+                    {!!item.action_type && (
                       <span>Type: {item.action_type as string}</span>
                     )}
                   </div>
@@ -640,11 +639,10 @@ export default function ReportPage() {
                   <button
                     key={rt}
                     type="button"
-                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                      reportType === rt
-                        ? "border-brand-500 bg-brand-50 text-brand-700"
-                        : "border-gray-200 text-gray-600 hover:border-gray-300"
-                    }`}
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${reportType === rt
+                      ? "border-brand-500 bg-brand-50 text-brand-700"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300"
+                      }`}
                     onClick={() => setReportType(rt)}
                   >
                     {rt}

@@ -78,13 +78,12 @@ function StepIndicator({ current }: { current: Step }) {
       {labels.map((label, i) => (
         <div key={label} className="flex items-center gap-2">
           <div
-            className={`step-dot ${
-              i < idx
+            className={`step-dot ${i < idx
                 ? "step-dot-done"
                 : i === idx
                   ? "step-dot-active"
                   : "step-dot-pending"
-            }`}
+              }`}
           >
             {i < idx ? (
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
@@ -95,17 +94,15 @@ function StepIndicator({ current }: { current: Step }) {
             )}
           </div>
           <span
-            className={`hidden text-xs font-medium sm:block ${
-              i <= idx ? "text-gray-900" : "text-gray-400"
-            }`}
+            className={`hidden text-xs font-medium sm:block ${i <= idx ? "text-gray-900" : "text-gray-400"
+              }`}
           >
             {label}
           </span>
           {i < labels.length - 1 && (
             <div
-              className={`hidden h-px w-8 sm:block ${
-                i < idx ? "bg-green-400" : "bg-gray-200"
-              }`}
+              className={`hidden h-px w-8 sm:block ${i < idx ? "bg-green-400" : "bg-gray-200"
+                }`}
             />
           )}
         </div>
@@ -159,7 +156,7 @@ function EnrichmentForm({
 
           <div className="mt-3">
             {q.answer_format?.includes("select all") ||
-            q.answer_format?.includes("Multi") ? (
+              q.answer_format?.includes("Multi") ? (
               /* ── Checkboxes ── */
               <div className="flex flex-wrap gap-2">
                 {(q.options || []).map((opt) => {
@@ -167,11 +164,10 @@ function EnrichmentForm({
                   return (
                     <label
                       key={opt}
-                      className={`cursor-pointer rounded-lg border px-3 py-2 text-sm transition-colors ${
-                        selected
+                      className={`cursor-pointer rounded-lg border px-3 py-2 text-sm transition-colors ${selected
                           ? "border-brand-500 bg-brand-50 text-brand-700 font-medium"
                           : "border-gray-200 hover:border-gray-300 text-gray-600"
-                      }`}
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -197,11 +193,10 @@ function EnrichmentForm({
                   <button
                     key={opt}
                     type="button"
-                    className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                      answers[q.question_id] === opt
+                    className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${answers[q.question_id] === opt
                         ? "border-brand-500 bg-brand-50 text-brand-700"
                         : "border-gray-200 text-gray-600 hover:border-gray-300"
-                    }`}
+                      }`}
                     onClick={() => onChange(q.question_id, opt)}
                   >
                     {opt}
@@ -215,11 +210,10 @@ function EnrichmentForm({
                   <button
                     key={opt}
                     type="button"
-                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                      answers[q.question_id] === opt
+                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${answers[q.question_id] === opt
                         ? "border-brand-500 bg-brand-50 text-brand-700 font-medium"
                         : "border-gray-200 text-gray-600 hover:border-gray-300"
-                    }`}
+                      }`}
                     onClick={() => onChange(q.question_id, opt)}
                   >
                     {opt}
@@ -277,7 +271,7 @@ function ResultsView({ data }: { data: Record<string, unknown> }) {
             {(toolProfile.vendor as string) || ""} · {(toolProfile.tier as string) || ""}
             {toolProfile.category ? ` · ${toolProfile.category}` : ""}
           </p>
-          {overallRisk.executive_summary && (
+          {!!overallRisk.executive_summary && (
             <p className="mt-2 text-sm text-gray-600">
               {overallRisk.executive_summary as string}
             </p>
@@ -330,13 +324,13 @@ function ResultsView({ data }: { data: Record<string, unknown> }) {
       </div>
 
       {/* ── Governance Status ── */}
-      {governance.level && (
+      {!!governance.level && (
         <div className="card">
           <h3 className="text-sm font-semibold text-gray-700">Governance Status</h3>
           <p className="mt-1 text-lg font-bold text-gray-900">
             {governance.level as string}
           </p>
-          {governance.justification && (
+          {!!governance.justification && (
             <p className="mt-1 text-sm text-gray-600">{governance.justification as string}</p>
           )}
           {(governance.gaps as string[])?.length > 0 && (
@@ -387,13 +381,13 @@ function ResultsView({ data }: { data: Record<string, unknown> }) {
                 <h4 className="font-semibold text-gray-900">
                   {strat.strategy_name as string}
                 </h4>
-                {strat.timeframe && (
+                {!!strat.timeframe && (
                   <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
                     {strat.timeframe as string}
                   </span>
                 )}
               </div>
-              {strat.strategy_goal && (
+              {!!strat.strategy_goal && (
                 <p className="mt-1 text-sm text-gray-500">{strat.strategy_goal as string}</p>
               )}
               <div className="mt-4 space-y-3">
@@ -408,7 +402,7 @@ function ResultsView({ data }: { data: Record<string, unknown> }) {
                         {rec.effort as string}
                       </span>
                     </div>
-                    {rec.description && (
+                    {!!rec.description && (
                       <p className="mt-1 text-sm text-gray-600">{rec.description as string}</p>
                     )}
                     {(rec.steps as string[])?.length > 0 && (
@@ -658,11 +652,10 @@ export default function ScanPage() {
                   <button
                     key={t}
                     type="button"
-                    className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                      tier === t
+                    className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${tier === t
                         ? "border-brand-500 bg-brand-50 text-brand-700"
                         : "border-gray-200 text-gray-600 hover:border-gray-300"
-                    }`}
+                      }`}
                     onClick={() => setTier(t)}
                   >
                     {t}
