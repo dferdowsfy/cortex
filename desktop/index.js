@@ -19,6 +19,39 @@ const sudoOptions = {
 };
 
 let proxyProcess = null;
+let heartbeatInterval = null;
+
+// ─── Heartbeat: tell the dashboard we're alive ──────────────────────
+function startHeartbeat() {
+    const os = require('os');
+    const sendHeartbeat = async () => {
+        try {
+            const res = await fetch(`${DASHBOARD_URL}/api/agent/heartbeat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    version: '1.0.0',
+                    hostname: os.hostname(),
+                    proxy_port: PROXY_PORT,
+                    os: process.platform === 'darwin' ? 'macOS' : process.platform,
+                }),
+            });
+            if (res.ok) console.log('[heartbeat] ✓');
+        } catch (err) {
+            console.warn('[heartbeat] failed:', err.message);
+        }
+    };
+
+    sendHeartbeat(); // Send immediately on start
+    heartbeatInterval = setInterval(sendHeartbeat, 60_000); // Then every 60s
+}
+
+function stopHeartbeat() {
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+    }
+}
 
 // Start the proxy server process
 function startProxyServer() {
@@ -111,6 +144,7 @@ const mb = menubar({
 mb.on('ready', () => {
     console.log('Menubar app is ready.');
     startProxyServer();
+    startHeartbeat();
 });
 
 mb.app.on('before-quit', async () => {
@@ -132,6 +166,7 @@ mb.app.on('before-quit', async () => {
             sudo.exec(cmd, sudoOptions, () => { });
         } catch { /* eat error — app is quitting anyway */ }
     }
+    stopHeartbeat();
     stopProxyServer();
 });
 

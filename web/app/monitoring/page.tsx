@@ -62,6 +62,15 @@ interface ProxySettings {
     alert_on_violations: boolean;
     retention_days: number;
     proxy_endpoint: string;
+    agent_last_seen?: string;
+    agent_hostname?: string;
+}
+
+interface AgentStatus {
+    connected: boolean;
+    last_seen: string | null;
+    hostname: string | null;
+    minutes_ago: number;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -287,6 +296,7 @@ export default function MonitoringPage() {
     const [toolRisks, setToolRisks] = useState<DynamicToolRisk[]>([]);
     const [alerts, setAlerts] = useState<ProxyAlert[]>([]);
     const [settings, setSettings] = useState<ProxySettings | null>(null);
+    const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
     const [period, setPeriod] = useState<"7d" | "30d">("7d");
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"overview" | "events" | "tools" | "alerts">("overview");
@@ -294,12 +304,14 @@ export default function MonitoringPage() {
 
     const fetchData = useCallback(async () => {
         try {
-            const [activityRes, settingsRes] = await Promise.all([
+            const [activityRes, settingsRes, agentRes] = await Promise.all([
                 fetch(`/api/proxy/activity?period=${period}&events=50`),
                 fetch("/api/proxy/settings"),
+                fetch("/api/agent/heartbeat"),
             ]);
             const activityData = await activityRes.json();
             const settingsData = await settingsRes.json();
+            const agentData = await agentRes.json();
 
             setSummary(activityData.summary);
             setEvents(activityData.events);
@@ -307,6 +319,7 @@ export default function MonitoringPage() {
             setAlerts(activityData.alerts);
             setUnacknowledgedCount(activityData.unacknowledged_alerts);
             setSettings(settingsData);
+            setAgentStatus(agentData);
         } catch (err) {
             console.error("Failed to fetch monitoring data:", err);
         } finally {
@@ -342,25 +355,34 @@ export default function MonitoringPage() {
         );
     }
 
-    if (!settings?.proxy_enabled) {
+    if (!agentStatus?.connected && events.length === 0) {
         return (
-            <div className="mx-auto max-w-2xl">
-                <div className="card flex flex-col items-center justify-center py-16">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-50">
-                        <svg className="h-8 w-8 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.981 0 13.79M12 12h.008v.007H12V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            <div className="mx-auto max-w-2xl py-12">
+                <div className="card flex flex-col items-center justify-center py-16 text-center">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand-50 mb-6">
+                        <svg className="h-10 w-10 text-brand-600 animate-pulse" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.981 0 13.79" />
                         </svg>
                     </div>
-                    <h3 className="mt-4 text-lg font-semibold text-gray-900">
-                        AI Proxy Monitoring is Disabled
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500 text-center max-w-md">
-                        Enable proxy monitoring from Settings to start capturing AI activity
-                        data and generating usage-informed risk scores.
+                    <h3 className="text-xl font-bold text-gray-900">Waiting for Agent Connectivity</h3>
+                    <p className="mt-2 text-sm text-gray-500 max-w-md px-6">
+                        No active monitoring agents were found for this workspace.
+                        Install the Complyze Agent on your machine to begin capturing AI activity.
                     </p>
-                    <Link href="/settings" className="btn-primary mt-6">
-                        Go to Settings
-                    </Link>
+                    <div className="mt-8 flex gap-3">
+                        <Link href="/settings" className="btn-primary">
+                            Deploy Agent
+                        </Link>
+                        <button onClick={fetchData} className="btn-secondary">
+                            Check Again
+                        </button>
+                    </div>
+                    <div className="mt-8 pt-8 border-t border-gray-100 w-full max-w-sm">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Manual Setup</p>
+                        <code className="block p-3 bg-gray-50 rounded text-[11px] font-mono text-gray-600 text-left overflow-x-auto">
+                            curl -fsSL https://web-one-beta-35.vercel.app/api/agent/installer | bash
+                        </code>
+                    </div>
                 </div>
             </div>
         );
@@ -377,10 +399,17 @@ export default function MonitoringPage() {
                         <h1 className="text-2xl font-bold text-gray-900">
                             AI Proxy Monitoring
                         </h1>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                            LIVE
-                        </span>
+                        {agentStatus?.connected ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800 shadow-sm">
+                                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                                LIVE · {agentStatus.hostname}
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                OFFLINE
+                            </span>
+                        )}
                     </div>
                     <p className="mt-1 text-sm text-gray-500">
                         Real-time AI usage intelligence. Activity-informed risk scoring.
@@ -391,8 +420,8 @@ export default function MonitoringPage() {
                     <div className="flex rounded-lg border border-gray-200 bg-white p-0.5">
                         <button
                             className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${period === "7d"
-                                    ? "bg-brand-600 text-white"
-                                    : "text-gray-600 hover:bg-gray-50"
+                                ? "bg-brand-600 text-white"
+                                : "text-gray-600 hover:bg-gray-50"
                                 }`}
                             onClick={() => setPeriod("7d")}
                         >
@@ -400,8 +429,8 @@ export default function MonitoringPage() {
                         </button>
                         <button
                             className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${period === "30d"
-                                    ? "bg-brand-600 text-white"
-                                    : "text-gray-600 hover:bg-gray-50"
+                                ? "bg-brand-600 text-white"
+                                : "text-gray-600 hover:bg-gray-50"
                                 }`}
                             onClick={() => setPeriod("30d")}
                         >
@@ -427,8 +456,8 @@ export default function MonitoringPage() {
                     <button
                         key={tab.key}
                         className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
-                                ? "border-brand-600 text-brand-700"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-brand-600 text-brand-700"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             }`}
                         onClick={() => setActiveTab(tab.key)}
                     >
@@ -585,8 +614,8 @@ export default function MonitoringPage() {
                                     <div className="flex flex-col items-center">
                                         <div
                                             className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${e.sensitivity_score >= 60 ? "bg-red-500" :
-                                                    e.sensitivity_score >= 30 ? "bg-orange-400" :
-                                                        "bg-green-500"
+                                                e.sensitivity_score >= 30 ? "bg-orange-400" :
+                                                    "bg-green-500"
                                                 }`}
                                         >
                                             {e.sensitivity_score}
@@ -633,7 +662,7 @@ export default function MonitoringPage() {
                         <div
                             key={t.tool_name}
                             className={`card ${t.risk_escalated ? "border-red-200 bg-red-50/30" :
-                                    t.governance_downgraded ? "border-orange-200 bg-orange-50/30" : ""
+                                t.governance_downgraded ? "border-orange-200 bg-orange-50/30" : ""
                                 }`}
                         >
                             <div className="flex items-center justify-between flex-wrap gap-4">
