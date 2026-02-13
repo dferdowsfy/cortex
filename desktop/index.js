@@ -9,6 +9,10 @@ const fs = require('fs');
 const PROXY_SCRIPT_PATH = path.resolve(__dirname, '../web/scripts/proxy-server.js');
 const PROXY_PORT = 8080;
 
+// Dashboard URL — use Vercel for production, localhost for dev
+const DASHBOARD_URL = process.env.COMPLYZE_DASHBOARD || 'https://web-one-beta-35.vercel.app';
+const API_URL = process.env.COMPLYZE_API || `${DASHBOARD_URL}/api/proxy/intercept`;
+
 // Sudo prompt options
 const sudoOptions = {
     name: 'Complyze Proxy',
@@ -31,7 +35,7 @@ function startProxyServer() {
 
     proxyProcess = fork(PROXY_SCRIPT_PATH, ['--port', PROXY_PORT.toString()], {
         stdio: 'inherit',
-        env: { ...process.env, COMPLYZE_API: 'http://localhost:3737/api/proxy/intercept' }
+        env: { ...process.env, COMPLYZE_API: API_URL }
     });
 
     proxyProcess.on('error', (err) => {
@@ -143,5 +147,5 @@ ipcMain.handle('proxy-status', async () => {
 });
 
 ipcMain.handle('open-dashboard', () => {
-    shell.openExternal('http://localhost:3737/monitoring');
+    shell.openExternal(`${DASHBOARD_URL}/monitoring`);
 });

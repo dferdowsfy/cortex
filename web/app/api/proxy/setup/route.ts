@@ -5,11 +5,17 @@
  *   - disable-proxy: Turn off macOS system HTTPS proxy
  *   - trust-ca:      Trust the Complyze CA certificate in the system keychain
  *   - check-status:  Check current proxy and CA trust status
+ *
+ * NOTE: These actions only work when running locally on macOS.
+ * On Vercel (cloud), returns a "cloud mode" response.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
+
+// Detect if running on Vercel (serverless)
+const IS_VERCEL = !!process.env.VERCEL;
 
 // Get the active Wi-Fi network interface name
 function getActiveInterface(): string {
@@ -82,6 +88,29 @@ function isProxyServerRunning(): boolean {
 export async function POST(req: NextRequest) {
     try {
         const { action } = await req.json();
+
+        // On Vercel, proxy setup commands can't run (no macOS, no shell access)
+        if (IS_VERCEL) {
+            if (action === "check-status") {
+                return NextResponse.json({
+                    interface: "Cloud",
+                    proxy_configured: false,
+                    proxy_enabled: false,
+                    proxy_server: "",
+                    proxy_port: "",
+                    ca_trusted: false,
+                    ca_exists: false,
+                    proxy_server_running: false,
+                    cloud_mode: true,
+                });
+            }
+            return NextResponse.json({
+                success: false,
+                cloud_mode: true,
+                message: "Proxy setup commands are not available in cloud mode. Deploy the Complyze Agent on each machine instead.",
+            }, { status: 200 });
+        }
+
         const iface = getActiveInterface();
 
         switch (action) {

@@ -96,6 +96,13 @@ function StatusDot({ ok, label }: { ok: boolean; label: string }) {
    Main Settings Page
    ═══════════════════════════════════════════════════════════════ */
 
+// Detect if running on Vercel (cloud) vs. localhost
+function isCloudDeployment(): boolean {
+    if (typeof window === "undefined") return false;
+    const host = window.location.hostname;
+    return !host.includes("localhost") && !host.includes("127.0.0.1");
+}
+
 export default function SettingsPage() {
     const [settings, setSettings] = useState<ProxySettings | null>(null);
     const [loading, setLoading] = useState(true);
@@ -105,9 +112,15 @@ export default function SettingsPage() {
     const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
     const [setupLoading, setSetupLoading] = useState<string | null>(null);
     const [setupMessage, setSetupMessage] = useState<{ type: "success" | "error" | "info"; text: string; command?: string } | null>(null);
+    const [isCloud, setIsCloud] = useState(false);
     const initialLoadDone = useRef(false);
 
+    useEffect(() => {
+        setIsCloud(isCloudDeployment());
+    }, []);
+
     const checkSetupStatus = useCallback(async () => {
+        if (isCloud) return; // Don't check local setup status on cloud
         try {
             const res = await fetch("/api/proxy/setup", {
                 method: "POST",
@@ -121,7 +134,7 @@ export default function SettingsPage() {
         } catch {
             // Silent fail
         }
-    }, []);
+    }, [isCloud]);
 
     useEffect(() => {
         if (!initialLoadDone.current) {
@@ -135,17 +148,17 @@ export default function SettingsPage() {
                     setError("Failed to load settings");
                     setLoading(false);
                 });
-            checkSetupStatus();
+            if (!isCloud) checkSetupStatus();
             initialLoadDone.current = true;
         }
-    }, [checkSetupStatus]);
+    }, [checkSetupStatus, isCloud]);
 
-    // Poll setup status every 5 seconds when proxy is enabled
+    // Poll setup status every 5 seconds when proxy is enabled (local only)
     useEffect(() => {
-        if (!settings?.proxy_enabled) return;
+        if (!settings?.proxy_enabled || isCloud) return;
         const interval = setInterval(checkSetupStatus, 5000);
         return () => clearInterval(interval);
-    }, [settings?.proxy_enabled, checkSetupStatus]);
+    }, [settings?.proxy_enabled, checkSetupStatus, isCloud]);
 
     async function saveSettings(partial: Partial<ProxySettings>) {
         if (!settings) return;
@@ -271,7 +284,95 @@ export default function SettingsPage() {
                     description="When enabled, all AI tool traffic routed through the proxy will be analyzed for sensitive data and policy compliance."
                 />
 
-                {settings.proxy_enabled && (
+                {settings.proxy_enabled && isCloud && (
+                    <div className="mt-4 space-y-4">
+                        {/* ── Cloud: Deploy Agent Card ── */}
+                        <div className="rounded-xl border-2 border-dashed border-brand-300 bg-gradient-to-br from-brand-50 to-indigo-50 p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 shadow-lg">
+                                    <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-900">Deploy the Complyze Agent</h3>
+                                    <p className="text-xs text-gray-500">Install on employee machines to monitor AI traffic</p>
+                                </div>
+                            </div>
+
+                            <p className="text-xs text-gray-600 mb-4 leading-relaxed">
+                                The Complyze Agent runs as a lightweight menu bar app on each employee&apos;s machine.
+                                It intercepts AI traffic, classifies risk in real-time, and reports activity back to this dashboard.
+                            </p>
+
+                            {/* Platform Downloads */}
+                            <div className="grid gap-3 sm:grid-cols-2 mb-4">
+                                <div className="rounded-lg border border-gray-200 bg-white p-4 text-center">
+                                    <div className="text-2xl mb-1">🍎</div>
+                                    <p className="text-xs font-bold text-gray-900">macOS</p>
+                                    <p className="text-[10px] text-gray-500 mb-3">Intel & Apple Silicon</p>
+                                    <button
+                                        className="w-full rounded-lg bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700 transition-colors"
+                                        onClick={() => {
+                                            const instructions = `# Complyze Agent - macOS Installation\n\n1. Clone the repository:\n   git clone https://github.com/dferdowsfy/cortex.git\n   cd cortex/desktop\n\n2. Install dependencies:\n   npm install\n\n3. Start the agent:\n   npm start\n\nThe agent will appear in your menu bar. Click it to enable/disable AI traffic monitoring.`;
+                                            navigator.clipboard.writeText(instructions);
+                                            setSetupMessage({ type: "success", text: "Installation instructions copied to clipboard!" });
+                                            setTimeout(() => setSetupMessage(null), 3000);
+                                        }}
+                                    >
+                                        📋 Copy Install Instructions
+                                    </button>
+                                </div>
+                                <div className="rounded-lg border border-gray-200 bg-white p-4 text-center">
+                                    <div className="text-2xl mb-1">🪟</div>
+                                    <p className="text-xs font-bold text-gray-900">Windows</p>
+                                    <p className="text-[10px] text-gray-500 mb-3">x64</p>
+                                    <button
+                                        className="w-full rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 text-xs font-bold text-gray-400 cursor-not-allowed"
+                                        disabled
+                                    >
+                                        Coming Soon
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Quick Manual Setup */}
+                            <div className="rounded-lg bg-gray-900 text-green-400 font-mono text-[11px] p-4 overflow-x-auto">
+                                <p className="text-gray-500 mb-1"># Quick setup (macOS)</p>
+                                <p>git clone https://github.com/dferdowsfy/cortex.git</p>
+                                <p>cd cortex/desktop && npm install</p>
+                                <p>npm start</p>
+                            </div>
+
+                            {/* How it works */}
+                            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                {[
+                                    { icon: "📡", title: "Intercept", desc: "Routes AI traffic through local MITM proxy" },
+                                    { icon: "🔍", title: "Classify", desc: "Analyzes prompts for PII, secrets & risk" },
+                                    { icon: "📊", title: "Report", desc: "Sends metadata to this dashboard in real-time" },
+                                ].map((step) => (
+                                    <div key={step.title} className="text-center">
+                                        <div className="text-lg">{step.icon}</div>
+                                        <p className="text-[10px] font-bold text-gray-800 mt-1">{step.title}</p>
+                                        <p className="text-[10px] text-gray-500">{step.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Setup Message (for clipboard feedback) */}
+                        {setupMessage && (
+                            <div className={`rounded-lg border p-3 text-xs ${setupMessage.type === "success" ? "border-green-200 bg-green-50 text-green-800" :
+                                setupMessage.type === "error" ? "border-red-200 bg-red-50 text-red-800" :
+                                    "border-blue-200 bg-blue-50 text-blue-800"
+                                }`}>
+                                <p>{setupMessage.text}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {settings.proxy_enabled && !isCloud && (
                     <div className="mt-4 space-y-4">
                         {/* System Status */}
                         {setupStatus && (
@@ -457,8 +558,8 @@ export default function SettingsPage() {
                                         "chatgpt.com", "chat.openai.com", "claude.ai"
                                     ].map((d) => (
                                         <span key={d} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${["chatgpt.com", "chat.openai.com", "claude.ai"].includes(d) && settings.desktop_bypass
-                                                ? "bg-amber-50 border border-amber-200 text-amber-700"
-                                                : "bg-brand-50 border border-brand-200 text-brand-700"
+                                            ? "bg-amber-50 border border-amber-200 text-amber-700"
+                                            : "bg-brand-50 border border-brand-200 text-brand-700"
                                             }`}>
                                             {d}
                                             {["chatgpt.com", "chat.openai.com", "claude.ai"].includes(d) && settings.desktop_bypass && (
