@@ -1,6 +1,11 @@
-// Proxy Store — In-Memory for Local Development
-// In production, this would use Firebase Admin SDK or a dedicated backend database.
-// User authentication still flows through Firestore via the client-side auth-context.
+/**
+ * Proxy Store — Firestore-backed persistence for both local and Vercel.
+ *
+ * Settings, events, and alerts are stored in Firestore so they survive
+ * across Vercel serverless cold-starts and function instances.
+ *
+ * Falls back to in-memory storage if Firestore is unavailable.
+ */
 
 import type {
     ProxySettings,
@@ -11,7 +16,7 @@ import type {
     ProxyReportData
 } from "./proxy-types";
 
-// Default settings
+// ── Default settings ─────────────────────────────────────────
 const DEFAULT_SETTINGS: ProxySettings = {
     proxy_enabled: false,
     full_audit_mode: false,
@@ -24,8 +29,28 @@ const DEFAULT_SETTINGS: ProxySettings = {
     updated_at: new Date().toISOString(),
 };
 
-// In-memory state (persists as long as the Next.js server is running)
-// We use globalThis to ensure persistence across Next.js HMR/module reloads in dev
+// ── Firestore helpers (lazy-loaded) ──────────────────────────
+let firestoreDb: FirebaseFirestore.Firestore | null = null;
+let firestoreInitAttempted = false;
+
+function getDb(): FirebaseFirestore.Firestore | null {
+    if (firestoreDb) return firestoreDb;
+    if (firestoreInitAttempted) return null;
+    firestoreInitAttempted = true;
+
+    try {
+        // Dynamic import to avoid issues if firebase-admin isn't configured
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { adminDb } = require("./firebase/admin");
+        firestoreDb = adminDb;
+        return firestoreDb;
+    } catch (err) {
+        console.warn("[proxy-store] Firestore not available, using in-memory fallback:", err);
+        return null;
+    }
+}
+
+// ── In-memory fallback (for when Firestore is unavailable) ───
 const globalStore = globalThis as unknown as {
     _memSettings: ProxySettings;
     _memEvents: ActivityEvent[];
@@ -38,43 +63,94 @@ if (!globalStore._memSettings) {
     globalStore._memAlerts = [];
 }
 
-// Helper accessors
-// Helper accessors
-const _getSettings = () => globalStore._memSettings;
-const _setSettings = (s: ProxySettings) => (globalStore._memSettings = s);
-const _getEvents = () => globalStore._memEvents;
-const _getAlerts = () => globalStore._memAlerts;
+// ── Document paths ───────────────────────────────────────────
+const SETTINGS_DOC = "proxy_config/settings";
+const EVENTS_COLLECTION = "proxy_events";
+const ALERTS_COLLECTION = "proxy_alerts";
 
 class ProxyStore {
-    // ── Settings ─────────────────────────────────────────────────
+    // ── Settings ─────────────────────────────────────────────
     async getSettings(): Promise<ProxySettings> {
-        return _getSettings();
+        const db = getDb();
+        if (!db) return globalStore._memSettings;
+
+        try {
+            const doc = await db.doc(SETTINGS_DOC).get();
+            if (doc.exists) {
+                return doc.data() as ProxySettings;
+            }
+            // No settings doc yet — create with defaults
+            await db.doc(SETTINGS_DOC).set(DEFAULT_SETTINGS);
+            return { ...DEFAULT_SETTINGS };
+        } catch (err) {
+            console.warn("[proxy-store] getSettings Firestore error, using memory:", err);
+            return globalStore._memSettings;
+        }
     }
 
     async updateSettings(newSettings: Partial<ProxySettings>): Promise<ProxySettings> {
-        const current = _getSettings();
-        const updated = {
+        const current = await this.getSettings();
+        const updated: ProxySettings = {
             ...current,
             ...newSettings,
             updated_at: new Date().toISOString(),
         };
-        _setSettings(updated);
+
+        const db = getDb();
+        if (db) {
+            try {
+                await db.doc(SETTINGS_DOC).set(updated);
+            } catch (err) {
+                console.warn("[proxy-store] updateSettings Firestore error:", err);
+            }
+        }
+
+        // Always keep in-memory copy in sync
+        globalStore._memSettings = updated;
         return updated;
     }
 
-    // ── Events ───────────────────────────────────────────────────
+    // ── Events ───────────────────────────────────────────────
     async addEvent(event: ActivityEvent): Promise<void> {
-        const events = _getEvents();
-        events.unshift(event);
-        if (events.length > 1000) events.pop();
+        const db = getDb();
+        if (db) {
+            try {
+                await db.collection(EVENTS_COLLECTION).doc(event.id).set({
+                    ...event,
+                    _created_at: new Date().toISOString(),
+                });
+            } catch (err) {
+                console.warn("[proxy-store] addEvent Firestore error:", err);
+            }
+        }
+
+        // Also keep in memory
+        globalStore._memEvents.unshift(event);
+        if (globalStore._memEvents.length > 1000) globalStore._memEvents.pop();
+
         await this.checkThresholds(event);
     }
 
     async getEvents(limitCount = 50): Promise<ActivityEvent[]> {
-        return _getEvents().slice(0, limitCount);
+        const db = getDb();
+        if (db) {
+            try {
+                const snap = await db
+                    .collection(EVENTS_COLLECTION)
+                    .orderBy("_created_at", "desc")
+                    .limit(limitCount)
+                    .get();
+                if (!snap.empty) {
+                    return snap.docs.map((d) => d.data() as ActivityEvent);
+                }
+            } catch (err) {
+                console.warn("[proxy-store] getEvents Firestore error:", err);
+            }
+        }
+        return globalStore._memEvents.slice(0, limitCount);
     }
 
-    // ── Summary & Risks ──────────────────────────────────────────
+    // ── Summary & Risks ──────────────────────────────────────
     async getSummary(period: "7d" | "30d" = "7d"): Promise<ActivitySummary> {
         const events = await this.getEvents(200);
         return this.calculateSummaryFromEvents(events, period);
@@ -85,32 +161,62 @@ class ProxyStore {
         return this.calculateToolRisksFromEvents(events);
     }
 
-    // ── Alerts ────────────────────────────────────────────────────
+    // ── Alerts ────────────────────────────────────────────────
     async getAlerts(limitCount = 20): Promise<ProxyAlert[]> {
-        return _getAlerts().slice(0, limitCount);
+        const db = getDb();
+        if (db) {
+            try {
+                const snap = await db
+                    .collection(ALERTS_COLLECTION)
+                    .orderBy("timestamp", "desc")
+                    .limit(limitCount)
+                    .get();
+                if (!snap.empty) {
+                    return snap.docs.map((d) => d.data() as ProxyAlert);
+                }
+            } catch (err) {
+                console.warn("[proxy-store] getAlerts Firestore error:", err);
+            }
+        }
+        return globalStore._memAlerts.slice(0, limitCount);
     }
 
     async addAlert(alert: ProxyAlert): Promise<void> {
-        _getAlerts().unshift(alert);
+        const db = getDb();
+        if (db) {
+            try {
+                await db.collection(ALERTS_COLLECTION).doc(alert.id).set(alert);
+            } catch (err) {
+                console.warn("[proxy-store] addAlert Firestore error:", err);
+            }
+        }
+        globalStore._memAlerts.unshift(alert);
     }
 
     async acknowledgeAlert(alertId: string): Promise<void> {
-        const alerts = _getAlerts();
+        const db = getDb();
+        if (db) {
+            try {
+                await db.collection(ALERTS_COLLECTION).doc(alertId).update({ acknowledged: true });
+            } catch (err) {
+                console.warn("[proxy-store] acknowledgeAlert Firestore error:", err);
+            }
+        }
+        const alerts = globalStore._memAlerts;
         const alert = alerts.find((a) => a.id === alertId);
         if (alert) alert.acknowledged = true;
     }
 
     async getUnacknowledgedCount(): Promise<number> {
-        const alerts = _getAlerts();
+        const alerts = await this.getAlerts(100);
         return alerts.filter((a) => !a.acknowledged).length;
     }
 
     async getReportData(): Promise<ProxyReportData> {
         const summary = await this.getSummary("30d");
         const toolRisks = await this.getToolRisks();
-        const settings = _getSettings();
+        const settings = await this.getSettings();
 
-        // Construct a full report object
         return {
             proxy_enabled: settings.proxy_enabled,
             total_requests_observed: summary.total_requests,
@@ -125,7 +231,7 @@ class ProxyStore {
         };
     }
 
-    // ── Internal Helpers ──────────────────────────────────────────
+    // ── Internal Helpers ──────────────────────────────────────
     private calculateSummaryFromEvents(events: ActivityEvent[], period: string): ActivitySummary {
         const total = events.length;
         if (total === 0) return this.emptySummary();
@@ -161,7 +267,7 @@ class ProxyStore {
                 toolEvents.reduce((s, e) => s + e.sensitivity_score, 0) / toolEvents.length;
             risks.push({
                 tool_name: tool,
-                static_risk_tier: "low", // defaulting since we lack static definition here
+                static_risk_tier: "low",
                 dynamic_sensitivity_avg: Math.round(avgScore),
                 policy_violation_count: toolEvents.filter((e) => e.policy_violation_flag).length,
                 sensitive_prompt_volume: toolEvents.filter((e) => e.sensitivity_score > 0).length,
