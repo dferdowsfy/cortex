@@ -2,10 +2,8 @@
   "name": "complyze",
   "version": "0.1.0",
   "description": "Complyze — AI Tool Intelligence Extraction & Risk Assessment Pipeline",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "cd web && npm install && npm run build",
     "dev": "tsx watch src/index.ts",
     "dev:web": "cd web && npm run dev",
     "dev:app": "cd desktop && npm start",
@@ -24,7 +22,8 @@
   "private": true,
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "zod": "^3.24.0"
+    "zod": "^3.24.0",
+    "next": "^15.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
