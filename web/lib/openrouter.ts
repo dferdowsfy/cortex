@@ -15,7 +15,7 @@ export async function callLLM(
   options: LLMOptions = {}
 ): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash";
+  const model = (process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash").trim();
 
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not set in environment variables");
