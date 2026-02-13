@@ -131,24 +131,29 @@ function DiscoveredRow({
   onDismiss: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 last:border-0">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 last:border-0 hover:bg-gray-50/50 transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
         <span className="text-sm" title={`Confidence: ${tool.confidence}`}>
           {confidenceIcon(tool.confidence)}
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="font-medium text-gray-900">{tool.tool_name}</p>
           <p className="text-xs text-gray-500">
             {tool.vendor} · {tool.source}
           </p>
+          {tool.detail && (
+            <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-md">
+              {tool.detail}
+            </p>
+          )}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         <Link
           href={`/scan?tool=${encodeURIComponent(tool.tool_name)}&vendor=${encodeURIComponent(tool.vendor)}&tier=${encodeURIComponent(tool.suggested_tier)}`}
           className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
         >
-          Assess
+          Assess →
         </Link>
         <button
           onClick={onDismiss}
@@ -180,6 +185,7 @@ export default function Dashboard() {
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
   const [proxySummary, setProxySummary] = useState<ProxySummary | null>(null);
+  const [showAllDiscovered, setShowAllDiscovered] = useState(false);
 
   useEffect(() => {
     setTools(loadTools());
@@ -226,34 +232,43 @@ export default function Dashboard() {
   /* ── Run discovery scan ── */
   const runDiscoveryScan = useCallback(async () => {
     setScanning(true);
-    setScanMessage("Scanning this machine for AI tools...");
+    setScanMessage("Scanning for AI tools...");
 
     try {
       const res = await fetch("/api/discover-local");
       if (!res.ok) throw new Error("Scan failed");
       const data = await res.json();
 
+      const allDiscovered = (data.tools as DiscoveredTool[]) || [];
+
       // Filter out tools we've already assessed
       const assessedNames = new Set(tools.map((t) => t.tool_name.toLowerCase()));
-      const newFinds = (data.tools as DiscoveredTool[]).filter(
+      const newFinds = allDiscovered.filter(
         (d) => !assessedNames.has(d.tool_name.toLowerCase())
       );
 
-      if (newFinds.length === 0) {
-        setScanMessage("No new AI tools found. All detected tools are already in your registry.");
-      } else {
-        // Merge with existing discovered (deduplicate by name)
-        const existingNames = new Set(discovered.map((d) => d.tool_name.toLowerCase()));
-        const additional = newFinds.filter(
-          (d) => !existingNames.has(d.tool_name.toLowerCase())
-        );
+      // Merge with existing discovered (deduplicate by name)
+      const existingNames = new Set(discovered.map((d) => d.tool_name.toLowerCase()));
+      const additional = newFinds.filter(
+        (d) => !existingNames.has(d.tool_name.toLowerCase())
+      );
+
+      if (additional.length > 0) {
         const merged = [...discovered, ...additional];
         setDiscovered(merged);
         localStorage.setItem("complyze_discovered", JSON.stringify(merged));
-        setScanMessage(`Found ${additional.length} new AI tool(s) on this machine.`);
+        setScanMessage(
+          data.mode === "registry"
+            ? `📋 Loaded ${additional.length} AI tools from the enterprise registry. Select tools to assess.`
+            : `🔍 Found ${additional.length} AI tool(s) on this machine.`
+        );
+      } else if (newFinds.length === 0 && tools.length > 0) {
+        setScanMessage(`✅ All ${tools.length} discovered tools have been assessed. Add more tools manually or check the registry.`);
+      } else {
+        setScanMessage("All discovered tools are already listed below. Click \"Assess\" to scan any tool.");
       }
     } catch {
-      setScanMessage("Scan completed. Use the desktop agent for deeper scanning.");
+      setScanMessage("Could not reach discovery API. Use the Scan Tool page to add tools manually.");
     }
     setScanning(false);
   }, [tools, discovered]);
@@ -336,9 +351,9 @@ export default function Dashboard() {
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 border-2 border-brand-200">
                 <span
                   className={`text-xl font-bold ${proxySummary.activity_score >= 70 ? "text-red-600" :
-                      proxySummary.activity_score >= 50 ? "text-orange-600" :
-                        proxySummary.activity_score >= 30 ? "text-yellow-600" :
-                          "text-green-600"
+                    proxySummary.activity_score >= 50 ? "text-orange-600" :
+                      proxySummary.activity_score >= 30 ? "text-yellow-600" :
+                        "text-green-600"
                     }`}
                 >
                   {proxySummary.activity_score}
@@ -379,20 +394,32 @@ export default function Dashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.981 0 13.79M12 12h.008v.007H12V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
               </svg>
               <h2 className="text-sm font-semibold text-amber-800">
-                Discovered — Needs Assessment ({pendingDiscovered.length})
+                AI Tool Registry — Needs Assessment ({pendingDiscovered.length})
               </h2>
             </div>
             <span className="text-xs text-amber-600">
-              Click &quot;Assess&quot; to run a full risk scan
+              Click &quot;Assess →&quot; to run a full governance scan
             </span>
           </div>
-          {pendingDiscovered.map((tool) => (
+          {(showAllDiscovered ? pendingDiscovered : pendingDiscovered.slice(0, 6)).map((tool) => (
             <DiscoveredRow
               key={tool.tool_name}
               tool={tool}
               onDismiss={() => dismissDiscovered(tool.tool_name)}
             />
           ))}
+          {pendingDiscovered.length > 6 && (
+            <div className="border-t border-amber-200 bg-amber-50/50 px-4 py-2.5 text-center">
+              <button
+                onClick={() => setShowAllDiscovered(!showAllDiscovered)}
+                className="text-xs font-semibold text-amber-700 hover:text-amber-900 transition-colors"
+              >
+                {showAllDiscovered
+                  ? "Show Less ↑"
+                  : `Show All ${pendingDiscovered.length} Tools ↓`}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

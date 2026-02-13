@@ -286,10 +286,49 @@ function deduplicate(tools: DiscoveredTool[]): DiscoveredTool[] {
   return Array.from(best.values());
 }
 
+/* ── Curated AI Tool Registry (for cloud mode) ── */
+
+const CURATED_AI_REGISTRY: DiscoveredTool[] = [
+  { tool_name: "ChatGPT", vendor: "OpenAI", suggested_tier: "Enterprise", source: "AI Registry", detail: "Conversational AI assistant — widely used across organizations", confidence: "high" },
+  { tool_name: "GitHub Copilot", vendor: "GitHub / Microsoft", suggested_tier: "Business", source: "AI Registry", detail: "AI pair programmer for code generation and completion", confidence: "high" },
+  { tool_name: "Claude", vendor: "Anthropic", suggested_tier: "Enterprise", source: "AI Registry", detail: "AI assistant with extended context and document analysis", confidence: "high" },
+  { tool_name: "Google Gemini", vendor: "Google", suggested_tier: "Enterprise", source: "AI Registry", detail: "Multimodal AI model with search integration", confidence: "high" },
+  { tool_name: "Microsoft Copilot", vendor: "Microsoft", suggested_tier: "Enterprise", source: "AI Registry", detail: "AI integrated into Microsoft 365 suite (Word, Excel, Teams)", confidence: "high" },
+  { tool_name: "Cursor", vendor: "Anysphere", suggested_tier: "Pro", source: "AI Registry", detail: "AI-powered code editor built on VS Code", confidence: "high" },
+  { tool_name: "Notion AI", vendor: "Notion Labs", suggested_tier: "Plus", source: "AI Registry", detail: "AI writing and summarization inside Notion workspace", confidence: "high" },
+  { tool_name: "Grammarly", vendor: "Grammarly Inc.", suggested_tier: "Business", source: "AI Registry", detail: "AI writing assistant for grammar, tone, and clarity", confidence: "high" },
+  { tool_name: "Jasper", vendor: "Jasper AI", suggested_tier: "Business", source: "AI Registry", detail: "AI content generation platform for marketing teams", confidence: "medium" },
+  { tool_name: "Perplexity", vendor: "Perplexity AI", suggested_tier: "Pro", source: "AI Registry", detail: "AI-powered research and answer engine", confidence: "high" },
+  { tool_name: "Midjourney", vendor: "Midjourney Inc.", suggested_tier: "Pro", source: "AI Registry", detail: "AI image generation via Discord or web interface", confidence: "medium" },
+  { tool_name: "DALL-E", vendor: "OpenAI", suggested_tier: "Enterprise", source: "AI Registry", detail: "AI image generation integrated into ChatGPT and API", confidence: "medium" },
+  { tool_name: "Slack AI", vendor: "Salesforce / Slack", suggested_tier: "Business+", source: "AI Registry", detail: "AI summarization and search within Slack conversations", confidence: "medium" },
+  { tool_name: "Zoom AI Companion", vendor: "Zoom", suggested_tier: "Business", source: "AI Registry", detail: "AI meeting summaries, transcription, and smart compose", confidence: "medium" },
+  { tool_name: "Codeium / Windsurf", vendor: "Codeium", suggested_tier: "Enterprise", source: "AI Registry", detail: "AI code completion and autonomous coding agent", confidence: "high" },
+  { tool_name: "Tabnine", vendor: "Tabnine", suggested_tier: "Enterprise", source: "AI Registry", detail: "AI code assistant with private model deployment", confidence: "medium" },
+  { tool_name: "Otter.ai", vendor: "Otter.ai", suggested_tier: "Business", source: "AI Registry", detail: "AI meeting transcription and note-taking", confidence: "medium" },
+  { tool_name: "Canva AI", vendor: "Canva Pty Ltd", suggested_tier: "Pro", source: "AI Registry", detail: "AI design features including Magic Write and image generation", confidence: "medium" },
+  { tool_name: "Adobe Firefly", vendor: "Adobe", suggested_tier: "Enterprise", source: "AI Registry", detail: "Generative AI for creative workflows (Photoshop, Illustrator)", confidence: "medium" },
+  { tool_name: "Amazon Q", vendor: "AWS", suggested_tier: "Business", source: "AI Registry", detail: "AI assistant for developers and business users on AWS", confidence: "medium" },
+];
+
 /* ── Route ── */
+
+const IS_VERCEL = !!process.env.VERCEL;
 
 export async function GET() {
   try {
+    // On Vercel, we can't scan the local filesystem — return curated registry
+    if (IS_VERCEL) {
+      return NextResponse.json({
+        count: CURATED_AI_REGISTRY.length,
+        tools: CURATED_AI_REGISTRY,
+        scanned_at: new Date().toISOString(),
+        platform: "cloud",
+        mode: "registry",
+      });
+    }
+
+    // On local dev, do the real machine scan
     const all: DiscoveredTool[] = [
       ...scanInstalledApps(),
       ...scanProcesses(),
@@ -304,6 +343,7 @@ export async function GET() {
       tools: unique,
       scanned_at: new Date().toISOString(),
       platform: platform(),
+      mode: "local-scan",
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Scan failed";
