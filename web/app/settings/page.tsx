@@ -300,10 +300,20 @@ export default function SettingsPage() {
                                 </div>
                             </div>
 
-                            <p className="text-xs text-gray-600 mb-4 leading-relaxed">
+                            <p className="text-xs text-gray-600 mb-2 leading-relaxed">
                                 The Complyze Agent runs as a lightweight menu bar app on each employee&apos;s machine.
-                                It intercepts AI traffic, classifies risk in real-time, and reports activity back to this dashboard.
+                                It automatically configures your system proxy, intercepts AI traffic, classifies risk in real-time,
+                                and reports activity back to this dashboard.
                             </p>
+
+                            <div className="rounded-md bg-blue-50 border border-blue-200 p-2.5 mb-4">
+                                <p className="text-[10px] text-blue-800 flex items-center gap-1">
+                                    <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                    </svg>
+                                    <span>The agent handles <strong>WiFi proxy configuration automatically</strong> — no manual network settings needed.</span>
+                                </p>
+                            </div>
 
                             {/* Platform Downloads */}
                             <div className="grid gap-3 sm:grid-cols-2 mb-4">
@@ -312,11 +322,42 @@ export default function SettingsPage() {
                                     <p className="text-xs font-bold text-gray-900">macOS</p>
                                     <p className="text-[10px] text-gray-500 mb-3">Intel & Apple Silicon</p>
                                     <button
+                                        id="copy-macos-instructions"
                                         className="w-full rounded-lg bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700 transition-colors"
-                                        onClick={() => {
-                                            const instructions = `# Complyze Agent - macOS Installation\n\n1. Clone the repository:\n   git clone https://github.com/dferdowsfy/cortex.git\n   cd cortex/desktop\n\n2. Install dependencies:\n   npm install\n\n3. Start the agent:\n   npm start\n\nThe agent will appear in your menu bar. Click it to enable/disable AI traffic monitoring.`;
-                                            navigator.clipboard.writeText(instructions);
-                                            setSetupMessage({ type: "success", text: "Installation instructions copied to clipboard!" });
+                                        onClick={async () => {
+                                            const instructions = [
+                                                "# Complyze Agent — macOS Quick Install",
+                                                "",
+                                                "# 1. Clone the repository",
+                                                "git clone https://github.com/dferdowsfy/cortex.git",
+                                                "",
+                                                "# 2. Install agent dependencies",
+                                                "cd cortex/desktop && npm install",
+                                                "",
+                                                "# 3. Start the agent (it will appear in your menu bar)",
+                                                "npx electron .",
+                                                "",
+                                                "# The agent will:",
+                                                "#   • Configure your WiFi proxy automatically",
+                                                "#   • Intercept AI traffic for risk analysis",
+                                                "#   • Report activity to the Complyze dashboard",
+                                            ].join("\n");
+
+                                            try {
+                                                await navigator.clipboard.writeText(instructions);
+                                                setSetupMessage({ type: "success", text: "✅ Instructions copied to clipboard!" });
+                                            } catch {
+                                                // Fallback: create a textarea and select+copy
+                                                const ta = document.createElement("textarea");
+                                                ta.value = instructions;
+                                                ta.style.position = "fixed";
+                                                ta.style.left = "-9999px";
+                                                document.body.appendChild(ta);
+                                                ta.select();
+                                                document.execCommand("copy");
+                                                document.body.removeChild(ta);
+                                                setSetupMessage({ type: "success", text: "✅ Instructions copied to clipboard!" });
+                                            }
                                             setTimeout(() => setSetupMessage(null), 3000);
                                         }}
                                     >
@@ -336,20 +377,46 @@ export default function SettingsPage() {
                                 </div>
                             </div>
 
-                            {/* Quick Manual Setup */}
+                            {/* Quick Manual Setup — one-liner */}
                             <div className="rounded-lg bg-gray-900 text-green-400 font-mono text-[11px] p-4 overflow-x-auto">
-                                <p className="text-gray-500 mb-1"># Quick setup (macOS)</p>
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                    <p className="text-gray-500"># Quick setup (macOS) — paste into Terminal</p>
+                                    <button
+                                        id="copy-one-liner"
+                                        className="text-[10px] text-gray-400 hover:text-green-400 border border-gray-700 rounded px-2 py-0.5 transition-colors shrink-0"
+                                        onClick={async () => {
+                                            const cmd = "git clone https://github.com/dferdowsfy/cortex.git && cd cortex/desktop && npm install && npx electron .";
+                                            try {
+                                                await navigator.clipboard.writeText(cmd);
+                                            } catch {
+                                                const ta = document.createElement("textarea");
+                                                ta.value = cmd;
+                                                ta.style.position = "fixed";
+                                                ta.style.left = "-9999px";
+                                                document.body.appendChild(ta);
+                                                ta.select();
+                                                document.execCommand("copy");
+                                                document.body.removeChild(ta);
+                                            }
+                                            setSetupMessage({ type: "success", text: "✅ Command copied!" });
+                                            setTimeout(() => setSetupMessage(null), 2000);
+                                        }}
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
                                 <p>git clone https://github.com/dferdowsfy/cortex.git</p>
-                                <p>cd cortex/desktop && npm install</p>
-                                <p>npm start</p>
+                                <p>cd cortex/desktop &amp;&amp; npm install</p>
+                                <p>npx electron .</p>
                             </div>
 
                             {/* How it works */}
-                            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                            <div className="mt-4 grid gap-3 sm:grid-cols-4">
                                 {[
-                                    { icon: "📡", title: "Intercept", desc: "Routes AI traffic through local MITM proxy" },
-                                    { icon: "🔍", title: "Classify", desc: "Analyzes prompts for PII, secrets & risk" },
-                                    { icon: "📊", title: "Report", desc: "Sends metadata to this dashboard in real-time" },
+                                    { icon: "⬇️", title: "Install", desc: "Clone repo & run npm install" },
+                                    { icon: "📡", title: "Auto-Configure", desc: "Configures WiFi proxy for you" },
+                                    { icon: "🔍", title: "Classify", desc: "Analyzes prompts for PII & risk" },
+                                    { icon: "📊", title: "Report", desc: "Sends data to this dashboard" },
                                 ].map((step) => (
                                     <div key={step.title} className="text-center">
                                         <div className="text-lg">{step.icon}</div>

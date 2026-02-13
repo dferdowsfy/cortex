@@ -113,10 +113,25 @@ mb.on('ready', () => {
     startProxyServer();
 });
 
-mb.app.on('before-quit', () => {
-    // Ideally, we should ask to disable proxy here, but we can't block easily.
-    // User remains proxied (which is fine if server is running, bad if app quits).
-    // For now, we leave it as is.
+mb.app.on('before-quit', async () => {
+    // IMPORTANT: Disable the system proxy before quitting so the user's
+    // WiFi isn't left pointing at a dead proxy (which would break all traffic)
+    console.log('App quitting — disabling system proxy...');
+    try {
+        const interfaceName = "Wi-Fi";
+        const { execSync } = require('child_process');
+        // Use execSync so we block until the proxy is disabled
+        execSync(`networksetup -setwebproxystate "${interfaceName}" off`);
+        execSync(`networksetup -setsecurewebproxystate "${interfaceName}" off`);
+        console.log('System proxy disabled successfully.');
+    } catch (err) {
+        console.error('Failed to disable system proxy on quit:', err.message);
+        // Try via sudo as a last resort (will show password prompt)
+        try {
+            const cmd = `networksetup -setwebproxystate "Wi-Fi" off && networksetup -setsecurewebproxystate "Wi-Fi" off`;
+            sudo.exec(cmd, sudoOptions, () => { });
+        } catch { /* eat error — app is quitting anyway */ }
+    }
     stopProxyServer();
 });
 
