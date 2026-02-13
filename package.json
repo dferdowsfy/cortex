@@ -7,6 +7,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
+    "dev:web": "cd web && npm run dev",
+    "dev:app": "cd desktop && npm start",
+    "launch": "concurrently --kill-others -n \"WEB,APP\" \"npm run dev:web\" \"npm run dev:app\"",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -26,6 +29,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^3.0.0",
+    "concurrently": "^9.2.1",
     "eslint": "^9.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
