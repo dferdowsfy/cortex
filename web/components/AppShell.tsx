@@ -31,9 +31,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { user, loading, signOut } = useAuth();
 
-    // If on public routes like login, render without the main app shell
-    if (pathname === "/login" || pathname === "/signup") {
-        return <main className="min-h-screen bg-gray-50">{children}</main>;
+    // If on public routes like login, signup, or landing page, render without the main app shell
+    if (pathname === "/login" || pathname === "/signup" || pathname === "/") {
+        return <>{children}</>;
     }
 
     // While loading auth state, show a minimal loading indicator
