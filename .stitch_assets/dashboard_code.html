@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Complyze - Enterprise AI Governance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#2F3B45", // Deep slate for primary actions
+                        "primary-hover": "#1F2933",
+                        "background-light": "#F7F8F9", // Muted light gray background
+                        "background-dark": "#121212", // Deep dark background
+                        "surface-light": "#FFFFFF",
+                        "surface-dark": "#1E1E1E",
+                        "border-light": "#E4E6E8",
+                        "border-dark": "#333333",
+                        "text-main-light": "#111111",
+                        "text-main-dark": "#E0E0E0",
+                        "text-muted-light": "#5F6368",
+                        "text-muted-dark": "#9CA3AF",
+                        // Semantic colors (muted as requested)
+                        "critical": "#8A3C3C",
+                        "high": "#C04D4D",
+                        "moderate": "#8A6D3B",
+                        "low": "#3E6B5C",
+                        "info-bg": "#FFF8E6", // Muted yellow background
+                        "info-text": "#8A6D3B",
+                        "info-bg-dark": "#3D3420",
+                        "info-text-dark": "#D4B475"
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                        sans: ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "4px", // 4px rounded corners requested
+                        md: "6px",
+                        lg: "8px"
+                    },
+                    boxShadow: {
+                        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    }
+                },
+            },
+        };
+    </script>
+<style>.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-sans text-text-main-light dark:text-text-main-dark antialiased transition-colors duration-200">
+<header class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-16">
+<div class="flex">
+<div class="flex-shrink-0 flex items-center">
+<div class="flex items-center gap-2">
+<span class="material-icons text-primary dark:text-white text-2xl">shield</span>
+<span class="font-bold text-lg tracking-tight text-text-main-light dark:text-white">Complyze</span>
+<span class="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700">Enterprise</span>
+</div>
+</div>
+<nav class="hidden md:ml-10 md:flex md:space-x-8">
+<a class="border-b-2 border-primary dark:border-white text-text-main-light dark:text-white inline-flex items-center px-1 pt-1 text-sm font-medium" href="#">
+                            Dashboard
+                        </a>
+<a class="border-b-2 border-transparent text-text-muted-light dark:text-text-muted-dark hover:text-text-main-light dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600 inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors" href="#">
+                            Scan Tool
+                        </a>
+<a class="border-b-2 border-transparent text-text-muted-light dark:text-text-muted-dark hover:text-text-main-light dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600 inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors" href="#">
+                            Monitoring
+                        </a>
+<a class="border-b-2 border-transparent text-text-muted-light dark:text-text-muted-dark hover:text-text-main-light dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600 inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors" href="#">
+                            Board Report
+                        </a>
+</nav>
+</div>
+<div class="flex items-center space-x-4">
+<a class="text-text-muted-light dark:text-text-muted-dark hover:text-text-main-light dark:hover:text-white text-sm font-medium" href="#">Settings</a>
+<div class="flex items-center gap-2">
+<div class="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-300">DF</div>
+</div>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="md:flex md:items-center md:justify-between mb-8">
+<div class="flex-1 min-w-0">
+<h1 class="text-2xl font-semibold leading-7 text-text-main-light dark:text-white sm:truncate">
+                    AI Governance Dashboard
+                </h1>
+<p class="mt-1 text-sm text-text-muted-light dark:text-text-muted-dark">
+                    Discover, scan, and govern AI tools across your organization.
+                </p>
+</div>
+<div class="mt-4 flex md:mt-0 md:ml-4 space-x-3">
+<button class="inline-flex items-center px-4 py-2 border border-border-light dark:border-border-dark text-sm font-medium rounded shadow-sm text-text-main-light dark:text-white bg-white dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors" type="button">
+<span class="material-icons text-base mr-2">wifi_tethering</span>
+                    Auto-Discover
+                </button>
+<button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors" type="button">
+<span class="material-icons text-base mr-2">add</span>
+                    Scan New Tool
+                </button>
+<button class="inline-flex items-center px-4 py-2 border border-border-light dark:border-border-dark text-sm font-medium rounded shadow-sm text-text-main-light dark:text-white bg-white dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors" type="button">
+                    Generate Report
+                </button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 sm:grid-cols-5 mb-8">
+<div class="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center">
+<dt class="truncate text-sm font-medium text-text-muted-light dark:text-text-muted-dark">Total Tools</dt>
+<dd class="mt-1 text-2xl font-semibold tracking-tight text-primary dark:text-white">42</dd>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center border-l-4 border-l-critical dark:border-l-critical">
+<dt class="truncate text-sm font-medium text-critical">Critical Risk</dt>
+<dd class="mt-1 text-2xl font-semibold tracking-tight text-critical">0</dd>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center border-l-4 border-l-high dark:border-l-high">
+<dt class="truncate text-sm font-medium text-high">High Risk</dt>
+<dd class="mt-1 text-2xl font-semibold tracking-tight text-high">3</dd>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center border-l-4 border-l-moderate dark:border-l-moderate">
+<dt class="truncate text-sm font-medium text-moderate">Moderate Risk</dt>
+<dd class="mt-1 text-2xl font-semibold tracking-tight text-moderate">12</dd>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center border-l-4 border-l-low dark:border-l-low">
+<dt class="truncate text-sm font-medium text-low">Low Risk</dt>
+<dd class="mt-1 text-2xl font-semibold tracking-tight text-low">27</dd>
+</div>
+</div>
+<div class="rounded bg-info-bg dark:bg-info-bg-dark border border-amber-200 dark:border-amber-900/30 p-4 mb-8 flex items-start">
+<span class="material-icons text-info-text dark:text-info-text-dark mr-3 text-lg mt-0.5">warning_amber</span>
+<div class="flex-1">
+<h3 class="text-sm font-medium text-info-text dark:text-info-text-dark">AI Tool Registry — Needs Assessment (19)</h3>
+<div class="mt-1 text-sm text-info-text dark:text-info-text-dark opacity-80">
+                    Several new tools have been auto-discovered on the network. Please run governance scans to ensure compliance.
+                </div>
+</div>
+<div>
+<button class="text-sm font-medium text-info-text dark:text-info-text-dark hover:underline" type="button">
+                     Assess All →
+                 </button>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark shadow-sm rounded border border-border-light dark:border-border-dark overflow-hidden">
+<div class="px-6 py-5 border-b border-border-light dark:border-border-dark flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/30">
+<h3 class="text-base font-semibold leading-6 text-text-main-light dark:text-white">Detected Tools</h3>
+<div class="flex space-x-2">
+<div class="relative rounded-md shadow-sm">
+<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+<span class="material-icons text-gray-400 text-sm">search</span>
+</div>
+<input class="block w-full rounded border-0 py-1.5 pl-10 text-text-main-light dark:text-white dark:bg-surface-dark ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6" id="search" name="search" placeholder="Filter tools..." type="text"/>
+</div>
+</div>
+</div>
+<ul class="divide-y divide-border-light dark:divide-border-dark" role="list">
+<li class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+<div class="px-6 py-5 flex items-center justify-between">
+<div class="min-w-0 flex-1 flex items-start">
+<div class="flex-shrink-0 pt-1">
+<div class="h-10 w-10 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600">
+<span class="text-xs font-bold text-gray-500 dark:text-gray-400">GH</span>
+</div>
+</div>
+<div class="min-w-0 flex-1 px-4">
+<div class="flex items-center justify-between mb-1">
+<p class="truncate text-sm font-medium text-text-main-light dark:text-white">GitHub Copilot</p>
+<span class="inline-flex items-center rounded bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">v1.4.2</span>
+</div>
+<div class="flex items-center text-sm text-text-muted-light dark:text-text-muted-dark space-x-4">
+<span class="truncate">GitHub / Microsoft</span>
+<span class="text-gray-300 dark:text-gray-600">•</span>
+<span class="truncate">Code Generation</span>
+<span class="text-gray-300 dark:text-gray-600">•</span>
+<span class="truncate text-xs">Last seen: 2 hrs ago</span>
+</div>
+<p class="mt-1 text-xs text-text-muted-light dark:text-text-muted-dark opacity-70">
+                                    AI pair programmer detected via VS Code extension telemetry.
+                                </p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-medium text-text-muted-light dark:text-text-muted-dark">Status</p>
+<p class="text-sm font-medium text-info-text dark:text-info-text-dark">Needs Assessment</p>
+</div>
+<button class="ml-4 rounded bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-primary dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" type="button">
+                                Assess
+                            </button>
+<button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" type="button">
+<span class="material-icons text-lg">close</span>
+</button>
+</div>
+</div>
+</li>
+<li class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+<div class="px-6 py-5 flex items-center justify-between">
+<div class="min-w-0 flex-1 flex items-start">
+<div class="flex-shrink-0 pt-1">
+<div class="h-10 w-10 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600">
+<span class="text-xs font-bold text-gray-500 dark:text-gray-400">CL</span>
+</div>
+</div>
+<div class="min-w-0 flex-1 px-4">
+<div class="flex items-center justify-between mb-1">
+<p class="truncate text-sm font-medium text-text-main-light dark:text-white">Claude</p>
+<span class="inline-flex items-center rounded bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">Web</span>
+</div>
+<div class="flex items-center text-sm text-text-muted-light dark:text-text-muted-dark space-x-4">
+<span class="truncate">Anthropic</span>
+<span class="text-gray-300 dark:text-gray-600">•</span>
+<span class="truncate">Assistant</span>
+<span class="text-gray-300 dark:text-gray-600">•</span>
+<span class="truncate text-xs">Last seen: 1 day ago</span>
+</div>
+<p class="mt-1 text-xs text-text-muted-light dark:text-text-muted-dark opacity-70">
+                                    AI assistant accessed via web interface (claude.ai).
+                                </p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-medium text-text-muted-light dark:text-text-muted-dark">Status</p>
+<p class="text-sm font-medium text-info-text dark:text-info-text-dark">Needs Assessment</p>
+</div>
+<button class="ml-4 rounded bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-primary dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" type="button">
+                                Assess
+                            </button>
+<button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" type="button">
+<span class="material-icons text-lg">close</span>
+</button>
+</div>
+</div>
+</li>
+<li class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+<div class="px-6 py-5 flex items-center justify-between">
+<div class="min-w-0 flex-1 flex items-start">
+<div class="flex-shrink-0 pt-1">
+<div class="h-10 w-10 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600">
+<span class="text-xs font-bold text-gray-500 dark:text-gray-400">GM</span>
+</div>
+</div>
+<div class="min-w-0 flex-1 px-4">
+<div class="flex items-center justify-between mb-1">
+<p class="truncate text-sm font-medium text-text-main-light dark:text-white">Google Gemini</p>
+<span class="inline-flex items-center rounded bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">API</span>
+</div>
+<div class="flex items-center text-sm text-text-muted-light dark:text-text-muted-dark space-x-4">
+<span class="truncate">Google</span>
+<span class="text-gray-300 dark:text-gray-600">•</span>
+<span class="truncate">Multimodal Model</span>
+<span class="text-gray-300 dark:text-gray-600">•</span>
+<span class="truncate text-xs">Last seen: 5 min ago</span>
+</div>
+<p class="mt-1 text-xs text-text-muted-light dark:text-text-muted-dark opacity-70">
+                                    API traffic detected to generativelanguage.googleapis.com.
+                                </p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-medium text-text-muted-light dark:text-text-muted-dark">Status</p>
+<p class="text-sm font-medium text-low">Approved</p>
+</div>
+<button class="ml-4 rounded bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-text-muted-light dark:text-gray-300 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" type="button">
+                                View Details
+                            </button>
+<button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" type="button">
+<span class="material-icons text-lg">more_horiz</span>
+</button>
+</div>
+</div>
+</li>
+<li class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+<div class="px-6 py-5 flex items-center justify-between">
+<div class="min-w-0 flex-1 flex items-start">
+<div class="flex-shrink-0 pt-1">
+<div class="h-10 w-10 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600">
+<span class="text-xs font-bold text-gray-500 dark:text-gray-400">MC</span>
+</div>
+</div>
+<div class="min-w-0 flex-1 px-4">
+<div class="flex items-center justify-between mb-1">
+<p class="truncate text-sm font-medium text-text-main-light dark:text-white">Microsoft Copilot</p>
+<span class="inline-flex items-center rounded bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">Enterprise</span>
+</div>
+<div class="flex items-center text-sm text-text-muted-light dark:text-text-muted-dark space-x-4">
+<span class="truncate">Microsoft</span>
+<span class="text-gray-300 dark:text-gray-600">•</span>
+<span class="truncate">Productivity Suite</span>
+<span class="text-gray-300 dark:text-gray-600">•</span>
+<span class="truncate text-xs">Last seen: Just now</span>
+</div>
+<p class="mt-1 text-xs text-text-muted-light dark:text-text-muted-dark opacity-70">
+                                    Integrated into Microsoft 365 suite (Word, Excel, Teams).
+                                </p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-medium text-text-muted-light dark:text-text-muted-dark">Status</p>
+<p class="text-sm font-medium text-info-text dark:text-info-text-dark">Needs Assessment</p>
+</div>
+<button class="ml-4 rounded bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-primary dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" type="button">
+                                Assess
+                            </button>
+<button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" type="button">
+<span class="material-icons text-lg">close</span>
+</button>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</main>
+
+</body></html>

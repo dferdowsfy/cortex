@@ -30,7 +30,7 @@ function startHeartbeat() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    version: '1.0.0',
+                    version: '1.2.0',
                     hostname: os.hostname(),
                     proxy_port: PROXY_PORT,
                     os: process.platform === 'darwin' ? 'macOS' : process.platform,
