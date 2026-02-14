@@ -40,6 +40,12 @@ function detectPlatform(): string {
     return "macOS";
 }
 
+function isMobileDevice(): boolean {
+    if (typeof navigator === "undefined") return false;
+    const ua = navigator.userAgent.toLowerCase();
+    return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
+}
+
 function StatusDot({ status }: { status: Status }) {
     const colors: Record<Status, string> = {
         connected: "#00ffc8",
@@ -193,9 +199,14 @@ export default function DesktopAgentLauncher() {
     const [showHow, setShowHow] = useState(false);
     const [stats, setStats] = useState({ intercepted: 0, apps: 0, uptime: "--", flags: 0 });
     const [logs, setLogs] = useState<any[]>([]);
+    const [isMobile, setIsMobile] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState(0);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    useEffect(() => setPlatform(detectPlatform()), []);
+    useEffect(() => {
+        setPlatform(detectPlatform());
+        setIsMobile(isMobileDevice());
+    }, []);
     useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -214,14 +225,38 @@ export default function DesktopAgentLauncher() {
         return () => clearInterval(iv);
     }, [phase]);
 
+    // Animate download progress during downloading phase
+    useEffect(() => {
+        if (phase !== "downloading" && phase !== "installing" && phase !== "configuring") {
+            setDownloadProgress(0);
+            return;
+        }
+        const target = phase === "downloading" ? 33 : phase === "installing" ? 66 : 95;
+        const iv = setInterval(() => {
+            setDownloadProgress((p) => {
+                if (p >= target) return target;
+                return p + 1;
+            });
+        }, 60);
+        return () => clearInterval(iv);
+    }, [phase]);
+
     const handleDownload = useCallback(() => {
+        const pl = platforms[platform];
+
+        // Trigger actual file download via the agent API endpoint
+        const downloadUrl = `/api/agent/download?platform=${platform}&version=${AGENT_VERSION}`;
+        window.open(downloadUrl, "_blank");
+
+        // Show installation progress UI
         setPhase("downloading");
         setStatus("connecting");
-        setTimeout(() => setPhase("installing"), 2400);
-        setTimeout(() => setPhase("configuring"), 4800);
+        setTimeout(() => setPhase("installing"), 3000);
+        setTimeout(() => setPhase("configuring"), 6000);
         setTimeout(() => {
             setPhase("ready");
             setStatus("connected");
+            setDownloadProgress(100);
             setStats({ intercepted: 24, apps: 6, uptime: "0:01:12", flags: 2 });
             setLogs([
                 { t: "just now", app: "ChatGPT", kind: "prompt", risk: "low" },
@@ -231,8 +266,8 @@ export default function DesktopAgentLauncher() {
                 { t: "18s ago", app: "Perplexity", kind: "search", risk: "low" },
                 { t: "24s ago", app: "Cursor AI", kind: "completion", risk: "high" },
             ]);
-        }, 7000);
-    }, []);
+        }, 9000);
+    }, [platform]);
 
     const handleReset = () => {
         setPhase("idle");
@@ -261,6 +296,11 @@ export default function DesktopAgentLauncher() {
 
     const riskColor: Record<Risk, string> = { low: "#00ffc8", medium: "#fbbf24", high: "#f43f5e", critical: "#dc2626" };
     const riskBg: Record<Risk, string> = { low: "rgba(0,255,200,0.1)", medium: "rgba(251,191,36,0.1)", high: "rgba(244,63,94,0.1)", critical: "rgba(220,38,38,0.1)" };
+
+    // Don't render on mobile devices - desktop agent requires a desktop OS
+    if (isMobile) {
+        return null;
+    }
 
     return (
         <div
@@ -586,10 +626,12 @@ export default function DesktopAgentLauncher() {
                                 <div
                                     style={{
                                         height: "100%",
+                                        width: `${downloadProgress}%`,
                                         borderRadius: 2,
                                         background: "linear-gradient(90deg, #00ffc8, #0af, #7c3aed)",
                                         backgroundSize: "200% 100%",
-                                        animation: "progress 7s ease-in-out forwards, shimmer 2s ease-in-out infinite",
+                                        transition: "width 0.3s ease-out",
+                                        animation: "shimmer 2s ease-in-out infinite",
                                     }}
                                 />
                             </div>
@@ -600,11 +642,20 @@ export default function DesktopAgentLauncher() {
                                     fontSize: 12,
                                     fontFamily: "var(--mono)",
                                     color: "rgba(255,255,255,0.3)",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    gap: 8,
                                 }}
                             >
-                                {phase === "downloading" && "⬇ Downloading agent package…"}
-                                {phase === "installing" && "📦 Installing menu bar service…"}
-                                {phase === "configuring" && "🔐 Configuring system proxy & certificates…"}
+                                <span>
+                                    {phase === "downloading" && "Downloading agent package…"}
+                                    {phase === "installing" && "Installing menu bar service…"}
+                                    {phase === "configuring" && "Configuring system proxy & certificates…"}
+                                </span>
+                                <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
+                                    {downloadProgress}%
+                                </span>
                             </div>
                         </div>
                     </div>
