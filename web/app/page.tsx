@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 
 /* ── Real AI apps data ── */
 const REAL_AI_APPS = [
