@@ -35,13 +35,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
 
             // Redirect to login if not authenticated and trying to access protected routes
-            const publicRoutes = ["/login", "/signup"];
+            const publicRoutes = ["/", "/login", "/signup"];
             if (!user && !publicRoutes.includes(pathname)) {
                 router.push("/login");
             }
             // Redirect away from login if authenticated
-            if (user && pathname === "/login") {
-                router.push("/");
+            if (user && (pathname === "/login" || pathname === "/")) {
+                router.push("/dashboard");
             }
         });
 

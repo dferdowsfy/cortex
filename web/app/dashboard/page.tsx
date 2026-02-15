@@ -285,7 +285,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark font-sans text-text-main-light dark:text-text-main-dark antialiased transition-colors duration-200">
       {/* ── Desktop Agent Launcher ── */}
-      <div className="mb-6">
+      <div className="mb-6 hidden lg:block">
         <DesktopAgentLauncher />
       </div>
 
