@@ -98,7 +98,18 @@ export default function LandingPage() {
                   className="bg-primary hover:bg-primary/90 text-white text-base font-semibold px-6 py-3 rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center justify-center gap-2"
                 >
                   Start Monitoring
-                  <span className="material-icons-outlined text-sm">
+                  <span
+                    className="material-icons-outlined text-sm"
+                    style={{
+                      overflow: "hidden",
+                      width: 20,
+                      height: 20,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
                     arrow_forward
                   </span>
                 </Link>
@@ -167,7 +178,20 @@ export default function LandingPage() {
                       <div className="grid grid-cols-12 gap-2 items-center">
                         <div className="col-span-5 flex items-center gap-3">
                           <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded flex items-center justify-center text-red-600">
-                            <span className="material-icons-outlined">code</span>
+                            <span
+                              className="material-icons-outlined"
+                              style={{
+                                overflow: "hidden",
+                                width: 40,
+                                height: 40,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              code
+                            </span>
                           </div>
                           <div>
                             <div className="text-sm font-semibold text-neutral-800 dark:text-white">
@@ -236,7 +260,18 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="flex flex-col gap-3 group">
               <div className="w-12 h-12 flex items-center justify-center mb-2">
-                <span className="material-icons-outlined text-4xl text-primary">
+                <span
+                  className="material-icons-outlined text-4xl text-primary"
+                  style={{
+                    overflow: "hidden",
+                    width: 40,
+                    height: 40,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
                   visibility
                 </span>
               </div>
@@ -250,7 +285,18 @@ export default function LandingPage() {
             </div>
             <div className="flex flex-col gap-3 group">
               <div className="w-12 h-12 flex items-center justify-center mb-2">
-                <span className="material-icons-outlined text-4xl text-primary">
+                <span
+                  className="material-icons-outlined text-4xl text-primary"
+                  style={{
+                    overflow: "hidden",
+                    width: 40,
+                    height: 40,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
                   gavel
                 </span>
               </div>
