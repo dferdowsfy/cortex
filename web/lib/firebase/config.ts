@@ -19,7 +19,7 @@ if (typeof window !== "undefined" || process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
     try {
         app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
         auth = getAuth(app);
-        db = getFirestore(app, "cortex001");
+        db = getFirestore(app);
     } catch (error) {
         console.warn("Firebase initialization failed (likely missing API key):", error);
     }

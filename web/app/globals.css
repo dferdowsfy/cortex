@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -104,7 +105,6 @@ body {
 }
 
 /* Fallback: force-load Material Icons font via CSS */
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 /* Mobile-only fixes — does NOT affect desktop */
 @media (max-width: 768px) {

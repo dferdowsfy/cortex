@@ -18,7 +18,7 @@ import type {
 
 // ── Default settings ─────────────────────────────────────────
 const DEFAULT_SETTINGS: ProxySettings = {
-    proxy_enabled: false,
+    proxy_enabled: true,
     full_audit_mode: false,
     block_high_risk: false,
     redact_sensitive: false,

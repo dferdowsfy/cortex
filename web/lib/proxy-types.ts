@@ -138,3 +138,46 @@ export interface ProxyReportData {
     } | null;
     recommended_policy_adjustments: string[];
 }
+
+/* ── Agent Registration & Status ── */
+
+export type AgentStatus = "Healthy" | "Offline" | "Outdated" | "Connecting";
+
+export interface AgentRegistration {
+    device_id: string;
+    hostname: string;
+    os: "macOS" | "Windows";
+    version: string;
+    status: AgentStatus;
+    last_sync: string;
+    heartbeat_interval: number; // seconds
+    workspace_id: string;
+    service_connectivity: boolean;
+    traffic_routing: boolean;
+    os_integration: boolean;
+}
+
+export interface InstallationLog {
+    user_id: string;
+    timestamp: string;
+    os_type: string;
+    version: string;
+    status: "download_initiated" | "installed" | "registered";
+}
+
+/* ── Asset Tool (from manual registration or discovery) ── */
+
+export interface AssetTool {
+    id: string;
+    tool_name: string;
+    vendor: string;
+    category: string;
+    deployment_type: string;
+    owner: string;
+    risk_tier: "critical" | "high" | "moderate" | "low";
+    governance_status: "assessed" | "unassessed" | "pending";
+    scanned_at: string;
+    notes?: string;
+    flag_count: number;
+    rec_count: number;
+}

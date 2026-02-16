@@ -5,6 +5,7 @@ import Link from "next/link";
 import DesktopAgentLauncher from "../components/DesktopAgentLauncher";
 import DashboardStats from "../components/DashboardStats";
 import DetectedToolsList from "../components/DetectedToolsList";
+import RegisterToolModal from "../components/RegisterToolModal";
 
 /* ── Types ── */
 
@@ -12,13 +13,12 @@ interface StoredTool {
   id: string;
   tool_name: string;
   vendor: string;
-  tier: string;
   category: string;
-  risk_tier: string;
+  risk_tier: "critical" | "high" | "moderate" | "low";
   governance_status: string;
   flag_count: number;
   rec_count: number;
-  scanned_at: string;
+  deployment_type?: string;
 }
 
 interface DiscoveredTool {
@@ -30,339 +30,170 @@ interface DiscoveredTool {
   confidence: string;
 }
 
+interface AgentData {
+  status: "Healthy" | "Offline" | "Outdated" | "Connecting";
+  last_sync: string;
+}
+
 /* ── Helpers ── */
 
-function loadTools(): StoredTool[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem("complyze_tools") || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function loadDiscovered(): DiscoveredTool[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem("complyze_discovered") || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function riskColor(tier: string): string {
+function riskBadgeColor(tier: string): string {
   switch (tier?.toLowerCase()) {
-    case "critical":
-      return "badge-critical";
-    case "high":
-      return "badge-high";
-    case "moderate":
-      return "badge-moderate";
-    case "low":
-      return "badge-low";
-    default:
-      return "badge-moderate";
+    case "critical": return "bg-red-50 text-red-700 border-red-200";
+    case "high": return "bg-orange-50 text-orange-700 border-orange-200";
+    case "moderate": return "bg-amber-50 text-amber-700 border-amber-200";
+    case "low": return "bg-green-50 text-green-700 border-green-200";
+    default: return "bg-gray-50 text-gray-700 border-gray-200";
   }
 }
 
-function confidenceIcon(c: string): string {
-  return c === "high" ? "●" : c === "medium" ? "◐" : "○";
-}
-
-/* ── Stats Card ── */
-
-function StatCard({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <div className="card flex flex-col items-center gap-1 py-5">
-      <span className={`text-3xl font-bold ${color}`}>{value}</span>
-      <span className="text-sm text-gray-500">{label}</span>
-    </div>
-  );
-}
-
-/* ── Tool Row ── */
+/* ── Components ── */
 
 function ToolRow({ tool, onDelete }: { tool: StoredTool; onDelete: () => void }) {
   return (
-    <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 last:border-0">
+    <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5 last:border-0 hover:bg-gray-50/50 transition-colors">
       <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded bg-gray-50 border border-gray-100 flex items-center justify-center font-bold text-gray-400 text-[10px] shadow-sm uppercase">
+          {tool.tool_name.substring(0, 2)}
+        </div>
         <div>
-          <p className="font-semibold text-gray-900">{tool.tool_name}</p>
-          <p className="text-sm text-gray-500">
-            {tool.vendor} · {tool.tier}
-            {tool.category ? ` · ${tool.category}` : ""}
+          <p className="font-bold text-gray-900 tracking-tight">{tool.tool_name}</p>
+          <p className="text-xs text-gray-500 font-medium">
+            {tool.vendor} · {tool.category}
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        <div className="text-right text-xs text-gray-400">
-          <p>{tool.flag_count} flags</p>
-          <p>{tool.rec_count} recs</p>
+      <div className="flex items-center gap-8">
+        <div className="text-right text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+          <p>{tool.flag_count} Alerts</p>
+          <p className="text-[9px] opacity-60">{tool.deployment_type || "SaaS"}</p>
         </div>
-        <span className={`badge ${riskColor(tool.risk_tier)}`}>
+        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${riskBadgeColor(tool.risk_tier)}`}>
           {tool.risk_tier}
         </span>
         <button
           onClick={onDelete}
-          className="rounded p-1 text-gray-300 hover:text-red-500 transition-colors"
-          title="Remove tool"
+          className="rounded p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
     </div>
   );
-}
-
-/* ── Discovered Tool Row ── */
-
-function DiscoveredRow({
-  tool,
-  onDismiss,
-}: {
-  tool: DiscoveredTool;
-  onDismiss: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 last:border-0 hover:bg-gray-50/50 transition-colors">
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="text-sm" title={`Confidence: ${tool.confidence}`}>
-          {confidenceIcon(tool.confidence)}
-        </span>
-        <div className="min-w-0">
-          <p className="font-medium text-gray-900">{tool.tool_name}</p>
-          <p className="text-xs text-gray-500">
-            {tool.vendor} · {tool.source}
-          </p>
-          {tool.detail && (
-            <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-md">
-              {tool.detail}
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Link
-          href={`/scan?tool=${encodeURIComponent(tool.tool_name)}&vendor=${encodeURIComponent(tool.vendor)}&tier=${encodeURIComponent(tool.suggested_tier)}`}
-          className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
-        >
-          Assess →
-        </Link>
-        <button
-          onClick={onDismiss}
-          className="rounded p-1 text-gray-300 hover:text-gray-500 transition-colors"
-          title="Dismiss"
-        >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ── Page ── */
-
-interface ProxySummary {
-  activity_score: number;
-  total_requests: number;
-  total_violations: number;
-  sensitive_prompt_pct: number;
-  proxy_enabled: boolean;
 }
 
 export default function Dashboard() {
   const [tools, setTools] = useState<StoredTool[]>([]);
+  const [stats, setStats] = useState<any>({ total: 0, critical: 0, high: 0, moderate: 0, low: 0, governance_coverage: 100, overdue_assessments: 0 });
   const [discovered, setDiscovered] = useState<DiscoveredTool[]>([]);
   const [scanning, setScanning] = useState(false);
-  const [scanMessage, setScanMessage] = useState("");
-  const [proxySummary, setProxySummary] = useState<ProxySummary | null>(null);
+  const [agent, setAgent] = useState<AgentData>({ status: "Offline", last_sync: "Never" });
   const [showAllDiscovered, setShowAllDiscovered] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
-  useEffect(() => {
-    setTools(loadTools());
-    setDiscovered(loadDiscovered());
+  const fetchData = useCallback(async () => {
+    try {
+      const toolRes = await fetch("/api/tools/stats");
+      if (toolRes.ok) {
+        const data = await toolRes.json();
+        setTools(data.tools || []);
+        setStats(data.stats);
+      }
 
-    // Fetch proxy summary for the Activity-Informed Risk badge
-    Promise.all([
-      fetch("/api/proxy/activity?period=7d").then((r) => r.json()),
-      fetch("/api/proxy/settings").then((r) => r.json()),
-    ])
-      .then(([activityData, settingsData]) => {
-        setProxySummary({
-          activity_score: activityData.summary?.activity_score || 0,
-          total_requests: activityData.summary?.total_requests || 0,
-          total_violations: activityData.summary?.total_violations || 0,
-          sensitive_prompt_pct: activityData.summary?.sensitive_prompt_pct || 0,
-          proxy_enabled: settingsData.proxy_enabled || false,
-        });
-      })
-      .catch(() => { });
+      const agentRes = await fetch("/api/agent/heartbeat");
+      if (agentRes.ok) {
+        const data = await agentRes.json();
+        if (data.primary) {
+          setAgent({
+            status: data.primary.status,
+            last_sync: data.primary.last_sync
+          });
+        }
+      }
+
+      // Discovered tools from registry-local
+      const discRes = await fetch("/api/discover-local");
+      if (discRes.ok) {
+        const data = await discRes.json();
+        setDiscovered(data.tools || []);
+      }
+    } catch (e) { }
   }, []);
 
-  const stats = {
-    total: tools.length,
-    critical: tools.filter((t) => t.risk_tier?.toLowerCase() === "critical").length,
-    high: tools.filter((t) => t.risk_tier?.toLowerCase() === "high").length,
-    moderate: tools.filter((t) => t.risk_tier?.toLowerCase() === "moderate").length,
-    low: tools.filter((t) => t.risk_tier?.toLowerCase() === "low").length,
+  useEffect(() => {
+    fetchData();
+    const iv = setInterval(fetchData, 30000); // Poll every 30s
+    return () => clearInterval(iv);
+  }, [fetchData]);
+
+  const runDiscoveryScan = async () => {
+    setScanning(true);
+    try {
+      await fetch("/api/tools/discover", { method: "POST" });
+      // Simulate progress delay
+      await new Promise(r => setTimeout(r, 2000));
+      await fetchData();
+    } catch (e) {
+    } finally {
+      setScanning(false);
+    }
   };
 
-  function deleteTool(id: string) {
-    const updated = tools.filter((t) => t.id !== id);
-    setTools(updated);
-    localStorage.setItem("complyze_tools", JSON.stringify(updated));
-    localStorage.removeItem(`complyze_assessment_${id}`);
-  }
-
-  function dismissDiscovered(toolName: string) {
-    const updated = discovered.filter((d) => d.tool_name !== toolName);
-    setDiscovered(updated);
-    localStorage.setItem("complyze_discovered", JSON.stringify(updated));
-  }
-
-  /* ── Run discovery scan ── */
-  const runDiscoveryScan = useCallback(async () => {
-    setScanning(true);
-    setScanMessage("Scanning for AI tools...");
-
+  const deleteTool = async (id: string) => {
     try {
-      const res = await fetch("/api/discover-local");
-      if (!res.ok) throw new Error("Scan failed");
-      const data = await res.json();
+      await fetch(`/api/tools/delete?id=${id}`, { method: "DELETE" });
+      fetchData();
+    } catch (e) { }
+  };
 
-      const allDiscovered = (data.tools as DiscoveredTool[]) || [];
-
-      // Filter out tools we've already assessed
-      const assessedNames = new Set(tools.map((t) => t.tool_name.toLowerCase()));
-      const newFinds = allDiscovered.filter(
-        (d) => !assessedNames.has(d.tool_name.toLowerCase())
-      );
-
-      // Merge with existing discovered (deduplicate by name)
-      const existingNames = new Set(discovered.map((d) => d.tool_name.toLowerCase()));
-      const additional = newFinds.filter(
-        (d) => !existingNames.has(d.tool_name.toLowerCase())
-      );
-
-      if (additional.length > 0) {
-        const merged = [...discovered, ...additional];
-        setDiscovered(merged);
-        localStorage.setItem("complyze_discovered", JSON.stringify(merged));
-        setScanMessage(
-          data.mode === "registry"
-            ? `📋 Loaded ${additional.length} AI tools from the enterprise registry. Select tools to assess.`
-            : `🔍 Found ${additional.length} AI tool(s) on this machine.`
-        );
-      } else if (newFinds.length === 0 && tools.length > 0) {
-        setScanMessage(`✅ All ${tools.length} discovered tools have been assessed. Add more tools manually or check the registry.`);
-      } else {
-        setScanMessage("All discovered tools are already listed below. Click \"Assess\" to scan any tool.");
-      }
-    } catch {
-      setScanMessage("Could not reach discovery API. Use the Scan Tool page to add tools manually.");
-    }
-    setScanning(false);
-  }, [tools, discovered]);
-
-  // Filter discovered tools that haven't been assessed yet
-  const assessedNames = new Set(tools.map((t) => t.tool_name.toLowerCase()));
-  const pendingDiscovered = discovered.filter(
-    (d) => !assessedNames.has(d.tool_name.toLowerCase())
-  );
+  const pendingDiscovered = discovered.filter(d => !tools.some(t => t.tool_name.toLowerCase() === d.tool_name.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark font-sans text-text-main-light dark:text-text-main-dark antialiased transition-colors duration-200">
-      {/* ── Desktop Agent Launcher ── */}
-      <div className="mb-6">
-        <DesktopAgentLauncher />
+    <div className="min-h-screen bg-[#F6F8FA] font-sans text-gray-900 antialiased">
+      {/* ── Page Header Area ── */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="md:flex md:items-center md:justify-between mb-10">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:truncate">
+                AI Governance Dashboard
+              </h1>
+              <p className="mt-2 text-base text-gray-500">
+                Centralized visibility and risk control for enterprise AI ecosystems.
+              </p>
+            </div>
+            <div className="mt-6 flex md:mt-0 md:ml-4 gap-3">
+              <button
+                onClick={runDiscoveryScan}
+                disabled={scanning}
+                className="inline-flex items-center px-6 py-3 border border-gray-300 text-sm font-bold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 transition-all font-sans disabled:opacity-50"
+              >
+                {scanning ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Scanning...
+                  </span>
+                ) : "Run Discovery"}
+              </button>
+              <button
+                onClick={() => setIsRegisterOpen(true)}
+                className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-lg shadow-sm text-white bg-brand-600 hover:bg-brand-700 transition-all font-sans"
+              >
+                Register Tool
+              </button>
+            </div>
+          </div>
+
+          <DesktopAgentLauncher status={agent.status} lastSeen={agent.last_sync} />
+        </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="md:flex md:items-center md:justify-between mb-8">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-semibold leading-7 text-text-main-light dark:text-white sm:truncate">
-              AI Governance Dashboard
-            </h1>
-            <p className="mt-1 text-sm text-text-muted-light dark:text-text-muted-dark">
-              Discover, scan, and govern AI tools across your organization.
-            </p>
-          </div>
-          <div className="mt-4 flex md:mt-0 md:ml-4 space-x-3">
-            <button
-              onClick={runDiscoveryScan}
-              disabled={scanning}
-              className="inline-flex items-center px-4 py-2 border border-border-light dark:border-border-dark text-sm font-medium rounded shadow-sm text-text-main-light dark:text-white bg-white dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
-              type="button"
-            >
-              {scanning ? (
-                <>
-                  <svg
-                    className="mr-2 h-4 w-4 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                  </svg>
-                  Scanning...
-                </>
-              ) : (
-                <>
-                  <span className="material-icons text-base mr-2">
-                    wifi_tethering
-                  </span>
-                  Auto-Discover
-                </>
-              )}
-            </button>
-            <Link
-              href="/scan"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
-            >
-              <span className="material-icons text-base mr-2">add</span>
-              Scan New Tool
-            </Link>
-            {tools.length > 0 && (
-              <Link
-                href="/report"
-                className="inline-flex items-center px-4 py-2 border border-border-light dark:border-border-dark text-sm font-medium rounded shadow-sm text-text-main-light dark:text-white bg-white dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
-              >
-                Generate Report
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* ── Scan Status Message ── */}
-        {scanMessage && (
-          <div className="mb-6 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
-            {scanMessage}
-          </div>
-        )}
-
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <DashboardStats
           total={stats.total}
           critical={stats.critical}
@@ -371,65 +202,124 @@ export default function Dashboard() {
           low={stats.low}
         />
 
-        {/* ── Needs Assessment Alert ── */}
-        {pendingDiscovered.length > 0 && (
-          <div className="rounded bg-info-bg dark:bg-info-bg-dark border border-amber-200 dark:border-amber-900/30 p-4 mb-8 flex items-start">
-            <span className="material-icons text-info-text dark:text-info-text-dark mr-3 text-lg mt-0.5">
-              warning_amber
-            </span>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-info-text dark:text-info-text-dark">
-                AI Tool Registry — Needs Assessment ({pendingDiscovered.length})
-              </h3>
-              <div className="mt-1 text-sm text-info-text dark:text-info-text-dark opacity-80">
-                Several new tools have been auto-discovered on the network. Please
-                run governance scans to ensure compliance.
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
             <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Governance Coverage</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.governance_coverage}%</p>
+            </div>
+            <div className="h-12 w-12 rounded-full border-4 border-brand-100 flex items-center justify-center">
+              <div className="h-full w-full rounded-full border-4 border-brand-600 border-t-transparent animate-[spin_3s_linear_infinite]" style={{ clipPath: 'inset(0 0 0 50%)' }}></div>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Overdue Assessments</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.overdue_assessments}</p>
+            </div>
+            <div className="h-10 px-3 rounded-lg bg-red-50 border border-red-100 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-red-500"></span>
+              <span className="text-xs font-bold text-red-700 uppercase tracking-wider">Action Required</span>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Active Agents</p>
+              <p className="text-2xl font-bold text-gray-900">{agent.status === "Healthy" ? "1" : "0"}</p>
+            </div>
+            <div className={`h-10 px-3 rounded-lg flex items-center gap-2 border ${agent.status === "Healthy" ? "bg-green-50 border-green-100" : "bg-gray-50 border-gray-100"}`}>
+              <span className={`h-2 w-2 rounded-full ${agent.status === "Healthy" ? "bg-green-500" : "bg-gray-300"}`}></span>
+              <span className={`text-xs font-bold uppercase tracking-wider ${agent.status === "Healthy" ? "text-green-700" : "text-gray-400"}`}>
+                {agent.status === "Healthy" ? "Online" : "Offline"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Needs Assessment Action ── */}
+        {pendingDiscovered.length > 0 && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 p-6 mb-10 flex items-start shadow-sm">
+            <div className="flex-shrink-0 pt-0.5">
+              <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="ml-4 flex-1">
+              <h3 className="text-sm font-bold text-amber-800 uppercase tracking-wider">Discovery Feed — Unassessed Assets ({pendingDiscovered.length})</h3>
+              <p className="mt-1 text-sm text-amber-700 leading-relaxed font-medium">
+                Autonomous discovery has identified AI services active within the corporate perimeter. Complete assessments to normalize governance status.
+              </p>
+            </div>
+            <div className="ml-6 flex-shrink-0">
               <button
-                className="text-sm font-medium text-info-text dark:text-info-text-dark hover:underline"
-                type="button"
+                className="text-sm font-bold text-amber-700 hover:text-amber-900 underline underline-offset-4 decoration-2 transition-colors"
                 onClick={() => setShowAllDiscovered(!showAllDiscovered)}
               >
-                {showAllDiscovered ? "Show Less" : "Assess All →"}
+                {showAllDiscovered ? "Collapse Feed" : "Analyze Discoveries"}
               </button>
             </div>
           </div>
         )}
 
-        {/* ── Detected Tools List ── */}
+        {/* ── Detected Tools Feed ── */}
         {pendingDiscovered.length > 0 && (
-          <DetectedToolsList
-            tools={showAllDiscovered ? pendingDiscovered : pendingDiscovered.slice(0, 6)}
-            onDismiss={dismissDiscovered}
-          />
+          <div className="mb-12">
+            <DetectedToolsList
+              tools={showAllDiscovered ? pendingDiscovered : pendingDiscovered.slice(0, 4)}
+              onDismiss={fetchData}
+            />
+          </div>
         )}
 
-        {/* ── Assessed Tools List (Legacy view for now, can be improved) ── */}
-        {tools.length > 0 && (
-          <div className="mt-8 bg-surface-light dark:bg-surface-dark shadow-sm rounded border border-border-light dark:border-border-dark overflow-hidden">
-            <div className="px-6 py-5 border-b border-border-light dark:border-border-dark bg-gray-50/50 dark:bg-gray-800/30">
-              <h3 className="text-base font-semibold leading-6 text-text-main-light dark:text-white">
-                Assessed Inventory ({tools.length})
+        {/* ── Authorized AI Inventory ── */}
+        <section>
+          <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden transition-all">
+            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                Governance Inventory ({tools.length})
               </h3>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Real-time sync active</span>
+              </div>
             </div>
-            {tools.map((tool) => (
-              <ToolRow key={tool.id} tool={tool} onDelete={() => deleteTool(tool.id)} />
-            ))}
-          </div>
-        )}
 
-        {/* ── Empty State ── */}
-        {tools.length === 0 && pendingDiscovered.length === 0 && (
-          <div className="mt-12 text-center">
-            <span className="material-icons text-4xl text-gray-300 mb-2">dashboard_customize</span>
-            <h3 className="text-lg font-medium text-text-main-light dark:text-white">No tools governance data yet</h3>
-            <p className="mt-1 text-sm text-text-muted-light dark:text-text-muted-dark">Run regular scans or auto-discover tools to populate your dashboard.</p>
+            {tools.length > 0 ? (
+              <div className="divide-y divide-gray-100">
+                {tools.map((tool) => (
+                  <ToolRow key={tool.id} tool={tool} onDelete={() => deleteTool(tool.id)} />
+                ))}
+              </div>
+            ) : (
+              <div className="px-8 py-24 text-center">
+                <div className="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-gray-50 border border-gray-100 mb-8 text-gray-300">
+                  <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Enterprise Inventory Empty</h3>
+                <p className="text-gray-500 max-w-sm mx-auto mb-10 leading-relaxed font-medium">
+                  Autonomous governance requires an established asset registry. Register known AI tools or execute network discovery to begin.
+                </p>
+                <div className="flex items-center justify-center gap-4">
+                  <button onClick={runDiscoveryScan} className="bg-white border border-gray-300 text-gray-700 px-8 py-3 rounded-lg text-sm font-bold shadow-sm hover:bg-gray-50 transition-all font-sans">
+                    Run Discovery
+                  </button>
+                  <button onClick={() => setIsRegisterOpen(true)} className="bg-brand-600 text-white px-8 py-3 rounded-lg text-sm font-bold shadow-sm hover:bg-brand-700 transition-all font-sans">
+                    Register Tool
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-
+        </section>
       </main>
+
+      <RegisterToolModal
+        isOpen={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }

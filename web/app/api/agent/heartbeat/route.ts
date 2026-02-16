@@ -1,70 +1,37 @@
-/**
- * /api/agent/heartbeat — POST & GET
- *
- * POST: The desktop agent pings this endpoint periodically to signal
- *        it's alive and proxying traffic.
- * GET:  The dashboard checks this to determine agent connectivity status.
- */
 import { NextRequest, NextResponse } from "next/server";
-import store from "@/lib/proxy-store";
+import { agentStore } from "@/lib/agent-store";
 
-const HEARTBEAT_KEY = "proxy_config";
-const HEARTBEAT_DOC = "agent_heartbeat";
-
-// Agent sends heartbeat
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json().catch(() => ({}));
-        const heartbeat = {
-            last_seen: new Date().toISOString(),
-            agent_version: body.version || "1.0.0",
-            hostname: body.hostname || "unknown",
-            proxy_port: body.proxy_port || 8080,
-            os: body.os || "macOS",
-        };
+        const body = await req.json();
+        const { device_id, ...updates } = body;
 
-        // Store heartbeat — we use the same Firestore persistence as proxy-store
-        // but access it through a settings update to keep it simple
-        await store.updateSettings({
-            proxy_enabled: true,
-            agent_last_seen: heartbeat.last_seen,
-            agent_hostname: heartbeat.hostname,
-        } as Record<string, unknown>);
+        if (!device_id) {
+            return NextResponse.json({ error: "device_id is required" }, { status: 400 });
+        }
+
+        await agentStore.updateHeartbeat(device_id, updates);
 
         return NextResponse.json({
             status: "ok",
-            received_at: heartbeat.last_seen,
+            timestamp: new Date().toISOString(),
         });
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Heartbeat failed";
-        return NextResponse.json({ error: message }, { status: 500 });
+    } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
 
-// Dashboard checks agent status
 export async function GET() {
     try {
-        const settings = await store.getSettings();
-        const s = settings as any;
-        const lastSeen = s.agent_last_seen as string | undefined;
-        const hostname = s.agent_hostname as string | undefined;
-
-        let connected = false;
-        let minutesAgo = -1;
-
-        if (lastSeen) {
-            const diff = Date.now() - new Date(lastSeen).getTime();
-            minutesAgo = Math.floor(diff / 60_000);
-            connected = minutesAgo < 5; // Agent is "connected" if heartbeat < 5 min ago
-        }
+        const agents = await agentStore.listAgents();
+        const primaryAgent = agents[0] || null;
 
         return NextResponse.json({
-            connected,
-            last_seen: lastSeen || null,
-            hostname: hostname || null,
-            minutes_ago: minutesAgo,
+            agents,
+            primary: primaryAgent,
+            connected: primaryAgent?.status === "Healthy",
         });
-    } catch {
-        return NextResponse.json({ connected: false, last_seen: null });
+    } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

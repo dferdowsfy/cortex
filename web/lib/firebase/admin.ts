@@ -71,6 +71,6 @@ function getAdminApp() {
 }
 
 const adminApp = getAdminApp();
-const adminDb = getFirestore(adminApp, "cortex001");
+const adminDb = getFirestore(adminApp);
 
 export { adminApp, adminDb };

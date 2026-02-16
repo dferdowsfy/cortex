@@ -35,13 +35,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
 
             // Redirect to login if not authenticated and trying to access protected routes
-            const publicRoutes = ["/login", "/signup"];
-            if (!user && !publicRoutes.includes(pathname)) {
+            // Normalize pathname to remove trailing slashes for consistent matching
+            const normalizedPath = pathname === "/" ? "/" : pathname.replace(/\/$/, "");
+            const publicRoutes = ["", "/", "/platform", "/pricing", "/request-demo", "/login", "/signup"];
+
+            if (!user && !publicRoutes.includes(normalizedPath)) {
+                console.log("[Auth] Protected route accessed without session, redirecting to login:", normalizedPath);
                 router.push("/login");
             }
-            // Redirect away from login if authenticated
-            if (user && pathname === "/login") {
-                router.push("/");
+            // Redirect to dashboard if already authenticated and trying to access login
+            if (user && normalizedPath === "/login") {
+                router.push("/dashboard");
             }
         });
 

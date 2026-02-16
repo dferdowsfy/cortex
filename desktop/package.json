@@ -1,23 +1,64 @@
 {
-  "name": "desktop",
+  "name": "complyze-desktop",
+  "productName": "Complyze",
   "version": "1.0.0",
-  "description": "",
+  "description": "Complyze Desktop Agent",
+  "author": "Complyze",
   "main": "index.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "electron .",
+    "build": "electron-builder --mac"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "build": {
+    "appId": "com.complyze.desktop",
+    "productName": "Complyze",
+    "copyright": "Copyright © 2026 Complyze",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [
+        "dmg"
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": {
+        "teamId": "LFSAKXR3UD"
+      }
+    },
+    "dmg": {
+      "sign": true
+    },
+    "files": [
+      "**/*",
+      "!dist"
+    ],
+    "protocols": {
+      "name": "complyze-agent",
+      "schemes": [
+        "complyze"
+      ]
+    },
+    "electronVersion": "34.0.0"
+  },
   "devDependencies": {
-    "electron": "^34.0.0"
+    "@electron/notarize": "^2.5.0",
+    "dotenv": "^16.4.7",
+    "electron": "34.0.0",
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
+    "csv-parse": "^6.1.0",
+    "csv-parser": "^3.2.0",
     "electron-is-dev": "^3.0.1",
-    "menubar": "^9.5.2",
+    "mammoth": "^1.11.0",
     "node-forge": "^1.3.3",
-    "sudo-prompt": "^9.2.1"
+    "pdf-parse": "^2.4.5",
+    "sudo-prompt": "^9.2.1",
+    "uuid": "^11.1.0"
   }
 }

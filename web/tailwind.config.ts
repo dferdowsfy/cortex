@@ -16,7 +16,7 @@ const config: Config = {
           900: "#312e81",
         },
         // Stitch Dashboard Colors
-        primary: "#1919e6",
+        primary: "#3b36db",
         "primary-hover": "#1F2933",
         "background-light": "#f6f6f8",
         "background-dark": "#111121",

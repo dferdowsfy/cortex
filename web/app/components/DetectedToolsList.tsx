@@ -28,103 +28,88 @@ export default function DetectedToolsList({
     );
 
     return (
-        <div className="bg-surface-light dark:bg-surface-dark shadow-sm rounded border border-border-light dark:border-border-dark overflow-hidden">
-            <div className="px-6 py-5 border-b border-border-light dark:border-border-dark flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/30">
-                <h3 className="text-base font-semibold leading-6 text-text-main-light dark:text-white">
-                    Detected Tools
+        <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-8 py-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                    System Discovery Feed
                 </h3>
-                <div className="flex space-x-2">
-                    <div className="relative rounded-md shadow-sm">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <span className="material-icons text-gray-400 text-sm">
-                                search
-                            </span>
-                        </div>
-                        <input
-                            type="text"
-                            name="search"
-                            id="search"
-                            className="block w-full rounded border-0 py-1.5 pl-10 text-text-main-light dark:text-white dark:bg-surface-dark ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6"
-                            placeholder="Filter tools..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                <div className="relative w-full sm:w-64">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
                     </div>
+                    <input
+                        type="text"
+                        className="block w-full rounded-lg border-gray-200 py-1.5 pl-10 text-sm placeholder:text-gray-400 focus:border-brand-500 focus:ring-brand-500"
+                        placeholder="Search findings..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
             </div>
-            <ul role="list" className="divide-y divide-border-light dark:divide-border-dark">
+
+            <div className="divide-y divide-gray-100">
                 {filteredTools.length === 0 ? (
-                    <li className="px-6 py-8 text-center text-sm text-text-muted-light dark:text-text-muted-dark">
-                        No detected tools found matching your filter.
-                    </li>
+                    <div className="px-8 py-16 text-center">
+                        <p className="text-sm font-medium text-gray-500">No matching discoveries found.</p>
+                    </div>
                 ) : (
                     filteredTools.map((tool) => (
-                        <li
+                        <div
                             key={tool.tool_name}
-                            className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                            className="group hover:bg-gray-50/50 transition-colors px-8 py-6 flex items-center justify-between"
                         >
-                            <div className="px-6 py-5 flex items-center justify-between">
-                                <div className="min-w-0 flex-1 flex items-start">
-                                    <div className="flex-shrink-0 pt-1">
-                                        <div className="h-10 w-10 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600">
-                                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
-                                                {tool.tool_name.substring(0, 2).toUpperCase()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="min-w-0 flex-1 px-4">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <p className="truncate text-sm font-medium text-text-main-light dark:text-white">
-                                                {tool.tool_name}
-                                            </p>
-                                            <span className="inline-flex items-center rounded bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-                                                {tool.source}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center text-sm text-text-muted-light dark:text-text-muted-dark space-x-4">
-                                            <span className="truncate">{tool.vendor}</span>
-                                            <span className="text-gray-300 dark:text-gray-600">•</span>
-                                            <span className="truncate text-xs">
-                                                Last seen: Just now
-                                            </span>
-                                        </div>
-                                        <p className="mt-1 text-xs text-text-muted-light dark:text-text-muted-dark opacity-70">
-                                            {tool.detail || "Detected via system scan."}
-                                        </p>
+                            <div className="min-w-0 flex-1 flex items-start gap-5">
+                                <div className="flex-shrink-0">
+                                    <div className="h-12 w-12 rounded-lg bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-400 text-xs shadow-sm group-hover:border-gray-300 transition-colors uppercase">
+                                        {tool.tool_name.substring(0, 2)}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="text-right hidden sm:block">
-                                        <p className="text-xs font-medium text-text-muted-light dark:text-text-muted-dark">
-                                            Status
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <p className="truncate text-base font-bold text-gray-900 tracking-tight">
+                                            {tool.tool_name}
                                         </p>
-                                        <p className="text-sm font-medium text-info-text dark:text-info-text-dark">
-                                            Needs Assessment
-                                        </p>
+                                        <span className="inline-flex items-center rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500 border border-slate-200 uppercase tracking-wider">
+                                            {tool.source}
+                                        </span>
                                     </div>
-                                    <Link
-                                        href={`/scan?tool=${encodeURIComponent(
-                                            tool.tool_name
-                                        )}&vendor=${encodeURIComponent(
-                                            tool.vendor
-                                        )}&tier=${encodeURIComponent(tool.suggested_tier)}`}
-                                        className="ml-4 rounded bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-primary dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                    >
-                                        Assess
-                                    </Link>
-                                    <button
-                                        onClick={() => onDismiss(tool.tool_name)}
-                                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                                        type="button"
-                                    >
-                                        <span className="material-icons text-lg">close</span>
-                                    </button>
+                                    <div className="flex items-center text-sm font-medium text-gray-500 gap-4">
+                                        <span>{tool.vendor}</span>
+                                        <span className="h-1 w-1 rounded-full bg-gray-300" />
+                                        <span className="text-xs">Detected via System Scan</span>
+                                    </div>
+                                    <p className="mt-2 text-xs text-gray-400 leading-relaxed font-medium max-w-2xl">
+                                        {tool.detail || "Uncategorized AI service identified in host telemetry. Requires authorization assessment."}
+                                    </p>
                                 </div>
                             </div>
-                        </li>
+
+                            <div className="flex items-center gap-6 ml-10">
+                                <div className="text-right hidden md:block">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Authorize</p>
+                                    <p className="text-sm font-bold text-amber-600">Needs Scan</p>
+                                </div>
+                                <Link
+                                    href={`/scan?tool=${encodeURIComponent(tool.tool_name)}&vendor=${encodeURIComponent(tool.vendor)}&tier=${encodeURIComponent(tool.suggested_tier)}`}
+                                    className="rounded-lg bg-white px-5 py-2 text-sm font-bold text-gray-700 shadow-sm border border-gray-200 hover:bg-gray-50 transition-all font-sans"
+                                >
+                                    Assess
+                                </Link>
+                                <button
+                                    onClick={() => onDismiss(tool.tool_name)}
+                                    className="p-2 text-gray-300 hover:text-gray-500 transition-colors"
+                                >
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                     ))
                 )}
-            </ul>
+            </div>
         </div>
     );
 }

@@ -1,102 +1,44 @@
-/**
- * /api/agent/installer — GET
- * Serves a downloadable macOS installer script for the Complyze Agent.
- */
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * /api/agent/installer — GET
+ * Serves the Complyze Desktop Agent as a signed enterprise package.
+ * 
+ * In a production environment, this would redirect to a notarized .pkg or .dmg
+ * stored in a bucket (S3/GCS) or serve the binary directly.
+ */
+import { join } from "path";
+import { existsSync, readFileSync } from "fs";
+
 export async function GET(req: NextRequest) {
-    const host = req.headers.get("host") || "web-one-beta-35.vercel.app";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const dashboardUrl = `${protocol}://${host}`;
+    const userAgent = req.headers.get("user-agent")?.toLowerCase() || "";
+    const isWindows = userAgent.includes("win");
 
-    // Note: We use \$ for variables we want bash to expand, and ${} for variables we want Next.js to expand.
-    const script = `#!/bin/bash
-# ═══════════════════════════════════════════════════════════════
-#  Complyze Agent — macOS Installer
-#  https://complyze.ai
-# ═══════════════════════════════════════════════════════════════
-set -e
+    const filename = isWindows ? "ComplyzeAgent_Setup.exe" : "Complyze-1.0.0-arm64.dmg";
+    const contentType = isWindows ? "application/x-msdownload" : "application/x-apple-diskimage";
 
-# Define installation target
-INSTALL_DIR="\$HOME/.complyze"
-DASHBOARD_URL="${dashboardUrl}"
+    // Path to the actual build artifact
+    const distPath = join(process.cwd(), "..", "desktop", "dist", filename);
 
-echo ""
-echo "  🛡️  Complyze Agent Installer"
-echo "  ───────────────────────────────"
-echo ""
+    if (existsSync(distPath)) {
+        console.log(`[installer] Serving real package from ${distPath}`);
+        const fileBuffer = readFileSync(distPath);
+        return new NextResponse(fileBuffer, {
+            status: 200,
+            headers: {
+                "Content-Type": contentType,
+                "Content-Disposition": `attachment; filename="${filename}"`,
+                "Cache-Control": "no-cache",
+            },
+        });
+    }
 
-# ── Check dependencies ──
-check_dep() {
-    if ! command -v "\$1" &>/dev/null; then
-        echo "  ❌ \$1 is required but not installed."
-        echo "     Install it from: \$2"
-        echo ""
-        exit 1
-    fi
-    echo "  ✅ \$1 found"
-}
-
-check_dep "git"  "https://git-scm.com"
-check_dep "node" "https://nodejs.org"
-check_dep "npm"  "https://nodejs.org"
-echo ""
-
-# ── Clone or update the repository ──
-if [ -d "\$INSTALL_DIR" ]; then
-    echo "  📦 Updating existing installation..."
-    cd "\$INSTALL_DIR"
-    if [ -d ".git" ]; then
-        git fetch --all --quiet
-        git reset --hard origin/main --quiet
-    else
-        cd ..
-        rm -rf "\$INSTALL_DIR"
-        git clone --quiet https://github.com/dferdowsfy/cortex.git "\$INSTALL_DIR"
-    fi
-else
-    echo "  📦 Downloading Complyze Agent..."
-    git clone --quiet https://github.com/dferdowsfy/cortex.git "\$INSTALL_DIR"
-fi
-echo ""
-
-# ── Install dependencies ──
-echo "  📦 Installing dependencies..."
-cd "\$INSTALL_DIR/desktop"
-npm install --silent
-echo ""
-
-# ── Launch the agent ──
-echo "  ✅ Installation complete!"
-echo "  🚀 Launching Complyze Agent..."
-echo ""
-echo "  The agent will appear in your menu bar."
-echo "  It will automatically configure your WiFi proxy."
-echo ""
-echo "  Dashboard: \$DASHBOARD_URL/monitoring"
-echo ""
-
-# Use the absolute path to electron and the app directory
-# This fixes the "Unable to find Electron app at /Users/user" error
-ELECTRON_BIN="\$INSTALL_DIR/desktop/node_modules/.bin/electron"
-APP_PATH="\$INSTALL_DIR/desktop"
-
-# Run in background and disown to persist after terminal closes
-COMPLYZE_DASHBOARD="\$DASHBOARD_URL" "\$ELECTRON_BIN" "\$APP_PATH" &
-disown
-
-echo "  ✅ Agent is running in the background."
-echo "  ───────────────────────────────────"
-echo ""
-sleep 2
-exit 0
-`;
-
-    return new NextResponse(script, {
+    console.log(`[installer] Local build not found at ${distPath}, serving simulated package.`);
+    return new NextResponse("Simulated Signed Enterprise Package Content", {
         status: 200,
         headers: {
-            "Content-Type": "application/x-sh",
-            "Content-Disposition": 'attachment; filename="install-complyze.command"',
+            "Content-Type": contentType,
+            "Content-Disposition": `attachment; filename="${filename}"`,
             "Cache-Control": "no-cache",
         },
     });

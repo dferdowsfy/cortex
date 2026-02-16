@@ -1,201 +1,307 @@
-const { app, ipcMain, shell } = require('electron');
-const { menubar } = require('menubar');
+const { app, Tray, Menu, shell, Notification, ipcMain, BrowserWindow } = require('electron');
 const path = require('path');
-const sudo = require('sudo-prompt');
-const { exec } = require('child_process');
 const fs = require('fs');
+const { fork, exec, execSync } = require('child_process');
+const sudo = require('sudo-prompt');
+const os = require('os');
+const crypto = require('crypto');
 
-// Path to the proxy server script
-const PROXY_SCRIPT_PATH = path.resolve(__dirname, '../web/scripts/proxy-server.js');
+// ─── Configuration ───────────────────────────────────────────────────────────
+
+const AGENT_VERSION = '1.2.0';
 const PROXY_PORT = 8080;
+const PROXY_SCRIPT_PATH = path.join(__dirname, 'scripts', 'proxy-server.js');
+const DASHBOARD_URL = process.env.COMPLYZE_DASHBOARD || 'http://localhost:3737';
 
-// Dashboard URL — use Vercel for production, localhost for dev
-const DASHBOARD_URL = process.env.COMPLYZE_DASHBOARD || 'https://web-one-beta-35.vercel.app';
-const API_URL = process.env.COMPLYZE_API || `${DASHBOARD_URL}/api/proxy/intercept`;
-
-// Sudo prompt options
 const sudoOptions = {
-    name: 'Complyze Proxy',
+    name: 'Complyze Monitoring Agent',
 };
 
+// ─── State ──────────────────────────────────────────────────────────────────
+
+let tray = null;
+let mainWindow = null;
 let proxyProcess = null;
+let isMonitoringEnabled = true;
 let heartbeatInterval = null;
+let deviceId = null;
+let lastSyncTime = 'Never';
 
-// ─── Heartbeat: tell the dashboard we're alive ──────────────────────
-function startHeartbeat() {
-    const os = require('os');
-    const sendHeartbeat = async () => {
+// ─── Initialize Device ID ────────────────────────────────────────────────────
+
+function getDeviceId() {
+    if (deviceId) return deviceId;
+    const configPath = path.join(app.getPath('userData'), 'device.json');
+    if (fs.existsSync(configPath)) {
         try {
-            const res = await fetch(`${DASHBOARD_URL}/api/agent/heartbeat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    version: '1.2.0',
-                    hostname: os.hostname(),
-                    proxy_port: PROXY_PORT,
-                    os: process.platform === 'darwin' ? 'macOS' : process.platform,
-                }),
-            });
-            if (res.ok) console.log('[heartbeat] ✓');
-        } catch (err) {
-            console.warn('[heartbeat] failed:', err.message);
+            const data = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            deviceId = data.id;
+            return deviceId;
+        } catch (e) { }
+    }
+
+    deviceId = `dev_${crypto.randomBytes(8).toString('hex')}`;
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, JSON.stringify({ id: deviceId }));
+    return deviceId;
+}
+
+// ─── Heartbeat & Registration ────────────────────────────────────────────────
+
+async function sendHeartbeat() {
+    const status = isMonitoringEnabled ? (proxyProcess ? 'Healthy' : 'Connecting') : 'Offline';
+
+    try {
+        const res = await fetch(`${DASHBOARD_URL}/api/agent/heartbeat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                device_id: getDeviceId(),
+                version: AGENT_VERSION,
+                hostname: os.hostname(),
+                os: process.platform === 'darwin' ? 'macOS' : 'Windows',
+                status: status,
+                service_connectivity: true,
+                traffic_routing: isMonitoringEnabled && !!proxyProcess,
+                os_integration: true,
+                workspace_id: 'default_workspace'
+            }),
+        });
+
+        if (res.ok) {
+            lastSyncTime = new Date().toLocaleTimeString();
+            updateTray();
+            syncStatusToWindow();
         }
-    };
-
-    sendHeartbeat(); // Send immediately on start
-    heartbeatInterval = setInterval(sendHeartbeat, 60_000); // Then every 60s
-}
-
-function stopHeartbeat() {
-    if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
+    } catch (err) {
+        console.warn('[heartbeat] failed:', err.message);
     }
 }
 
-// Start the proxy server process
-function startProxyServer() {
-    if (proxyProcess) return;
-
-    console.log('Starting proxy server...');
-    const { fork } = require('child_process');
-
-    // Check if script exists
-    if (!fs.existsSync(PROXY_SCRIPT_PATH)) {
-        console.error(`Proxy script not found at: ${PROXY_SCRIPT_PATH}`);
-        return;
+function syncStatusToWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('status-update', {
+            status: isMonitoringEnabled ? (proxyProcess ? 'Healthy' : 'Connecting') : 'Offline',
+            deviceId: getDeviceId(),
+            lastSync: lastSyncTime,
+            isMonitoringEnabled: isMonitoringEnabled
+        });
     }
-
-    proxyProcess = fork(PROXY_SCRIPT_PATH, ['--port', PROXY_PORT.toString()], {
-        stdio: 'inherit',
-        env: { ...process.env, COMPLYZE_API: API_URL }
-    });
-
-    proxyProcess.on('error', (err) => {
-        console.error('Proxy server failed to start:', err);
-    });
 }
 
-// Stop the proxy server
-function stopProxyServer() {
+function startLifecycle() {
+    sendHeartbeat();
+    syncGlobalSettings(); // Sync settings from dashboard
+    heartbeatInterval = setInterval(() => {
+        sendHeartbeat();
+        syncGlobalSettings();
+    }, 30000); // 30s heartbeat & sync
+}
+
+async function syncGlobalSettings() {
+    try {
+        const res = await fetch(`${DASHBOARD_URL}/api/proxy/settings`);
+        if (res.ok) {
+            const data = await res.json();
+            // If settings changed on dashboard, reflect them in the agent
+            if (data.proxy_enabled !== isMonitoringEnabled) {
+                console.log(`[sync] Updating monitoring state to ${data.proxy_enabled} from dashboard`);
+                isMonitoringEnabled = data.proxy_enabled;
+                if (isMonitoringEnabled) {
+                    startProxy();
+                } else {
+                    stopProxy();
+                }
+                updateTray();
+                syncStatusToWindow();
+            }
+        }
+    } catch (err) {
+        console.warn('[sync] settings failed:', err.message);
+    }
+}
+
+// ─── Proxy Management ─────────────────────────────────────────────────────────
+
+function startProxy() {
+    if (proxyProcess || !isMonitoringEnabled) return;
+
+    try {
+        proxyProcess = fork(PROXY_SCRIPT_PATH, ['--port', PROXY_PORT.toString()], {
+            stdio: 'inherit',
+            env: {
+                ...process.env,
+                COMPLYZE_API: `${DASHBOARD_URL}/api/proxy/intercept`,
+                MONITOR_MODE: 'observe',
+                CERTS_DIR: path.join(app.getPath('userData'), 'certs')
+            }
+        });
+
+        proxyProcess.on('exit', (code) => {
+            console.log(`Proxy exited with code ${code}`);
+            proxyProcess = null;
+            updateTray();
+        });
+
+        // Enable system proxy
+        setSystemProxy(true);
+        updateTray();
+    } catch (e) {
+        console.error('Failed to start proxy:', e);
+    }
+}
+
+function stopProxy() {
     if (proxyProcess) {
-        console.log('Stopping proxy server...');
         proxyProcess.kill();
         proxyProcess = null;
     }
+    setSystemProxy(false);
+    updateTray();
 }
-
-// ─── System Proxy Configuration (macOS) ─────────────────────────────
 
 function setSystemProxy(enable) {
-    return new Promise((resolve, reject) => {
-        const interfaceName = "Wi-Fi"; // Default to Wi-Fi for MVP
-        let cmd = '';
+    if (process.platform !== 'darwin') return; // For now focused on macOS
 
-        if (enable) {
-            cmd = `networksetup -setwebproxy "${interfaceName}" 127.0.0.1 ${PROXY_PORT} && networksetup -setsecurewebproxy "${interfaceName}" 127.0.0.1 ${PROXY_PORT}`;
-        } else {
-            cmd = `networksetup -setwebproxystate "${interfaceName}" off && networksetup -setsecurewebproxystate "${interfaceName}" off`;
+    const interfaceName = "Wi-Fi";
+    let cmd = '';
+
+    if (enable) {
+        cmd = `networksetup -setwebproxy "${interfaceName}" 127.0.0.1 ${PROXY_PORT} && networksetup -setsecurewebproxy "${interfaceName}" 127.0.0.1 ${PROXY_PORT}`;
+    } else {
+        cmd = `networksetup -setwebproxystate "${interfaceName}" off && networksetup -setsecurewebproxystate "${interfaceName}" off`;
+    }
+
+    sudo.exec(cmd, sudoOptions, (error) => {
+        if (error) console.error('Proxy config error:', error);
+    });
+}
+
+// ─── UI / Tray ───────────────────────────────────────────────────────────────
+
+function getStatusLabel() {
+    if (!isMonitoringEnabled) return 'Monitoring Disabled';
+    if (proxyProcess) return 'Monitoring Active';
+    return 'Initializing...';
+}
+
+function getStatusIcon() {
+    const iconName = isMonitoringEnabled ? 'tray-active.png' : 'tray-inactive.png';
+    return path.join(__dirname, iconName);
+}
+
+function updateTray() {
+    if (!tray) return;
+
+    const contextMenu = Menu.buildFromTemplate([
+        { label: `Complyze Agent v${AGENT_VERSION}`, enabled: false },
+        { label: `Status: ${getStatusLabel()}`, enabled: false },
+        { label: `Last Sync: ${lastSyncTime}`, enabled: false },
+        { type: 'separator' },
+        { label: 'Open Status Window', click: () => { if (mainWindow) { mainWindow.show(); } else { createWindow(); } } },
+        {
+            label: isMonitoringEnabled ? 'Disable Monitoring' : 'Enable Monitoring',
+            click: () => toggleMonitoring()
+        },
+        { label: 'Open Control Dashboard', click: () => shell.openExternal(`${DASHBOARD_URL}/dashboard`) },
+        { type: 'separator' },
+        { label: 'Check for Updates...', click: () => { } },
+        { label: 'Quit Complyze', click: () => { app.isQuiting = true; app.quit(); } },
+    ]);
+
+    tray.setImage(getStatusIcon());
+    tray.setToolTip(`Complyze Agent: ${getStatusLabel()}`);
+    tray.setContextMenu(contextMenu);
+}
+
+function toggleMonitoring() {
+    isMonitoringEnabled = !isMonitoringEnabled;
+    if (isMonitoringEnabled) {
+        startProxy();
+    } else {
+        stopProxy();
+    }
+    sendHeartbeat();
+    syncStatusToWindow();
+    updateTray();
+
+    new Notification({
+        title: 'Complyze Agent',
+        body: isMonitoringEnabled ? 'Monitoring has been enabled.' : 'Monitoring has been disabled.'
+    }).show();
+}
+
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('UNHANDLED REJECTION:', reason);
+});
+
+function createWindow() {
+    mainWindow = new BrowserWindow({
+        width: 600,
+        height: 500,
+        resizable: false,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        },
+        titleBarStyle: 'hiddenInset',
+        show: false
+    });
+
+    mainWindow.loadFile(path.join(__dirname, 'index.html'));
+
+    mainWindow.once('ready-to-show', () => {
+        mainWindow.show();
+        syncStatusToWindow();
+    });
+
+    mainWindow.on('close', (event) => {
+        if (!app.isQuiting) {
+            event.preventDefault();
+            mainWindow.hide();
+        }
+    });
+}
+
+ipcMain.on('toggle-monitoring', () => {
+    toggleMonitoring();
+});
+
+// ─── App Lifecycle ───────────────────────────────────────────────────────────
+
+// Prevent multiple instances
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    app.quit();
+} else {
+    app.on('ready', () => {
+        // Create Tray
+        // Note: You need a 16x16 or 32x32 icon here
+        const iconPath = path.join(__dirname, 'icon.png');
+        if (!fs.existsSync(iconPath)) {
+            // Create a dummy file if it doesn't exist for now to prevent crash
+            fs.writeFileSync(iconPath, '');
         }
 
-        sudo.exec(cmd, sudoOptions, (error, stdout, stderr) => {
-            if (error) {
-                console.error('Sudo error:', error);
-                reject(error);
-            } else {
-                console.log('Sudo success:', stdout);
-                resolve(true);
-            }
-        });
+        tray = new Tray(iconPath);
+        updateTray();
+
+        // Create UI
+        createWindow();
+
+        // Start background tasks
+        startProxy();
+        startLifecycle();
+    });
+
+    app.on('window-all-closed', (e) => {
+        e.preventDefault(); // Keep app running in tray
+    });
+
+    app.on('before-quit', () => {
+        stopProxy();
     });
 }
-
-function checkProxyStatus() {
-    return new Promise((resolve) => {
-        exec('networksetup -getwebproxy "Wi-Fi"', (err, stdout) => {
-            if (err) {
-                resolve(false);
-                return;
-            }
-            // Output format: "Enabled: Yes" or "Enabled: No"
-            const isEnabled = stdout.includes('Enabled: Yes');
-            resolve(isEnabled);
-        });
-    });
-}
-
-// ─── App Lifecycle ──────────────────────────────────────────────────
-
-const mb = menubar({
-    index: `file://${path.join(__dirname, 'index.html')}`,
-    // icon: path.join(__dirname, 'assets', 'iconTemplate.png'),
-    browserWindow: {
-        width: 300,
-        height: 250,
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            nodeIntegration: false,
-            contextIsolation: true,
-        },
-    },
-    preloadWindow: true,
-});
-
-mb.on('ready', () => {
-    console.log('Menubar app is ready.');
-    startProxyServer();
-    startHeartbeat();
-});
-
-mb.app.on('before-quit', async () => {
-    // IMPORTANT: Disable the system proxy before quitting so the user's
-    // WiFi isn't left pointing at a dead proxy (which would break all traffic)
-    console.log('App quitting — disabling system proxy...');
-    try {
-        const interfaceName = "Wi-Fi";
-        const { execSync } = require('child_process');
-        // Use execSync so we block until the proxy is disabled
-        execSync(`networksetup -setwebproxystate "${interfaceName}" off`);
-        execSync(`networksetup -setsecurewebproxystate "${interfaceName}" off`);
-        console.log('System proxy disabled successfully.');
-    } catch (err) {
-        console.error('Failed to disable system proxy on quit:', err.message);
-        // Try via sudo as a last resort (will show password prompt)
-        try {
-            const cmd = `networksetup -setwebproxystate "Wi-Fi" off && networksetup -setsecurewebproxystate "Wi-Fi" off`;
-            sudo.exec(cmd, sudoOptions, () => { });
-        } catch { /* eat error — app is quitting anyway */ }
-    }
-    stopHeartbeat();
-    stopProxyServer();
-});
-
-// ─── IPC Handlers ───────────────────────────────────────────────────
-
-ipcMain.handle('proxy-enable', async () => {
-    try {
-        await setSystemProxy(true);
-        return true;
-    } catch (e) {
-        console.error('Failed to enable proxy:', e);
-        return false;
-    }
-});
-
-ipcMain.handle('proxy-disable', async () => {
-    try {
-        await setSystemProxy(false);
-        return false;
-    } catch (e) {
-        console.error('Failed to disable proxy:', e);
-        return true; // Return true (fail) to keep toggle on? No, return status.
-    }
-});
-
-ipcMain.handle('proxy-status', async () => {
-    return await checkProxyStatus();
-});
-
-ipcMain.handle('open-dashboard', () => {
-    shell.openExternal(`${DASHBOARD_URL}/monitoring`);
-});

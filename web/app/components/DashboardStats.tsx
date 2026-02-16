@@ -16,43 +16,40 @@ export default function DashboardStats({
     low,
 }: DashboardStatsProps) {
     return (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5 mb-8">
-            <div className="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center">
-                <dt className="truncate text-sm font-medium text-text-muted-light dark:text-text-muted-dark">
-                    Total Tools
-                </dt>
-                <dd className="mt-1 text-2xl font-semibold tracking-tight text-primary dark:text-white">
-                    {total}
-                </dd>
-            </div>
-            <div className="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center border-l-4 border-l-critical dark:border-l-critical">
-                <dt className="truncate text-sm font-medium text-critical">
-                    Critical Risk
-                </dt>
-                <dd className="mt-1 text-2xl font-semibold tracking-tight text-critical">
-                    {critical}
-                </dd>
-            </div>
-            <div className="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center border-l-4 border-l-high dark:border-l-high">
-                <dt className="truncate text-sm font-medium text-high">High Risk</dt>
-                <dd className="mt-1 text-2xl font-semibold tracking-tight text-high">
-                    {high}
-                </dd>
-            </div>
-            <div className="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center border-l-4 border-l-moderate dark:border-l-moderate">
-                <dt className="truncate text-sm font-medium text-moderate">
-                    Moderate Risk
-                </dt>
-                <dd className="mt-1 text-2xl font-semibold tracking-tight text-moderate">
-                    {moderate}
-                </dd>
-            </div>
-            <div className="bg-surface-light dark:bg-surface-dark overflow-hidden rounded border border-border-light dark:border-border-dark px-4 py-4 flex flex-col items-center justify-center border-l-4 border-l-low dark:border-l-low">
-                <dt className="truncate text-sm font-medium text-low">Low Risk</dt>
-                <dd className="mt-1 text-2xl font-semibold tracking-tight text-low">
-                    {low}
-                </dd>
-            </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-5 mb-10">
+            <StatItem label="Total Assets" value={total} stripColor="bg-slate-300" />
+            <StatItem label="Critical Risk" value={critical} stripColor="bg-red-500" valueColor="text-red-700" labelColor="text-red-600" />
+            <StatItem label="High Risk" value={high} stripColor="bg-orange-500" valueColor="text-orange-700" labelColor="text-orange-600" />
+            <StatItem label="Moderate Risk" value={moderate} stripColor="bg-amber-500" valueColor="text-amber-700" labelColor="text-amber-600" />
+            <StatItem label="Low Risk" value={low} stripColor="bg-green-500" valueColor="text-green-700" labelColor="text-green-600" />
+        </div>
+    );
+}
+
+function StatItem({
+    label,
+    value,
+    stripColor,
+    valueColor = "text-gray-900",
+    labelColor = "text-gray-400"
+}: {
+    label: string;
+    value: number;
+    stripColor: string;
+    valueColor?: string;
+    labelColor?: string;
+}) {
+    return (
+        <div className="relative bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col items-center justify-center p-6 h-28">
+            {/* Severity Strip */}
+            <div className={`absolute top-0 left-0 bottom-0 w-1 ${stripColor}`} />
+
+            <dt className={`truncate text-[10px] font-bold uppercase tracking-[0.15em] ${labelColor} mb-2`}>
+                {label}
+            </dt>
+            <dd className={`text-4xl font-bold tracking-tight ${valueColor}`}>
+                {value}
+            </dd>
         </div>
     );
 }

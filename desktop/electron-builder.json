@@ -1,0 +1,30 @@
+{
+    "appId": "ai.complyze.agent",
+    "productName": "Complyze Agent",
+    "copyright": "Copyright © 2026 Complyze",
+    "directories": {
+        "output": "dist"
+    },
+    "mac": {
+        "category": "public.app-category.utilities",
+        "target": [
+            "dmg",
+            "pkg"
+        ],
+        "hardenedRuntime": true,
+        "gatekeeperAssess": false,
+        "entitlements": "build/entitlements.mac.plist",
+        "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+        "target": [
+            "nsis"
+        ]
+    },
+    "afterSign": "scripts/notarize.js",
+    "files": [
+        "**/*",
+        "!dist",
+        "!node_modules"
+    ]
+}

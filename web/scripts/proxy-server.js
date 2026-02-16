@@ -103,56 +103,46 @@ const PASSTHROUGH_DOMAINS = [
     'oauth2.googleapis.com',
 ];
 
-// Runtime setting — toggled by admin from the settings page
+const MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
+const FAIL_OPEN = true;
 let desktopBypassEnabled = false;
 
-// Check settings from the Complyze API on startup and periodically
-async function syncDesktopBypassSetting() {
+async function syncSettings() {
     try {
         const res = await fetch('http://localhost:3737/api/proxy/settings');
         if (res.ok) {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
         }
-    } catch {
-        // Settings server not ready yet — default to bypass OFF (maximum security)
-    }
+    } catch { }
 }
 
 function isAIDomain(hostname) {
-    return AI_DOMAINS.some(
-        (d) => hostname === d || hostname.endsWith('.' + d)
-    );
+    if (!hostname) return false;
+    return AI_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
 }
 
 function isPassthroughDomain(hostname) {
-    return PASSTHROUGH_DOMAINS.some(
-        (d) => hostname === d || hostname.endsWith('.' + d)
-    );
+    if (!hostname) return false;
+    return PASSTHROUGH_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
 }
 
 function isDesktopAppDomain(hostname) {
-    return DESKTOP_APP_DOMAINS.some(
-        (d) => hostname === d || hostname.endsWith('.' + d)
-    );
+    if (!hostname) return false;
+    return DESKTOP_APP_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
 }
 
 function shouldDeepInspect(hostname) {
-    // Infrastructure domains are never inspected
+    if (!hostname) return false;
     if (isPassthroughDomain(hostname)) return false;
-    // If it's not an AI domain, don't inspect
     if (!isAIDomain(hostname)) return false;
-    // If desktop bypass is ON and this is a desktop app domain, skip inspection
     if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return false;
-    // Otherwise, deep inspect
     return true;
 }
 
 function shouldLogMetadata(hostname) {
-    // Desktop app bypass: log metadata instead of deep inspecting
+    if (!hostname) return false;
     if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return true;
-    // Passthrough domains: log metadata for visibility
-    if (isPassthroughDomain(hostname)) return false;
     return false;
 }
 
@@ -255,22 +245,25 @@ function getCertForDomain(domain, ca) {
 
 let eventCount = 0;
 
-async function logToComplyze(targetUrl, method, headers, body) {
+async function logToComplyze(targetUrl, method, headers, body, dlpResult = null) {
     eventCount++;
     const n = eventCount;
 
     try {
+        const payload = {
+            target_url: targetUrl,
+            method,
+            headers: sanitizeHeaders(headers),
+            body: typeof body === 'string' ? body : JSON.stringify(body),
+            user_id: 'system-proxy',
+            log_only: true,
+            dlp: dlpResult // Include local scan results
+        };
+
         const res = await fetch(COMPLYZE_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                target_url: targetUrl,
-                method,
-                headers: sanitizeHeaders(headers),
-                body: typeof body === 'string' ? body : JSON.stringify(body),
-                user_id: 'system-proxy',
-                log_only: true,
-            }),
+            body: JSON.stringify(payload),
         });
 
         if (res.ok) {
@@ -415,35 +408,48 @@ function startProxy() {
     let connCount = 0;
 
     const server = http.createServer((req, res) => {
-        // Handle plain HTTP proxy requests
-        const target = new URL(req.url);
+        // Handle basic status check or local dashboard hits
+        if (req.url === '/' || req.url === '/dashboard') {
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end('Complyze AI Proxy is running. Use this address as your HTTPS Proxy (127.0.0.1:8080).');
+            return;
+        }
 
-        if (isAIDomain(target.hostname)) {
-            let body = '';
-            req.on('data', (chunk) => (body += chunk.toString()));
-            req.on('end', () => {
-                console.log(`\n📡 [HTTP] ${req.method} ${req.url}`);
-                logToComplyze(req.url, req.method, req.headers, body);
+        try {
+            // Handle plain HTTP proxy requests
+            const target = new URL(req.url);
 
-                const proxyReq = http.request(
-                    { hostname: target.hostname, port: target.port || 80, path: target.pathname + target.search, method: req.method, headers: req.headers },
-                    (proxyRes) => {
-                        res.writeHead(proxyRes.statusCode, proxyRes.headers);
-                        proxyRes.pipe(res);
-                    }
-                );
+            if (isAIDomain(target.hostname)) {
+                let body = '';
+                req.on('data', (chunk) => (body += chunk.toString()));
+                req.on('end', () => {
+                    console.log(`\n📡 [HTTP] ${req.method} ${req.url}`);
+                    logToComplyze(req.url, req.method, req.headers, body);
+
+                    const proxyReq = http.request(
+                        { hostname: target.hostname, port: target.port || 80, path: target.pathname + target.search, method: req.method, headers: req.headers },
+                        (proxyRes) => {
+                            res.writeHead(proxyRes.statusCode, proxyRes.headers);
+                            proxyRes.pipe(res);
+                        }
+                    );
+                    proxyReq.on('error', () => res.end());
+                    if (body) proxyReq.write(body);
+                    proxyReq.end();
+                });
+            } else {
+                // Forward non-AI HTTP traffic
+                const proxyReq = http.request(req.url, { method: req.method, headers: req.headers }, (proxyRes) => {
+                    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+                    proxyRes.pipe(res);
+                });
                 proxyReq.on('error', () => res.end());
-                if (body) proxyReq.write(body);
-                proxyReq.end();
-            });
-        } else {
-            // Forward non-AI HTTP traffic
-            const proxyReq = http.request(req.url, { method: req.method, headers: req.headers }, (proxyRes) => {
-                res.writeHead(proxyRes.statusCode, proxyRes.headers);
-                proxyRes.pipe(res);
-            });
-            proxyReq.on('error', () => res.end());
-            req.pipe(proxyReq);
+                req.pipe(proxyReq);
+            }
+        } catch (err) {
+            console.error(`[proxy] invalid URL request: ${req.url}`, err.message);
+            res.writeHead(400);
+            res.end('Invalid Proxy Request');
         }
     });
 
@@ -477,8 +483,8 @@ function startProxy() {
     });
 
     // Sync desktop bypass setting on startup and every 30 seconds
-    syncDesktopBypassSetting();
-    setInterval(syncDesktopBypassSetting, 30000);
+    syncSettings();
+    setInterval(syncSettings, 30000);
 
     server.listen(PROXY_PORT, '127.0.0.1', () => {
         console.log('');
@@ -486,8 +492,8 @@ function startProxy() {
         console.log('║           🛡️  Complyze AI Traffic Interceptor                 ║');
         console.log('╠════════════════════════════════════════════════════════════════╣');
         console.log(`║  Proxy:     127.0.0.1:${PROXY_PORT}                                    ║`);
-        console.log(`║  Dashboard: http://localhost:3737/monitoring                   ║`);
-        console.log('║                                                                ║');
+        console.log(`║  Dashboard: http://localhost:3737/dashboard                    ║`);
+        console.log(`║  Mode:      ${MONITOR_MODE.toUpperCase()}                                          ║`);
         console.log('║  Deep Inspection (all AI domains):                             ║');
         AI_DOMAINS.forEach((d) => {
             console.log(`║    🔍 ${d.padEnd(53)}║`);
@@ -531,15 +537,44 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
         cert: domainCert.cert,
     });
 
+    // Link to local AI-DLP engine
+    const { processOutgoingPrompt } = require('./dlp/textInterceptor');
+
     // Parse decrypted HTTP requests from the TLS stream
-    const parser = new HTTPRequestParser((method, reqPath, headers, body) => {
+    const parser = new HTTPRequestParser(async (method, reqPath, headers, body) => {
         const targetUrl = `https://${hostname}${reqPath}`;
         const bodyLen = body ? body.length : 0;
+
+        // ─── 🛡️ LOCAL AI-DLP SCANNING ──────────────────────────────────────────
+        let dlpResult = null;
+        if (method === 'POST' && bodyLen > 0) {
+            try {
+                dlpResult = await processOutgoingPrompt(body, {
+                    appName: 'Browser/Web',
+                    destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown'
+                });
+                console.log(`   🛡️  DLP SCAN: REU=${dlpResult.finalReu} | ${dlpResult.explanation}`);
+            } catch (err) {
+                console.error(`   ⚠️  DLP Scan failed: ${err.message}`);
+            }
+        }
+
         console.log(`   📨 ${method} ${reqPath} (${bodyLen} bytes)`);
 
         // Log to Complyze asynchronously
-        // Log even if body is empty (GET requests need visibility too)
-        logToComplyze(targetUrl, method, headers, body || '');
+        logToComplyze(targetUrl, method, headers, body || '', dlpResult);
+
+        // ─── Policy Enforcement Layer ──────────────────────────────────────────
+        const shouldBlock = dlpResult && dlpResult.action === 'BLOCK';
+
+        if ((MONITOR_MODE === 'enforce' && shouldBlock)) {
+            console.log(`   🚫 Blocked by Local DLP Policy: ${targetUrl} (REU: ${dlpResult.finalReu})`);
+            try {
+                tlsSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 48\r\n\r\nAccess blocked by local Complyze Security Policy.');
+                tlsSocket.end();
+            } catch { }
+            return;
+        }
 
         // Forward to the real AI server
         const fwdHeaders = { ...headers, host: hostname };

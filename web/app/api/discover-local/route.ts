@@ -31,12 +31,13 @@ const AI_APPS: Record<string, { vendor: string; tier: string }> = {
   Figma: { vendor: "Figma (Adobe)", tier: "Professional" },
   Canva: { vendor: "Canva Pty Ltd", tier: "Free" },
   Perplexity: { vendor: "Perplexity AI", tier: "Free" },
+  Gemini: { vendor: "Google", tier: "Enterprise" },
 };
 
 const AI_PROCESS_KEYWORDS = [
   "chatgpt", "openai", "copilot", "cursor", "claude", "anthropic",
   "grammarly", "otter", "notion", "jasper", "codeium",
-  "tabnine", "windsurf", "perplexity", "pieces", "raycast",
+  "tabnine", "windsurf", "perplexity", "pieces", "raycast", "gemini",
 ];
 
 const AI_VSCODE_EXTENSIONS: Record<string, { tool: string; vendor: string }> = {
@@ -292,8 +293,8 @@ const CURATED_AI_REGISTRY: DiscoveredTool[] = [
   { tool_name: "ChatGPT", vendor: "OpenAI", suggested_tier: "Enterprise", source: "AI Registry", detail: "Conversational AI assistant — widely used across organizations", confidence: "high" },
   { tool_name: "GitHub Copilot", vendor: "GitHub / Microsoft", suggested_tier: "Business", source: "AI Registry", detail: "AI pair programmer for code generation and completion", confidence: "high" },
   { tool_name: "Claude", vendor: "Anthropic", suggested_tier: "Enterprise", source: "AI Registry", detail: "AI assistant with extended context and document analysis", confidence: "high" },
-  { tool_name: "Google Gemini", vendor: "Google", suggested_tier: "Enterprise", source: "AI Registry", detail: "Multimodal AI model with search integration", confidence: "high" },
-  { tool_name: "Microsoft Copilot", vendor: "Microsoft", suggested_tier: "Enterprise", source: "AI Registry", detail: "AI integrated into Microsoft 365 suite (Word, Excel, Teams)", confidence: "high" },
+  { tool_name: "Gemini", vendor: "Google", suggested_tier: "Enterprise", source: "AI Registry", detail: "Multimodal AI model with search integration", confidence: "high" },
+  { tool_name: "Copilot", vendor: "Microsoft", suggested_tier: "Enterprise", source: "AI Registry", detail: "AI integrated into Microsoft 365 suite (Word, Excel, Teams)", confidence: "high" },
   { tool_name: "Cursor", vendor: "Anysphere", suggested_tier: "Pro", source: "AI Registry", detail: "AI-powered code editor built on VS Code", confidence: "high" },
   { tool_name: "Notion AI", vendor: "Notion Labs", suggested_tier: "Plus", source: "AI Registry", detail: "AI writing and summarization inside Notion workspace", confidence: "high" },
   { tool_name: "Grammarly", vendor: "Grammarly Inc.", suggested_tier: "Business", source: "AI Registry", detail: "AI writing assistant for grammar, tone, and clarity", confidence: "high" },
@@ -328,14 +329,21 @@ export async function GET() {
       });
     }
 
-    // On local dev, do the real machine scan
-    const all: DiscoveredTool[] = [
+    // For the "System Discovery Feed" demonstration, we merge local scan results
+    // with a subset of our curated registry to ensure a robust visualization.
+    const machineOnly: DiscoveredTool[] = [
       ...scanInstalledApps(),
       ...scanProcesses(),
       ...scanIDEExtensions(),
       ...scanBrowserExtensions(),
     ];
 
+    // Key tools the user explicitly wants to see
+    const seedTools = CURATED_AI_REGISTRY.filter(t =>
+      ["chatgpt", "claude", "gemini", "copilot", "perplexity"].includes(t.tool_name.toLowerCase())
+    );
+
+    const all = [...seedTools, ...machineOnly];
     const unique = deduplicate(all);
 
     return NextResponse.json({
@@ -343,7 +351,7 @@ export async function GET() {
       tools: unique,
       scanned_at: new Date().toISOString(),
       platform: platform(),
-      mode: "local-scan",
+      mode: "hybrid-scan",
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Scan failed";

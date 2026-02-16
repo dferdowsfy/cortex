@@ -450,6 +450,13 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-500 mb-4">Automated enforcement actions applied to monitored traffic.</p>
 
                 <Toggle
+                    enabled={settings.proxy_enabled}
+                    onChange={(val) => saveSettings({ proxy_enabled: val })}
+                    label="Enable Global AI Monitoring"
+                    description="When enabled, all traffic through the Complyze Agents will be classified and logged."
+                />
+
+                <Toggle
                     enabled={settings.block_high_risk}
                     onChange={(val) => saveSettings({ block_high_risk: val })}
                     label="Block Critical-Risk Prompts"
