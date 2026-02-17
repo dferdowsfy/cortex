@@ -1,6 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 
 export default function MarketingNav() {
+    const [mobileOpen, setMobileOpen] = useState(false);
+
     return (
         <nav className="sticky top-0 z-50 w-full border-b border-neutral-200 dark:border-neutral-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -16,45 +21,60 @@ export default function MarketingNav() {
                             Complyze
                         </Link>
                     </div>
+
                     {/* Desktop Menu */}
                     <div className="hidden md:flex items-center space-x-10">
-                        <Link
-                            className="text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
-                            href="/platform"
-                        >
+                        <Link className="text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors" href="/platform">
                             Platform
                         </Link>
-                        <Link
-                            className="text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
-                            href="/pricing"
-                        >
+                        <Link className="text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors" href="/pricing">
                             Pricing
                         </Link>
                     </div>
-                    {/* CTA */}
-                    <div className="hidden md:flex items-center gap-6">
+
+                    {/* Auth Buttons - Always visible */}
+                    <div className="flex items-center gap-3 sm:gap-6">
                         <Link
                             href="/login"
-                            className="text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
+                            className="text-sm sm:text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
                         >
                             Sign In
                         </Link>
                         <Link
-                            href="/request-demo"
-                            className="bg-primary hover:bg-primary/90 text-white text-base font-semibold px-5 py-2.5 rounded shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
+                            href="/login"
+                            className="bg-primary hover:bg-primary/90 text-white text-sm sm:text-base font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
                         >
                             Request Demo
                         </Link>
-                    </div>
-                    {/* Mobile menu button */}
-                    <div className="md:hidden flex items-center">
-                        <button className="text-neutral-500 hover:text-neutral-800 dark:hover:text-white">
+
+                        {/* Mobile menu button */}
+                        <button
+                            className="md:hidden text-neutral-500 hover:text-neutral-800 dark:hover:text-white ml-1"
+                            onClick={() => setMobileOpen(!mobileOpen)}
+                            aria-label="Toggle menu"
+                        >
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                                {mobileOpen ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                                )}
                             </svg>
                         </button>
                     </div>
                 </div>
+
+                {/* Mobile menu dropdown */}
+                {mobileOpen && (
+                    <div className="md:hidden border-t border-neutral-200 dark:border-neutral-700 py-4 space-y-1">
+                        <Link href="/platform" onClick={() => setMobileOpen(false)} className="block text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary px-2 py-3">
+                            Platform
+                        </Link>
+                        <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary px-2 py-3">
+                            Pricing
+                        </Link>
+                    </div>
+                )}
             </div>
         </nav>
     );
