@@ -1,4 +1,4 @@
-const { app, Tray, Menu, shell, Notification, ipcMain, BrowserWindow } = require('electron');
+const { app, Tray, Menu, shell, Notification, ipcMain, BrowserWindow, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { fork, exec, execSync } = require('child_process');
@@ -160,20 +160,40 @@ function stopProxy() {
     updateTray();
 }
 
-function setSystemProxy(enable) {
-    if (process.platform !== 'darwin') return; // For now focused on macOS
+function getActiveInterface() {
+    try {
+        // Find the interface with the default gateway
+        const routeCmd = "route -n get default | grep 'interface:' | awk '{print $2}'";
+        const iface = execSync(routeCmd).toString().trim();
+        if (iface) {
+            // Map BSD interface (en0) to Service Name (Wi-Fi)
+            const serviceCmd = `networksetup -listnetworkserviceorder | grep "Device: ${iface}" -B 1 | head -n 1 | cut -d ' ' -f 2-`;
+            const service = execSync(serviceCmd).toString().trim();
+            return service || "Wi-Fi";
+        }
+    } catch (e) {
+        console.warn('Failed to detect active interface, defaulting to Wi-Fi');
+    }
+    return "Wi-Fi";
+}
 
-    const interfaceName = "Wi-Fi";
+function setSystemProxy(enable) {
+    if (process.platform !== 'darwin') return;
+
+    const interfaceName = getActiveInterface();
     let cmd = '';
 
     if (enable) {
-        cmd = `networksetup -setwebproxy "${interfaceName}" 127.0.0.1 ${PROXY_PORT} && networksetup -setsecurewebproxy "${interfaceName}" 127.0.0.1 ${PROXY_PORT}`;
+        // Use PAC file for selective interception (prevents blocking all sites)
+        const pacUrl = `http://127.0.0.1:${PROXY_PORT}/proxy.pac`;
+        cmd = `networksetup -setautoproxyurl "${interfaceName}" "${pacUrl}" && networksetup -setautoproxystate "${interfaceName}" on`;
     } else {
-        cmd = `networksetup -setwebproxystate "${interfaceName}" off && networksetup -setsecurewebproxystate "${interfaceName}" off`;
+        cmd = `networksetup -setautoproxystate "${interfaceName}" off`;
     }
 
     sudo.exec(cmd, sudoOptions, (error) => {
         if (error) console.error('Proxy config error:', error);
+        else console.log(`Proxy ${enable ? 'enabled' : 'disabled'} on interface "${interfaceName}" via PAC`);
     });
 }
 
@@ -193,6 +213,12 @@ function getStatusIcon() {
 function updateTray() {
     if (!tray) return;
 
+    const iconPath = getStatusIcon();
+    let icon = nativeImage.createFromPath(iconPath);
+
+    // Resize to fit macOS tray (typically 18x18 or 22x22)
+    icon = icon.resize({ width: 18, height: 18 });
+
     const contextMenu = Menu.buildFromTemplate([
         { label: `Complyze Agent v${AGENT_VERSION}`, enabled: false },
         { label: `Status: ${getStatusLabel()}`, enabled: false },
@@ -209,7 +235,7 @@ function updateTray() {
         { label: 'Quit Complyze', click: () => { app.isQuiting = true; app.quit(); } },
     ]);
 
-    tray.setImage(getStatusIcon());
+    tray.setImage(icon);
     tray.setToolTip(`Complyze Agent: ${getStatusLabel()}`);
     tray.setContextMenu(contextMenu);
 }
@@ -278,15 +304,11 @@ if (!gotTheLock) {
     app.quit();
 } else {
     app.on('ready', () => {
-        // Create Tray
-        // Note: You need a 16x16 or 32x32 icon here
-        const iconPath = path.join(__dirname, 'icon.png');
-        if (!fs.existsSync(iconPath)) {
-            // Create a dummy file if it doesn't exist for now to prevent crash
-            fs.writeFileSync(iconPath, '');
-        }
+        const iconPath = path.join(__dirname, 'tray-active.png');
+        let icon = nativeImage.createFromPath(iconPath);
+        icon = icon.resize({ width: 18, height: 18 });
 
-        tray = new Tray(iconPath);
+        tray = new Tray(icon);
         updateTray();
 
         // Create UI

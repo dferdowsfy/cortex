@@ -33,13 +33,27 @@ export async function GET(req: NextRequest) {
         });
     }
 
-    console.log(`[installer] Local build not found at ${distPath}, serving simulated package.`);
-    return new NextResponse("Simulated Signed Enterprise Package Content", {
-        status: 200,
-        headers: {
-            "Content-Type": contentType,
-            "Content-Disposition": `attachment; filename="${filename}"`,
-            "Cache-Control": "no-cache",
-        },
-    });
+    // Check for a remote redirect (useful for Vercel/Production)
+    const remoteUrl = process.env.NEXT_PUBLIC_DOWNLOAD_URL || process.env.AGENT_DOWNLOAD_URL;
+    if (remoteUrl) {
+        return NextResponse.redirect(remoteUrl);
+    }
+
+    console.log(`[installer] Local build not found at ${distPath} and no remote URL configured.`);
+
+    // Return a more professional error instead of a 43-byte dummy file
+    return new NextResponse(
+        JSON.stringify({
+            error: "Installer Not Found",
+            message: "The desktop agent build artifact was not found on this server. If you are running in production, please configure AGENT_DOWNLOAD_URL. If running locally, ensure you have run 'npm run build' in the desktop directory.",
+            platform: isWindows ? "Windows" : "macOS",
+            expected_path: distPath
+        }),
+        {
+            status: 404,
+            headers: {
+                "Content-Type": "application/json",
+            },
+        }
+    );
 }
