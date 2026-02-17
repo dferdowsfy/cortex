@@ -1,13 +1,13 @@
 /**
- * Firebase Settings Sync — realtime Firestore listener for desktop.
+ * Firebase Settings Sync — realtime RTDB listener for desktop.
  *
- * Subscribes to users/{uid}/settings/config via onSnapshot.
+ * Subscribes to users/{uid}/settings via onValue.
  * Caches last known settings in memory for offline fallback.
  * Applies settings changes immediately without restart.
  */
-const { doc, onSnapshot, setDoc, serverTimestamp } = require('firebase/firestore');
+const { ref, onValue, set, update } = require('firebase/database');
 
-// ── Default settings (used when no Firestore doc exists) ──────────────
+// ── Default settings (used when no RTDB node exists) ──────────────
 const DEFAULT_SETTINGS = {
     blockEnabled: true,
     interceptEnabled: true,
@@ -33,7 +33,7 @@ class FirebaseSettingsSync {
 
     /**
      * Start listening to settings for a given user.
-     * @param {import('firebase/firestore').Firestore} db
+     * @param {import('firebase/database').Database} db
      * @param {string} uid
      * @param {(settings: object) => void} onSettingsChange
      */
@@ -45,22 +45,21 @@ class FirebaseSettingsSync {
         this._uid = uid;
         this._onSettingsChange = onSettingsChange;
 
-        // UNIFY: Use the same path as the web dashboard
-        const settingsRef = doc(db, 'proxy_config', 'settings');
+        const settingsRef = ref(db, `users/${uid}/settings`);
 
-        this._unsubscribe = onSnapshot(
+        this._unsubscribe = onValue(
             settingsRef,
-            (docSnap) => {
+            (snapshot) => {
                 this._isConnected = true;
 
-                if (!docSnap.exists()) {
-                    console.log('[settings-sync] No settings doc found, initializing defaults');
+                if (!snapshot.exists()) {
+                    console.log('[settings-sync] No settings node found, initializing defaults');
                     this._initializeDefaults(settingsRef);
                     return;
                 }
 
-                const settings = docSnap.data();
-                console.log('[settings-sync] Settings updated from Firestore:', JSON.stringify(settings));
+                const settings = snapshot.val();
+                console.log('[settings-sync] Settings updated from RTDB:', JSON.stringify(settings));
 
                 // Cache for offline use
                 this._cachedSettings = { ...DEFAULT_SETTINGS, ...settings };
@@ -86,7 +85,7 @@ class FirebaseSettingsSync {
     }
 
     /**
-     * Write a settings change to Firestore (desktop can also toggle).
+     * Write a settings change to RTDB (desktop can also toggle).
      * @param {Partial<object>} partial
      */
     async updateSettings(partial) {
@@ -95,25 +94,21 @@ class FirebaseSettingsSync {
             return;
         }
 
-        const settingsRef = doc(this._db, 'users', this._uid, 'settings', 'config');
+        const settingsRef = ref(this._db, `users/${this._uid}/settings`);
 
         try {
-            await setDoc(
-                settingsRef,
-                {
-                    ...partial,
-                    updatedAt: serverTimestamp(),
-                },
-                { merge: true }
-            );
-            console.log('[settings-sync] Settings written to Firestore');
+            await update(settingsRef, {
+                ...partial,
+                updatedAt: Date.now(),
+            });
+            console.log('[settings-sync] Settings written to RTDB');
         } catch (err) {
             console.error('[settings-sync] Failed to write settings:', err.message);
         }
     }
 
     /**
-     * Stop listening to Firestore changes.
+     * Stop listening to RTDB changes.
      */
     unsubscribe() {
         if (this._unsubscribe) {
@@ -131,7 +126,7 @@ class FirebaseSettingsSync {
     }
 
     /**
-     * Whether we have an active Firestore connection.
+     * Whether we have an active RTDB connection.
      */
     get isConnected() {
         return this._isConnected;
@@ -140,11 +135,11 @@ class FirebaseSettingsSync {
     // ── Internal ──────────────────────────────────────────────────
     async _initializeDefaults(settingsRef) {
         try {
-            await setDoc(settingsRef, {
+            await set(settingsRef, {
                 ...DEFAULT_SETTINGS,
-                updatedAt: serverTimestamp(),
+                updatedAt: Date.now(),
             });
-            console.log('[settings-sync] Default settings initialized in Firestore');
+            console.log('[settings-sync] Default settings initialized in RTDB');
         } catch (err) {
             console.error('[settings-sync] Failed to initialize defaults:', err.message);
         }

@@ -7,8 +7,8 @@ import {
     createUserWithEmailAndPassword,
     updateProfile
 } from "firebase/auth";
-import { auth, db } from "@/lib/firebase/config";
-import { doc, setDoc } from "firebase/firestore";
+import { auth, rtdb } from "@/lib/firebase/config";
+import { ref, set } from "firebase/database";
 
 export default function LoginPage() {
     const [isLogin, setIsLogin] = useState(true);
@@ -46,13 +46,13 @@ export default function LoginPage() {
                 // Update profile
                 await updateProfile(user, { displayName: name });
 
-                // Create user document in Firestore if DB is available
-                if (db) {
-                    await setDoc(doc(db, "users", user.uid), {
+                // Create user profile in RTDB
+                if (rtdb) {
+                    await set(ref(rtdb, `users/${user.uid}/profile`), {
                         uid: user.uid,
                         email: user.email,
                         displayName: name,
-                        role: "admin", // Default role for first user
+                        role: "admin",
                         createdAt: new Date().toISOString(),
                         organizationId: "org_" + Math.random().toString(36).substr(2, 9),
                     });
@@ -77,7 +77,7 @@ export default function LoginPage() {
 
     if (configError) {
         return (
-            <div className="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
+            <div className="flex min-h-screen flex-col justify-center bg-gray-50 dark:bg-background-dark py-12 sm:px-6 lg:px-8">
                 <div className="sm:mx-auto sm:w-full sm:max-w-md">
                     <div className="rounded-md bg-red-50 p-4 border border-red-200">
                         <div className="flex">
@@ -99,7 +99,7 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
+        <div className="flex min-h-screen flex-col justify-center bg-gray-50 dark:bg-background-dark py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="flex justify-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 shadow-lg">
@@ -108,10 +108,10 @@ export default function LoginPage() {
                         </svg>
                     </div>
                 </div>
-                <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
                     {isLogin ? "Sign in to Complyze" : "Create your account"}
                 </h2>
-                <p className="mt-2 text-center text-sm text-gray-600">
+                <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
                     {isLogin ? "Or" : "Already have an account?"}{" "}
                     <button
                         onClick={() => setIsLogin(!isLogin)}
@@ -123,11 +123,11 @@ export default function LoginPage() {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                <div className="bg-white dark:bg-neutral-800 dark:border dark:border-neutral-700 py-8 px-4 shadow sm:rounded-lg sm:px-10">
                     <form className="space-y-6" onSubmit={handleAuth}>
                         {!isLogin && (
                             <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Full Name
                                 </label>
                                 <div className="mt-1">
@@ -139,14 +139,14 @@ export default function LoginPage() {
                                         required
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-brand-500 sm:text-sm"
+                                        className="block w-full appearance-none rounded-md border border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white px-3 py-2 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-brand-500 sm:text-sm"
                                     />
                                 </div>
                             </div>
                         )}
 
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Email address
                             </label>
                             <div className="mt-1">
@@ -158,13 +158,13 @@ export default function LoginPage() {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-brand-500 sm:text-sm"
+                                    className="block w-full appearance-none rounded-md border border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white px-3 py-2 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-brand-500 sm:text-sm"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Password
                             </label>
                             <div className="mt-1">
@@ -176,7 +176,7 @@ export default function LoginPage() {
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-brand-500 sm:text-sm"
+                                    className="block w-full appearance-none rounded-md border border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white px-3 py-2 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-brand-500 sm:text-sm"
                                 />
                             </div>
                         </div>

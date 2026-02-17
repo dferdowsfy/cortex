@@ -383,13 +383,14 @@ function getSyncLabel() {
 }
 
 function getStatusIcon() {
-    const iconName = isMonitoringEnabled ? 'tray-active.png' : 'tray-inactive.png';
-    const iconPath = path.join(__dirname, iconName);
-    // macOS tray icons must be 16x16 (or 32x32 @2x). Resize oversized PNGs.
+    // Use pre-generated colored PNG icons (green = active, gray = inactive).
+    // Electron's nativeImage.createFromDataURL does NOT support SVG, only raster.
+    // Do NOT use setTemplateImage — that forces macOS monochrome rendering.
+    const iconFile = isMonitoringEnabled ? 'tray-active.png' : 'tray-inactive.png';
+    const iconPath = path.join(__dirname, iconFile);
     const img = nativeImage.createFromPath(iconPath);
-    if (img.isEmpty()) return iconPath; // fallback to raw path
     const resized = img.resize({ width: 18, height: 18 });
-    resized.setTemplateImage(true); // respect macOS dark/light menu bar
+    resized.setTemplateImage(false);
     return resized;
 }
 
@@ -457,6 +458,7 @@ function createWindow() {
         width: 600,
         height: 500,
         resizable: false,
+        icon: path.join(__dirname, 'icon.png'),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
@@ -500,6 +502,51 @@ ipcMain.on('firebase-token', (event, token) => {
 
 // ─── App Lifecycle ───────────────────────────────────────────────────────────
 
+// Helper: show and focus the main window (create if needed)
+function showAndFocusWindow() {
+    if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+    } else {
+        createWindow();
+    }
+}
+
+// Helper: handle deep link URLs (complyze://open, complyze://login?token=...)
+function handleDeepLink(url) {
+    if (!url || typeof url !== 'string') return;
+    console.log('[protocol] Received deep link:', url);
+
+    try {
+        const parsed = new URL(url);
+
+        if (parsed.protocol === 'complyze:') {
+            // Always bring window to front on any deep link
+            showAndFocusWindow();
+
+            // Handle login with token
+            if (parsed.hostname === 'login' || parsed.pathname === '//login') {
+                const token = parsed.searchParams.get('token');
+                if (token) {
+                    const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
+                    fs.writeFileSync(tokenPath, JSON.stringify({ customToken: token }));
+                    const { auth } = initFirebase();
+                    if (auth) {
+                        signInWithCustomToken(auth, token).catch((err) => {
+                            console.error('[firebase] Deep-link sign-in failed:', err.message);
+                        });
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[protocol] Failed to parse deep link URL:', e.message);
+        // Fallback: still show the window
+        showAndFocusWindow();
+    }
+}
+
 // Register protocol for browser deep-linking
 if (process.defaultApp) {
     if (process.argv.length >= 2) {
@@ -516,26 +563,21 @@ if (!gotTheLock) {
 } else {
     app.on('second-instance', (event, commandLine, workingDirectory) => {
         // Someone tried to run a second instance, we should focus our window.
-        if (mainWindow) {
-            if (mainWindow.isMinimized()) mainWindow.restore();
-            mainWindow.show();
-            mainWindow.focus();
-        }
+        showAndFocusWindow();
 
         // Handle protocol link: complyze://open or complyze://login
         const url = commandLine.pop();
-        console.log('[protocol] Received deep link:', url);
+        handleDeepLink(url);
+    });
+
+    // macOS: handle complyze:// protocol when app is already running
+    app.on('open-url', (event, url) => {
+        event.preventDefault();
+        handleDeepLink(url);
     });
     app.on('ready', () => {
-        // Create Tray IMMEDIATELY for maximum visibility
-        const iconPath = path.join(__dirname, 'tray-active.png');
-        if (!fs.existsSync(iconPath)) fs.writeFileSync(iconPath, '');
-
-        const trayIcon = nativeImage.createFromPath(iconPath);
-        const resizedIcon = trayIcon.isEmpty() ? trayIcon : trayIcon.resize({ width: 18, height: 18 });
-        if (!resizedIcon.isEmpty()) resizedIcon.setTemplateImage(true);
-
-        tray = new Tray(resizedIcon.isEmpty() ? iconPath : resizedIcon);
+        // Create Tray IMMEDIATELY for maximum visibility — use programmatic green icon
+        tray = new Tray(getStatusIcon());
         tray.setToolTip('Complyze Agent — Monitoring Active');
         updateTray();
 

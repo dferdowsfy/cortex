@@ -35,7 +35,7 @@ export default function DeploymentGuideModal({ isOpen, onClose }: DeploymentGuid
                                 <p className="text-gray-600 leading-relaxed text-sm">
                                     Execute the signed installer package on the target workstation. For mass deployment via MDM (Jamf, InTune), use the provided command-line flags for silent install.
                                 </p>
-                                <div className="mt-4 p-4 bg-gray-900 rounded-lg font-mono text-xs text-brand-400 border border-gray-800 shadow-inner">
+                                <div className="mt-4 p-4 bg-gray-900 rounded-lg font-mono text-xs text-white border border-gray-800 shadow-inner">
                                     ./complyze-agent-installer.sh --silent --org-id=CORP_001
                                 </div>
                             </div>

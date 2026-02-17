@@ -1,10 +1,10 @@
 /**
- * Proxy Store — Firestore-backed persistence for both local and Vercel.
+ * Proxy Store — RTDB-backed persistence for both local and Vercel.
  *
- * Settings, events, and alerts are stored in Firestore so they survive
- * across Vercel serverless cold-starts and function instances.
+ * Settings, events, and alerts are stored in Firebase Realtime Database
+ * so they survive across Vercel serverless cold-starts and function instances.
  *
- * Falls back to in-memory storage if Firestore is unavailable.
+ * Falls back to in-memory storage if RTDB is unavailable.
  */
 
 import type {
@@ -29,28 +29,28 @@ const DEFAULT_SETTINGS: ProxySettings = {
     updated_at: new Date().toISOString(),
 };
 
-// ── Firestore helpers (lazy-loaded) ──────────────────────────
-let firestoreDb: FirebaseFirestore.Firestore | null = null;
-let firestoreInitAttempted = false;
+// ── RTDB helpers (lazy-loaded) ───────────────────────────────
+import type { database } from "firebase-admin";
+let rtdbInstance: database.Database | null = null;
+let rtdbInitAttempted = false;
 
-function getDb(): FirebaseFirestore.Firestore | null {
-    if (firestoreDb) return firestoreDb;
-    if (firestoreInitAttempted) return null;
-    firestoreInitAttempted = true;
+function getDb(): database.Database | null {
+    if (rtdbInstance) return rtdbInstance;
+    if (rtdbInitAttempted) return null;
+    rtdbInitAttempted = true;
 
     try {
-        // Dynamic import to avoid issues if firebase-admin isn't configured
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { adminDb } = require("./firebase/admin");
-        firestoreDb = adminDb;
-        return firestoreDb;
+        rtdbInstance = adminDb;
+        return rtdbInstance;
     } catch (err) {
-        console.warn("[proxy-store] Firestore not available, using in-memory fallback:", err);
+        console.warn("[proxy-store] RTDB not available, using in-memory fallback:", err);
         return null;
     }
 }
 
-// ── In-memory fallback (for when Firestore is unavailable) ───
+// ── In-memory fallback (for when RTDB is unavailable) ────────
 const globalStore = globalThis as unknown as {
     _memSettings: ProxySettings;
     _memEvents: ActivityEvent[];
@@ -63,10 +63,10 @@ if (!globalStore._memSettings) {
     globalStore._memAlerts = [];
 }
 
-// ── Document paths ───────────────────────────────────────────
-const SETTINGS_DOC = "proxy_config/settings";
-const EVENTS_COLLECTION = "proxy_events";
-const ALERTS_COLLECTION = "proxy_alerts";
+// ── RTDB paths ───────────────────────────────────────────────
+const SETTINGS_PATH = "proxy_config/settings";
+const EVENTS_PATH = "proxy_events";
+const ALERTS_PATH = "proxy_alerts";
 
 class ProxyStore {
     // ── Settings ─────────────────────────────────────────────
@@ -75,15 +75,15 @@ class ProxyStore {
         if (!db) return globalStore._memSettings;
 
         try {
-            const doc = await db.doc(SETTINGS_DOC).get();
-            if (doc.exists) {
-                return doc.data() as ProxySettings;
+            const snap = await db.ref(SETTINGS_PATH).get();
+            if (snap.exists()) {
+                return snap.val() as ProxySettings;
             }
-            // No settings doc yet — create with defaults
-            await db.doc(SETTINGS_DOC).set(DEFAULT_SETTINGS);
+            // No settings yet — create with defaults
+            await db.ref(SETTINGS_PATH).set(DEFAULT_SETTINGS);
             return { ...DEFAULT_SETTINGS };
         } catch (err) {
-            console.warn("[proxy-store] getSettings Firestore error, using memory:", err);
+            console.warn("[proxy-store] getSettings RTDB error, using memory:", err);
             return globalStore._memSettings;
         }
     }
@@ -99,13 +99,12 @@ class ProxyStore {
         const db = getDb();
         if (db) {
             try {
-                await db.doc(SETTINGS_DOC).set(updated);
+                await db.ref(SETTINGS_PATH).set(updated);
             } catch (err) {
-                console.warn("[proxy-store] updateSettings Firestore error:", err);
+                console.warn("[proxy-store] updateSettings RTDB error:", err);
             }
         }
 
-        // Always keep in-memory copy in sync
         globalStore._memSettings = updated;
         return updated;
     }
@@ -115,16 +114,15 @@ class ProxyStore {
         const db = getDb();
         if (db) {
             try {
-                await db.collection(EVENTS_COLLECTION).doc(event.id).set({
+                await db.ref(`${EVENTS_PATH}/${event.id}`).set({
                     ...event,
                     _created_at: new Date().toISOString(),
                 });
             } catch (err) {
-                console.warn("[proxy-store] addEvent Firestore error:", err);
+                console.warn("[proxy-store] addEvent RTDB error:", err);
             }
         }
 
-        // Also keep in memory
         globalStore._memEvents.unshift(event);
         if (globalStore._memEvents.length > 1000) globalStore._memEvents.pop();
 
@@ -136,15 +134,16 @@ class ProxyStore {
         if (db) {
             try {
                 const snap = await db
-                    .collection(EVENTS_COLLECTION)
-                    .orderBy("_created_at", "desc")
-                    .limit(limitCount)
+                    .ref(EVENTS_PATH)
+                    .orderByChild("_created_at")
+                    .limitToLast(limitCount)
                     .get();
-                if (!snap.empty) {
-                    return snap.docs.map((d) => d.data() as ActivityEvent);
+                if (snap.exists()) {
+                    const data = snap.val() as Record<string, ActivityEvent>;
+                    return Object.values(data).reverse();
                 }
             } catch (err) {
-                console.warn("[proxy-store] getEvents Firestore error:", err);
+                console.warn("[proxy-store] getEvents RTDB error:", err);
             }
         }
         return globalStore._memEvents.slice(0, limitCount);
@@ -167,15 +166,16 @@ class ProxyStore {
         if (db) {
             try {
                 const snap = await db
-                    .collection(ALERTS_COLLECTION)
-                    .orderBy("timestamp", "desc")
-                    .limit(limitCount)
+                    .ref(ALERTS_PATH)
+                    .orderByChild("timestamp")
+                    .limitToLast(limitCount)
                     .get();
-                if (!snap.empty) {
-                    return snap.docs.map((d) => d.data() as ProxyAlert);
+                if (snap.exists()) {
+                    const data = snap.val() as Record<string, ProxyAlert>;
+                    return Object.values(data).reverse();
                 }
             } catch (err) {
-                console.warn("[proxy-store] getAlerts Firestore error:", err);
+                console.warn("[proxy-store] getAlerts RTDB error:", err);
             }
         }
         return globalStore._memAlerts.slice(0, limitCount);
@@ -185,9 +185,9 @@ class ProxyStore {
         const db = getDb();
         if (db) {
             try {
-                await db.collection(ALERTS_COLLECTION).doc(alert.id).set(alert);
+                await db.ref(`${ALERTS_PATH}/${alert.id}`).set(alert);
             } catch (err) {
-                console.warn("[proxy-store] addAlert Firestore error:", err);
+                console.warn("[proxy-store] addAlert RTDB error:", err);
             }
         }
         globalStore._memAlerts.unshift(alert);
@@ -197,9 +197,9 @@ class ProxyStore {
         const db = getDb();
         if (db) {
             try {
-                await db.collection(ALERTS_COLLECTION).doc(alertId).update({ acknowledged: true });
+                await db.ref(`${ALERTS_PATH}/${alertId}/acknowledged`).set(true);
             } catch (err) {
-                console.warn("[proxy-store] acknowledgeAlert Firestore error:", err);
+                console.warn("[proxy-store] acknowledgeAlert RTDB error:", err);
             }
         }
         const alerts = globalStore._memAlerts;

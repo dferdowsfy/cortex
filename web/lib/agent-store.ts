@@ -1,7 +1,7 @@
 import { adminDb } from "./firebase/admin";
 import type { AgentRegistration, AgentStatus } from "./proxy-types";
 
-const AGENTS_COLLECTION = "agent_registry";
+const AGENTS_PATH = "agent_registry";
 
 // In-memory fallback
 const memAgents = new Map<string, AgentRegistration>();
@@ -9,25 +9,25 @@ const memAgents = new Map<string, AgentRegistration>();
 class AgentStore {
     async registerAgent(agent: AgentRegistration): Promise<void> {
         try {
-            await adminDb.collection(AGENTS_COLLECTION).doc(agent.device_id).set({
+            await adminDb.ref(`${AGENTS_PATH}/${agent.device_id}`).set({
                 ...agent,
                 updated_at: new Date().toISOString(),
             });
         } catch (err) {
-            console.warn("[agent-store] Firestore registerAgent failed, using cache:", err);
+            console.warn("[agent-store] RTDB registerAgent failed, using cache:", err);
             memAgents.set(agent.device_id, agent);
         }
     }
 
     async updateHeartbeat(deviceId: string, data: Partial<AgentRegistration>): Promise<void> {
         try {
-            await adminDb.collection(AGENTS_COLLECTION).doc(deviceId).update({
+            await adminDb.ref(`${AGENTS_PATH}/${deviceId}`).update({
                 ...data,
                 last_sync: new Date().toISOString(),
                 status: "Healthy",
             });
         } catch (err) {
-            console.warn("[agent-store] Firestore updateHeartbeat failed:", err);
+            console.warn("[agent-store] RTDB updateHeartbeat failed:", err);
             const existing = memAgents.get(deviceId);
             if (existing) {
                 memAgents.set(deviceId, { ...existing, ...data, last_sync: new Date().toISOString(), status: "Healthy" });
@@ -37,8 +37,8 @@ class AgentStore {
 
     async getAgent(deviceId: string): Promise<AgentRegistration | null> {
         try {
-            const doc = await adminDb.collection(AGENTS_COLLECTION).doc(deviceId).get();
-            return doc.exists ? (doc.data() as AgentRegistration) : memAgents.get(deviceId) || null;
+            const snap = await adminDb.ref(`${AGENTS_PATH}/${deviceId}`).get();
+            return snap.exists() ? (snap.val() as AgentRegistration) : memAgents.get(deviceId) || null;
         } catch (err) {
             return memAgents.get(deviceId) || null;
         }
@@ -47,10 +47,13 @@ class AgentStore {
     async listAgents(): Promise<AgentRegistration[]> {
         let agents: AgentRegistration[] = [];
         try {
-            const snap = await adminDb.collection(AGENTS_COLLECTION).get();
-            agents = snap.docs.map(d => d.data() as AgentRegistration);
+            const snap = await adminDb.ref(AGENTS_PATH).get();
+            if (snap.exists()) {
+                const data = snap.val() as Record<string, AgentRegistration>;
+                agents = Object.values(data);
+            }
         } catch (err) {
-            console.warn("[agent-store] listAgents Firestore error:", err);
+            console.warn("[agent-store] listAgents RTDB error:", err);
             agents = Array.from(memAgents.values());
         }
 
@@ -74,7 +77,8 @@ class AgentStore {
     }
 
     async logInstallation(log: any): Promise<void> {
-        await adminDb.collection("installation_logs").add({
+        const id = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+        await adminDb.ref(`installation_logs/${id}`).set({
             ...log,
             timestamp: new Date().toISOString(),
         });

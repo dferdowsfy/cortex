@@ -160,7 +160,14 @@ export default function DesktopAgentLauncher({ status = "Offline", lastSeen = "N
                                 )}
 
                                 <button
-                                    onClick={() => window.location.href = 'complyze://open'}
+                                    onClick={() => {
+                                        // Try to open the desktop app via custom protocol
+                                        const iframe = document.createElement('iframe');
+                                        iframe.style.display = 'none';
+                                        iframe.src = 'complyze://open';
+                                        document.body.appendChild(iframe);
+                                        setTimeout(() => document.body.removeChild(iframe), 500);
+                                    }}
                                     className="bg-brand-50 hover:bg-brand-100 text-brand-700 px-8 py-3 rounded-lg text-sm font-bold border border-brand-200 shadow-sm transition-all"
                                 >
                                     Launch Complyze
@@ -181,8 +188,12 @@ export default function DesktopAgentLauncher({ status = "Offline", lastSeen = "N
                                     <ol className="text-sm text-blue-800 space-y-3 list-decimal list-inside">
                                         <li>Open the <strong>Complyze-1.0.0-arm64.dmg</strong> from your downloads.</li>
                                         <li>Drag <strong>Complyze</strong> into your <strong>Applications</strong> folder.</li>
-                                        <li>If you see a security warning: <strong>System Settings</strong> → <strong>Privacy & Security</strong> → scroll down to <strong>"Open Anyway"</strong>.</li>
-                                        <li>Look for the <strong>green circle</strong> in your top menu bar.</li>
+                                        <li>If you see <strong>&quot;damaged&quot;</strong> or a security warning, open <strong>Terminal</strong> and run:<br />
+                                            <code className="mt-1 inline-block bg-gray-900 text-white px-3 py-1.5 rounded text-xs font-mono select-all">
+                                                xattr -cr /Applications/Complyze.app
+                                            </code>
+                                        </li>
+                                        <li>Then open the app from <strong>Applications</strong>. Look for the <strong>green circle</strong> in your top menu bar.</li>
                                     </ol>
                                 </div>
                             )}

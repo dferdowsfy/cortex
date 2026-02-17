@@ -1,0 +1,996 @@
+[   60527ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/tools/stats:0
+[   61039ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/tools/stats:0
+[   70786ms] [WARNING] Installation logging failed: TypeError: Failed to fetch
+    at handleInstall (webpack-internal:///(app-pages-browser)/./app/components/DesktopAgentLauncher.tsx:47:13)
+    at executeDispatch (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16971:9)
+    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)
+    at processDispatchQueue (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:17021:19)
+    at eval (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:17622:9)
+    at batchedUpdates$1 (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:3312:40)
+    at dispatchEventForPluginEventSystem (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:17175:7)
+    at dispatchEvent (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:21358:11)
+    at dispatchDiscreteEvent (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:21326:11) @ webpack-internal:///(app-pages-browser)/./app/components/DesktopAgentLauncher.tsx:57
+[   70792ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3737/api/agent/installer:0
+[   74308ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/tools/stats:0
+[   74482ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/tools/stats:0
+[ 4092382ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4092384ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:365:50) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4103091ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4103091ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:365:50) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4118142ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4118142ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:365:50) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4133211ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4133213ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4148271ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4148272ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4163285ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4163285ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:365:50) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4178288ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4178289ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:365:50) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4193216ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4193217ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:365:50) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4209020ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4209036ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4223186ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4223194ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:365:50) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4238883ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4238884ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4253109ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3737/api/agent/heartbeat:0
+[ 4253109ms] [ERROR] Failed to fetch monitoring data: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:365:50) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4262079ms] [ERROR] WebSocket connection to 'ws://localhost:3737/_next/webpack-hmr' failed:  @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/dev/hot-reloader/app/use-websocket.js:41
+[ 4267849ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4267849ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:359:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4267850ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4267850ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4267853ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/__nextjs_original-stack-frames:0
+[ 4282840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4282840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4282845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4282845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4282847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/__nextjs_original-stack-frames:0
+[ 4297842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4297843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4297844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4297844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4312838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4312838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4312838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4312839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4327838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4327838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4327838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4327838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4342838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4342838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4342838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4342838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4357838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4357838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4357838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4357838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4372838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4372838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4372838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4372838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4387838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4387838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4387838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4387838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4402838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4402838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4402838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4402838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4417841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4417842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:359:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4417842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4417842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4432844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4432844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4432844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4432844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4447838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4447838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4447839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4447839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4462838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4462838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4462838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4462838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4477838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4477839ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4477840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4477840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4492838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4492838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4492838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4492838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4507837ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4507837ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4507839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4507839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4522838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4522838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4522839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4522839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4537844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4537844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4537845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4537846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4552838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4552838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4552839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4552839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4567837ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4567838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4567839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4567839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4582839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4582839ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4582839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4582839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4597841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4597842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4597844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4597845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4612838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4612838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4612840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4612840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4627840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4627840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4627840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4627840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4642839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4642839ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4642840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4642841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4657838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4657838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4657839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4657840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4672842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4672842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4672842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4672842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4687839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4687839ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4687839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4687839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4702838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4702838ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4702840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4702840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4717839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4717839ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4717840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4717841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4732840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4732841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4732841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4732841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4747840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4747840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4747840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4747840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4762842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4762842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4762845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4762845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4777840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4777840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4777840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4777840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4792840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4792840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4792841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4792841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4807840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4807840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4807841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4807841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4822842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4822842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4822842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4822843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4837839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4837839ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4837841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4837841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4852839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4852839ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4852841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4852842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4867841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4867841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4867841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4867842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4882840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4882840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4882841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4882841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4897839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4897839ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4897842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4897842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4912839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4912839ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4912841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4912841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4927840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4927840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4927841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4927842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4942841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4942841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4942841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4942841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4957840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4957840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4957840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4957841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4972841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4972841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4972842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4972842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 4987841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 4987841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 4987843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 4987843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5002845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5002845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5002846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5002846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5017840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5017840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5017840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5017840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5032840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5032840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5032841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5032841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5047840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5047840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5047841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5047841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5062840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5062840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5062841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5062841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5077840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5077840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5077841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5077842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5092841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5092842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5092842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5092842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5107840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5107840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5107841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5107841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5122840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5122840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5122842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5122842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5137840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5137840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5137841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5137841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5152840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5152840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5152841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5152841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5167840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5167840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5167841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5167842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5182841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5182841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5182841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5182842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5197840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5197840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5197840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5197840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5212840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5212841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5212842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5212842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5227840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5227840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5227841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5227841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5242842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5242842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5242842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5242843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5257841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5257841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5257841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5257841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5272840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5272840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5272841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5272841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5287843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5287843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5287843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5287843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5302840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5302840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5302842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5302842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5317840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5317841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5317842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5317842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5332841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5332842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5332842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5332842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5347841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5347841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5347842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5347843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5362840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5362840ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5362841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5362842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5377841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5377841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5377842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5377842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5392841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5392841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5392842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5392843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5407842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5407842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5407842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5407842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5422842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5422842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5422843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5422844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5437842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5437842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5437843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5437843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5452841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5452841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5452843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5452843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5467842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5467842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5467843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5467843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5482841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5482841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5482842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5482842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5497842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5497842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5497842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5497842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5512841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5512842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5512843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5512843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5527842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5527842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5527842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5527842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5542841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5542841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5542841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5542841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5557841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5557841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5557843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5557843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5572842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5572842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5572842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5572842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5587842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5587842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5587842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5587843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5602842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5602842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5602842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5602842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5617842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5617842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5617842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5617842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5632843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5632843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5632844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5632844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5647842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5647843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5647843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5647843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5662845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5662845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5662847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5662847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5677841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5677841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5677843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5677843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5692843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5692843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5692843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5692843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5707842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5707842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5707843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5707843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5722841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5722841ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5722843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5722843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5737843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5737843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5737843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5737843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5752843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5752843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5752843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5752843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5767843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5767843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5767843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5767843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5782843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5782843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5782843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5782843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5797841ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5797842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5797843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5797843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5812843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5812843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5812843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5812843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5827843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5827843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5827845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5827845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5842842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5842842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5842843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5842843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5857842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5857842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5857843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5857843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5872842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5872842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5872844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5872844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5887842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5887842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5887844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5887844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5902842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5902842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5902844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5902844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5917842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5917842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5917843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5917843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5932842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5932842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5932844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5932844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5947843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5947843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5947845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5947845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5962842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5962842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5962842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5962843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5977843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5977843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5977845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5977845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 5992842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 5992842ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 5992844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 5992844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6007844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6007844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6007844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6007845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6022843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6022844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6022845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6022846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6037844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6037844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6037845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6037845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6052843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6052843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6052845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6052845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6067844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6067844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6067845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6067845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6082842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6082843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6082843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6082843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6097843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6097843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6097844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6097844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6112845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6112845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6112845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6112845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6127844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6127844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6127846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6127846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6142843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6142843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6142845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6142845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6157843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6157843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6157845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6157845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6172844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6172844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6172845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6172845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6187845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6187845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6187846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6187846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6202851ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6202852ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:359:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6202854ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6202854ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6217845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6217845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6217847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6217847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6232845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6232845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6232845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6232845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6247844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6247845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6247845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6247845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6262843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6262843ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6262844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6262844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6277845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6277845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6277845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6277845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6292844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6292844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6292846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6292846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6307844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6307844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6307846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6307846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6322844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6322844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6322845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6322845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6337845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6337845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6337845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6337845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6352844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6352844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6352845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6352845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6367849ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6367849ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:360:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6367850ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6367850ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6367853ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/__nextjs_original-stack-frames:0
+[ 6382845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6382845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6382845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6382846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6397845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6397845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6397846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6397847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6412844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6412844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6412844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6412844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6427844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6427844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6427845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6427846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6442845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6442845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6442845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6442845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6457845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6457845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6457846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6457846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6472844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6472844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6472845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6472845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6487844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6487844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6487846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6487846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6502845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6502845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6502845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6502845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6517845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6517845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6517846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6517846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6532846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6532846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6532847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6532847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6547844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6547844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6547846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6547847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6562844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6562844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6562845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6562845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6577844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6577844ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6577844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6577844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6592857ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6592857ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6592857ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6592857ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6607845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6607845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6607846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6607847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6622845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6622845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6622846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6622847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6637845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6637845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6637845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6637845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6652845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6652845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6652845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6652845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6667845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6667845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6667845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6667845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6682846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6682846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6682847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6682847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6697844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6697845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6697845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6697845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6712845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6712845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6712846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6712846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6727845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6727845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6727847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6727847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6742845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6742845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6742846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6742846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6757845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6757845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6757847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6757847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6772846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6772846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6772846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6772846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6787845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6787845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6787846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6787847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6802848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6802849ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6802849ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6802850ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6817846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6817846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6817846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6817846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6832845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6832845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6832846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6832846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6847846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6847846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6847846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6847846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6862846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6862846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:359:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6862847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6862847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6877846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6877846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:359:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6877847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6877847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6892845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6892846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6892847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6892847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6907845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6907846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6907847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6907847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6922846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6922846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6922847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6922847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6937845ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6937845ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6937847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6937847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6952847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6952847ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6952847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6952847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6967846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6967846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6967847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6967847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6982846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6982846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6982847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6982847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 6997846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 6997846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 6997848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 6997848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 7012846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 7012846ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 7012847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 7012847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 7027847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 7027847ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 7027848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 7027848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 7042847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 7042847ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 7042847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 7042848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 7057847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 7057847ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 7057847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 7057847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 7072847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 7072847ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 7072849ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 7072850ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0
+[ 7087847ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/agent/heartbeat:0
+[ 7087847ms] [ERROR] Failed to fetch monitoring data: TypeError: Failed to fetch
+    at MonitoringPage.useCallback[fetchData] (webpack-internal:///(app-pages-browser)/./app/monitoring/page.tsx:361:21) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[ 7087848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/activity?period=7d&events=50:0
+[ 7087848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3737/api/proxy/settings:0

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
  * stored in a bucket (S3/GCS) or serve the binary directly.
  */
 import { join } from "path";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, statSync, createReadStream } from "fs";
 
 export async function GET(req: NextRequest) {
     const userAgent = req.headers.get("user-agent")?.toLowerCase() || "";
@@ -21,13 +21,22 @@ export async function GET(req: NextRequest) {
     const distPath = join(process.cwd(), "..", "desktop", "dist", filename);
 
     if (existsSync(distPath)) {
-        console.log(`[installer] Serving real package from ${distPath}`);
-        const fileBuffer = readFileSync(distPath);
-        return new NextResponse(fileBuffer, {
+        console.log(`[installer] Streaming real package from ${distPath}`);
+        const stat = statSync(distPath);
+        const stream = createReadStream(distPath);
+        const webStream = new ReadableStream({
+            start(controller) {
+                stream.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)));
+                stream.on("end", () => controller.close());
+                stream.on("error", (err) => controller.error(err));
+            },
+        });
+        return new NextResponse(webStream, {
             status: 200,
             headers: {
                 "Content-Type": contentType,
                 "Content-Disposition": `attachment; filename="${filename}"`,
+                "Content-Length": stat.size.toString(),
                 "Cache-Control": "no-cache",
             },
         });

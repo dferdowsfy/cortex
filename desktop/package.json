@@ -27,10 +27,10 @@
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "forceCodeSigning": true
+      "forceCodeSigning": false
     },
     "dmg": {
-      "sign": true
+      "sign": false
     },
     "files": [
       "**/*",

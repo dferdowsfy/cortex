@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "agent_registry": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "proxy_config": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "proxy_events": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "proxy_alerts": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

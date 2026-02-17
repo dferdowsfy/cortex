@@ -1,19 +1,19 @@
 /**
- * User Settings Service — Firestore-backed per-user settings.
+ * User Settings Service — RTDB-backed per-user settings.
  *
- * Path: users/{uid}/settings/config
+ * Path: users/{uid}/settings
  *
- * Firestore is the single source of truth.
- * Both dashboard and desktop subscribe to the same document.
+ * Firebase Realtime Database is the single source of truth.
+ * Both dashboard and desktop subscribe to the same node.
  */
 import {
-    doc,
-    setDoc,
-    onSnapshot,
-    serverTimestamp,
+    ref,
+    set,
+    update,
+    onValue,
+    type Database,
     type Unsubscribe,
-    type Firestore,
-} from "firebase/firestore";
+} from "firebase/database";
 
 // ── Settings Shape ───────────────────────────────────────────────
 export interface UserSettings {
@@ -27,7 +27,7 @@ export interface UserSettings {
     desktopBypass: boolean;
     riskThreshold: number;
     retentionDays: number;
-    updatedAt?: unknown; // Firestore Timestamp
+    updatedAt?: number; // epoch ms
 }
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
@@ -43,45 +43,41 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     retentionDays: 90,
 };
 
-// ── Document path helper ─────────────────────────────────────────
-function settingsDocRef(db: Firestore, uid: string) {
-    return doc(db, "users", uid, "settings", "config");
+// ── Ref helper ───────────────────────────────────────────────────
+function settingsRef(db: Database, uid: string) {
+    return ref(db, `users/${uid}/settings`);
 }
 
 // ── Write (merge) ────────────────────────────────────────────────
 export async function updateUserSettings(
-    db: Firestore,
+    db: Database,
     uid: string,
     partial: Partial<UserSettings>
 ): Promise<void> {
-    const ref = settingsDocRef(db, uid);
-    await setDoc(
-        ref,
-        {
-            ...partial,
-            updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-    );
+    const r = settingsRef(db, uid);
+    await update(r, {
+        ...partial,
+        updatedAt: Date.now(),
+    });
 }
 
 // ── Realtime subscription ────────────────────────────────────────
 export function subscribeToUserSettings(
-    db: Firestore,
+    db: Database,
     uid: string,
     onSettings: (settings: UserSettings) => void,
     onError?: (error: Error) => void
 ): Unsubscribe {
-    const ref = settingsDocRef(db, uid);
+    const r = settingsRef(db, uid);
 
-    return onSnapshot(
-        ref,
-        (docSnap) => {
-            if (!docSnap.exists()) {
+    const unsub = onValue(
+        r,
+        (snapshot) => {
+            if (!snapshot.exists()) {
                 // Initialize with defaults on first access
-                setDoc(ref, {
+                set(r, {
                     ...DEFAULT_USER_SETTINGS,
-                    updatedAt: serverTimestamp(),
+                    updatedAt: Date.now(),
                 }).catch((err) =>
                     console.error("[user-settings] Failed to init defaults:", err)
                 );
@@ -89,12 +85,14 @@ export function subscribeToUserSettings(
                 return;
             }
 
-            const data = docSnap.data() as UserSettings;
+            const data = snapshot.val() as UserSettings;
             onSettings({ ...DEFAULT_USER_SETTINGS, ...data });
         },
         (error) => {
-            console.error("[user-settings] Snapshot error:", error);
+            console.error("[user-settings] Listener error:", error);
             if (onError) onError(error);
         }
     );
+
+    return unsub;
 }

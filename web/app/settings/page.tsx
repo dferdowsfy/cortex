@@ -496,7 +496,7 @@ export default function SettingsPage() {
                         <select
                             value={settings.retentionDays}
                             onChange={(e) => handleSave({ retentionDays: parseInt(e.target.value, 10) })}
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
                         >
                             {[30, 60, 90, 180, 365].map((d) => (
                                 <option key={d} value={d}>{d} days</option>

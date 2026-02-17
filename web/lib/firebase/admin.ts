@@ -16,7 +16,11 @@ import {
     cert,
     type ServiceAccount,
 } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getDatabase } from "firebase-admin/database";
+
+const RTDB_URL =
+    process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL ||
+    `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseio.com`;
 
 function getAdminApp() {
     if (getApps().length > 0) return getApp();
@@ -29,7 +33,11 @@ function getAdminApp() {
             const svcAccount = JSON.parse(
                 process.env.FIREBASE_SERVICE_ACCOUNT_KEY
             ) as ServiceAccount;
-            return initializeApp({ credential: cert(svcAccount), projectId });
+            return initializeApp({
+                credential: cert(svcAccount),
+                projectId,
+                databaseURL: RTDB_URL,
+            });
         } catch (err) {
             console.warn(
                 "[firebase-admin] Could not parse FIREBASE_SERVICE_ACCOUNT_KEY:",
@@ -45,13 +53,13 @@ function getAdminApp() {
                 credential: cert({
                     projectId,
                     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                    // The private key comes with escaped newlines from env vars
                     privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(
                         /\\n/g,
                         "\n"
                     ),
                 }),
                 projectId,
+                databaseURL: RTDB_URL,
             });
         } catch (err) {
             console.warn(
@@ -61,16 +69,16 @@ function getAdminApp() {
         }
     }
 
-    // Option 3: Project-ID only (works for Firestore in some environments)
+    // Option 3: Project-ID only
     console.warn(
         "[firebase-admin] No service account credentials found. " +
         "Using project-ID only initialization. " +
         "Set FIREBASE_SERVICE_ACCOUNT_KEY for full admin access."
     );
-    return initializeApp({ projectId });
+    return initializeApp({ projectId, databaseURL: RTDB_URL });
 }
 
 const adminApp = getAdminApp();
-const adminDb = getFirestore(adminApp);
+const adminDb = getDatabase(adminApp);
 
 export { adminApp, adminDb };

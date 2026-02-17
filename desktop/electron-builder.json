@@ -5,8 +5,10 @@
     "directories": {
         "output": "dist"
     },
+    "icon": "icon.png",
     "mac": {
         "category": "public.app-category.utilities",
+        "icon": "icon.png",
         "target": [
             "dmg",
             "pkg"
