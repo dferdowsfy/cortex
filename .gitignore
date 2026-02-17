@@ -9,3 +9,4 @@ coverage/
 .turbo/
 web/certs/
 *.bak
+desktop/certs/
