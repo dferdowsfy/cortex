@@ -1,6 +1,10 @@
 /**
  * /api/proxy/settings — GET & POST
+ *
  * Manage proxy monitoring settings.
+ * Reads/writes from global proxy_config/settings for backward compatibility.
+ * The per-user settings in users/{uid}/settings/config (Firestore)
+ * are the authoritative source — this API is kept for agent heartbeat compatibility.
  */
 import { NextRequest, NextResponse } from "next/server";
 import store from "@/lib/proxy-store";

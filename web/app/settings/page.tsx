@@ -1,25 +1,12 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useUserSettings } from "@/lib/hooks/use-user-settings";
 
 /* ═══════════════════════════════════════════════════════════════
-   Types
+   Types (kept for agent/setup status — not user settings)
    ═══════════════════════════════════════════════════════════════ */
-
-interface ProxySettings {
-    proxy_enabled: boolean;
-    full_audit_mode: boolean;
-    block_high_risk: boolean;
-    redact_sensitive: boolean;
-    alert_on_violations: boolean;
-    desktop_bypass: boolean;
-    retention_days: number;
-    proxy_endpoint: string;
-    updated_at: string;
-    agent_last_seen?: string;
-    agent_hostname?: string;
-}
 
 interface AgentStatus {
     connected: boolean;
@@ -113,9 +100,9 @@ function isCloudDeployment(): boolean {
    ═══════════════════════════════════════════════════════════════ */
 
 export default function SettingsPage() {
-    const [settings, setSettings] = useState<ProxySettings | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    // ── Firestore-backed user settings (realtime sync) ──────────
+    const { settings, loading, error: settingsError, saveSettings } = useUserSettings();
+
     const [saved, setSaved] = useState(false);
     const [error, setError] = useState("");
     const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
@@ -123,11 +110,14 @@ export default function SettingsPage() {
     const [setupMessage, setSetupMessage] = useState<{ type: "success" | "error" | "info"; text: string; command?: string } | null>(null);
     const [isCloud, setIsCloud] = useState(false);
     const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
-    const initialLoadDone = useRef(false);
 
     useEffect(() => {
         setIsCloud(isCloudDeployment());
     }, []);
+
+    useEffect(() => {
+        if (settingsError) setError(settingsError);
+    }, [settingsError]);
 
     const checkAgentStatus = useCallback(async () => {
         try {
@@ -155,21 +145,8 @@ export default function SettingsPage() {
     }, [isCloud]);
 
     useEffect(() => {
-        if (!initialLoadDone.current) {
-            fetch("/api/proxy/settings")
-                .then((r) => r.json())
-                .then((data) => {
-                    setSettings(data);
-                    setLoading(false);
-                })
-                .catch(() => {
-                    setError("Failed to load settings");
-                    setLoading(false);
-                });
-            checkAgentStatus();
-            if (!isCloud) checkSetupStatus();
-            initialLoadDone.current = true;
-        }
+        checkAgentStatus();
+        if (!isCloud) checkSetupStatus();
     }, [checkSetupStatus, checkAgentStatus, isCloud]);
 
     useEffect(() => {
@@ -180,29 +157,15 @@ export default function SettingsPage() {
         return () => clearInterval(interval);
     }, [checkAgentStatus, checkSetupStatus, isCloud]);
 
-    async function saveSettings(partial: Partial<ProxySettings>) {
-        if (!settings) return;
-        const updated = { ...settings, ...partial };
-        setSettings(updated);
-        setSaving(true);
-        setSaved(false);
+    // ── Save handler: writes directly to Firestore ──────────────
+    async function handleSave(partial: Partial<typeof settings>) {
         setError("");
-
         try {
-            const res = await fetch("/api/proxy/settings", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(partial),
-            });
-            if (!res.ok) throw new Error("Failed to save");
-            const data = await res.json();
-            setSettings(data);
+            await saveSettings(partial);
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
         } catch {
             setError("Failed to save settings. Please try again.");
-        } finally {
-            setSaving(false);
         }
     }
 
@@ -244,8 +207,6 @@ export default function SettingsPage() {
         );
     }
 
-    if (!settings) return null;
-
     const allReady = setupStatus?.proxy_server_running && setupStatus?.ca_trusted && setupStatus?.proxy_configured;
 
     return (
@@ -255,6 +216,7 @@ export default function SettingsPage() {
                 <h1 className="text-2xl font-bold text-gray-900">Admin Settings</h1>
                 <p className="mt-1 text-sm text-gray-500">
                     Configure AI Proxy Monitoring, data retention, and policy enforcement.
+                    <span className="ml-1 text-brand-600 font-medium">Synced in realtime.</span>
                 </p>
             </div>
 
@@ -264,7 +226,7 @@ export default function SettingsPage() {
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
-                    Settings saved successfully.
+                    Settings saved and synced to all connected devices.
                 </div>
             )}
             {error && (
@@ -395,12 +357,12 @@ export default function SettingsPage() {
                                 "api.replicate.com", "generativelanguage.googleapis.com",
                                 "chatgpt.com", "chat.openai.com", "claude.ai"
                             ].map((d) => (
-                                <span key={d} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${["chatgpt.com", "chat.openai.com", "claude.ai"].includes(d) && settings.desktop_bypass
+                                <span key={d} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${["chatgpt.com", "chat.openai.com", "claude.ai"].includes(d) && settings.desktopBypass
                                     ? "bg-amber-50 border border-amber-200 text-amber-700"
                                     : "bg-brand-50 border border-brand-200 text-brand-700"
                                     }`}>
                                     {d}
-                                    {["chatgpt.com", "chat.openai.com", "claude.ai"].includes(d) && settings.desktop_bypass && (
+                                    {["chatgpt.com", "chat.openai.com", "claude.ai"].includes(d) && settings.desktopBypass && (
                                         <span className="ml-1 text-amber-500">📊</span>
                                     )}
                                 </span>
@@ -444,44 +406,75 @@ export default function SettingsPage() {
                 </div>
             )}
 
-            {/* ── Policy Controls ── */}
+            {/* ── Policy Controls (Firestore-backed) ── */}
             <div className="card">
                 <h2 className="text-base font-bold text-gray-900 mb-2">Policy Controls</h2>
                 <p className="text-xs text-gray-500 mb-4">Automated enforcement actions applied to monitored traffic.</p>
 
                 <Toggle
-                    enabled={settings.proxy_enabled}
-                    onChange={(val) => saveSettings({ proxy_enabled: val })}
+                    enabled={settings.proxyEnabled}
+                    onChange={(val) => handleSave({ proxyEnabled: val })}
                     label="Enable Global AI Monitoring"
                     description="When enabled, all traffic through the Complyze Agents will be classified and logged."
                 />
 
                 <Toggle
-                    enabled={settings.block_high_risk}
-                    onChange={(val) => saveSettings({ block_high_risk: val })}
+                    enabled={settings.blockHighRisk}
+                    onChange={(val) => handleSave({ blockHighRisk: val })}
                     label="Block Critical-Risk Prompts"
                     description="Automatically block any prompt classified as critical sensitivity level."
                     warning="Blocked prompts return an error to the user."
                 />
                 <Toggle
-                    enabled={settings.redact_sensitive}
-                    onChange={(val) => saveSettings({ redact_sensitive: val })}
+                    enabled={settings.redactSensitive}
+                    onChange={(val) => handleSave({ redactSensitive: val })}
                     label="Redact Sensitive Content"
                     description="Automatically replace detected PII, credentials, and financial data with [REDACTED]."
                 />
                 <Toggle
-                    enabled={settings.alert_on_violations}
-                    onChange={(val) => saveSettings({ alert_on_violations: val })}
+                    enabled={settings.alertOnViolations}
+                    onChange={(val) => handleSave({ alertOnViolations: val })}
                     label="Alert on Policy Violations"
                     description="Generate alerts when sensitive data or policy violations are detected."
                 />
                 <Toggle
-                    enabled={settings.desktop_bypass}
-                    onChange={(val) => saveSettings({ desktop_bypass: val })}
+                    enabled={settings.desktopBypass}
+                    onChange={(val) => handleSave({ desktopBypass: val })}
                     label="Desktop App Bypass"
                     description="Allow certificate-pinned desktop apps (ChatGPT, Claude) to bypass deep inspection."
                     warning="Enabling this creates a monitoring gap. Recommended: OFF."
                 />
+
+                <Toggle
+                    enabled={settings.interceptEnabled}
+                    onChange={(val) => handleSave({ interceptEnabled: val })}
+                    label="Intercept Mode"
+                    description="Enable active interception of AI traffic for deep content inspection."
+                />
+
+                <Toggle
+                    enabled={settings.blockEnabled}
+                    onChange={(val) => handleSave({ blockEnabled: val })}
+                    label="Block Mode"
+                    description="Enable blocking of requests that exceed the risk threshold."
+                />
+
+                {/* Risk Threshold Slider */}
+                <div className="py-4 border-b border-gray-100 last:border-0">
+                    <p className="text-sm font-semibold text-gray-800">Risk Threshold</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Requests scoring above this threshold are flagged or blocked.</p>
+                    <div className="mt-3 flex items-center gap-3">
+                        <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={settings.riskThreshold}
+                            onChange={(e) => handleSave({ riskThreshold: parseInt(e.target.value, 10) })}
+                            className="flex-1 accent-brand-600"
+                        />
+                        <span className="text-sm font-bold text-gray-800 w-10 text-right">{settings.riskThreshold}</span>
+                    </div>
+                </div>
             </div>
 
             {/* ── Data & Privacy ── */}
@@ -490,8 +483,8 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-500 mb-4">Controls for data collection, retention, and audit capabilities.</p>
 
                 <Toggle
-                    enabled={settings.full_audit_mode}
-                    onChange={(val) => saveSettings({ full_audit_mode: val })}
+                    enabled={settings.fullAuditMode}
+                    onChange={(val) => handleSave({ fullAuditMode: val })}
                     label="Full Audit Mode"
                     description="Store full prompt text alongside classification metadata."
                     warning="Increases data sensitivity. Ensure access controls are in place."
@@ -501,8 +494,8 @@ export default function SettingsPage() {
                     <p className="text-sm font-semibold text-gray-800">Data Retention Period</p>
                     <div className="mt-3 flex items-center gap-3">
                         <select
-                            value={settings.retention_days}
-                            onChange={(e) => saveSettings({ retention_days: parseInt(e.target.value, 10) })}
+                            value={settings.retentionDays}
+                            onChange={(e) => handleSave({ retentionDays: parseInt(e.target.value, 10) })}
                             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
                         >
                             {[30, 60, 90, 180, 365].map((d) => (

@@ -125,7 +125,7 @@ function FindProxyForURL(url, host) {
 `.trim();
 }
 
-const { updatePolicy } = require('./dlp/policyEngine');
+const { updatePolicy } = require('../dlp/policyEngine');
 
 async function syncSettings() {
     try {
@@ -138,7 +138,7 @@ async function syncSettings() {
             // Sync with local DLP policy engine
             updatePolicy({
                 blockingEnabled: blockHighRiskEnabled,
-                reuThreshold: 50 // Can be made dynamic later
+                reuThreshold: 50
             });
 
             console.log(`[sync] Settings: bypass=${desktopBypassEnabled}, block=${blockHighRiskEnabled}`);

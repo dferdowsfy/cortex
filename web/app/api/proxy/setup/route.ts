@@ -42,17 +42,19 @@ function getActiveInterface(): string {
 
 function getProxyStatus(iface: string): { enabled: boolean; server: string; port: string } {
     try {
-        const out = execSync(`networksetup -getsecurewebproxy "${iface}"`, {
+        // Check PAC status instead of global proxy
+        const out = execSync(`networksetup -getautoproxyurl "${iface}"`, {
             encoding: "utf8",
             timeout: 5000,
         });
         const enabled = out.includes("Enabled: Yes");
-        const serverMatch = out.match(/Server:\s*(.+)/);
-        const portMatch = out.match(/Port:\s*(\d+)/);
+        const urlMatch = out.match(/URL:\s*(.+)/);
+        const url = urlMatch?.[1]?.trim() || "";
+
         return {
             enabled,
-            server: serverMatch?.[1]?.trim() || "",
-            port: portMatch?.[1]?.trim() || "",
+            server: url.includes("127.0.0.1") ? "127.0.0.1" : "",
+            port: url.match(/:(\d+)\//)?.[1] || "8080",
         };
     } catch {
         return { enabled: false, server: "", port: "" };
@@ -120,9 +122,12 @@ export async function POST(req: NextRequest) {
                 const proxyRunning = isProxyServerRunning();
                 const certsExist = existsSync(join(process.cwd(), "certs", "ca-cert.pem"));
 
+                // Sync: Use the same logic as the agent
+                const isConfigured = proxy.enabled && proxy.server === "127.0.0.1";
+
                 return NextResponse.json({
                     interface: iface,
-                    proxy_configured: proxy.enabled && proxy.server === "127.0.0.1" && proxy.port === "8080",
+                    proxy_configured: isConfigured,
                     proxy_enabled: proxy.enabled,
                     proxy_server: proxy.server,
                     proxy_port: proxy.port,
@@ -133,24 +138,28 @@ export async function POST(req: NextRequest) {
             }
 
             case "enable-proxy": {
+                const pacUrl = "http://127.0.0.1:8080/proxy.pac";
                 try {
+                    // NUCLEAR CLEANUP: Disable global proxies first
+                    execSync(`networksetup -setwebproxystate "${iface}" off && networksetup -setsecurewebproxystate "${iface}" off`, { timeout: 3000 });
+
+                    // Enable PAC
                     execSync(
-                        `networksetup -setsecurewebproxy "${iface}" 127.0.0.1 8080`,
+                        `networksetup -setautoproxyurl "${iface}" "${pacUrl}" && networksetup -setautoproxystate "${iface}" on`,
                         { encoding: "utf8", timeout: 5000 }
                     );
                     return NextResponse.json({
                         success: true,
-                        message: `HTTPS proxy enabled on ${iface} → 127.0.0.1:8080`,
+                        message: `PAC-based proxy enabled on ${iface} → ${pacUrl}`,
                     });
                 } catch (e: unknown) {
                     const msg = e instanceof Error ? e.message : "Unknown error";
-                    // networksetup may need admin privileges
                     if (msg.includes("requires authorization") || msg.includes("permission")) {
                         return NextResponse.json({
                             success: false,
                             needs_sudo: true,
-                            message: "macOS requires admin authorization. Run this in terminal:",
-                            command: `sudo networksetup -setsecurewebproxy "${iface}" 127.0.0.1 8080`,
+                            message: "macOS requires admin authorization to modify network settings.",
+                            command: `sudo networksetup -setautoproxyurl "${iface}" "${pacUrl}" && sudo networksetup -setautoproxystate "${iface}" on`,
                         }, { status: 403 });
                     }
                     throw e;
@@ -189,23 +198,25 @@ export async function POST(req: NextRequest) {
 
             case "disable-proxy": {
                 try {
+                    // Turn everything off for a clean state
                     execSync(
+                        `networksetup -setautoproxystate "${iface}" off && ` +
+                        `networksetup -setwebproxystate "${iface}" off && ` +
                         `networksetup -setsecurewebproxystate "${iface}" off`,
                         { encoding: "utf8", timeout: 5000 }
                     );
                     return NextResponse.json({
                         success: true,
-                        message: `HTTPS proxy disabled on ${iface}`,
+                        message: `All proxies disabled on ${iface}`,
                     });
                 } catch (e: unknown) {
                     const msg = e instanceof Error ? e.message : "Unknown error";
-                    // networksetup often requires admin privileges on newer macOS
                     if (msg.includes("requires authorization") || msg.includes("permission") || msg.includes("password")) {
                         return NextResponse.json({
                             success: false,
                             needs_sudo: true,
                             message: "macOS requires admin authorization. Run this in terminal:",
-                            command: `sudo networksetup -setsecurewebproxystate "${iface}" off`,
+                            command: `sudo networksetup -setautoproxystate "${iface}" off && sudo networksetup -setwebproxystate "${iface}" off && sudo networksetup -setsecurewebproxystate "${iface}" off`,
                         }, { status: 403 });
                     }
                     throw e;

@@ -64,12 +64,33 @@
             color: #2563eb;
         }
 
+        .sync-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 100px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .sync-firebase {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .sync-legacy {
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+
         .content {
             flex: 1;
             padding: 32px;
             display: flex;
             flex-direction: column;
             gap: 24px;
+            overflow-y: auto;
         }
 
         .card {
@@ -93,6 +114,35 @@
             font-size: 24px;
             font-weight: 700;
             color: #111;
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 13px;
+        }
+
+        .settings-row:last-child {
+            border-bottom: none;
+        }
+
+        .settings-label {
+            color: #4b5563;
+        }
+
+        .settings-value {
+            font-weight: 600;
+        }
+
+        .settings-value.on {
+            color: #059669;
+        }
+
+        .settings-value.off {
+            color: #dc2626;
         }
 
         .footer {
@@ -130,6 +180,7 @@
             <h1 style="margin: 0; font-size: 20px;">Complyze Agent</h1>
             <div id="status-container" style="margin-top: 4px;">
                 <span id="status-badge" class="status-badge status-connecting">Initializing...</span>
+                <span id="sync-badge" class="sync-badge sync-legacy">API Sync</span>
             </div>
         </div>
     </div>
@@ -150,6 +201,32 @@
                 <button id="toggle-btn" class="btn">Enable</button>
             </div>
         </div>
+
+        <div class="card">
+            <div class="card-title">Active Policy (from Firestore)</div>
+            <div id="settings-display">
+                <div class="settings-row">
+                    <span class="settings-label">Block Mode</span>
+                    <span id="setting-block" class="settings-value on">ON</span>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Intercept</span>
+                    <span id="setting-intercept" class="settings-value on">ON</span>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Risk Threshold</span>
+                    <span id="setting-threshold" class="settings-value" style="color: #111;">60</span>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Block High Risk</span>
+                    <span id="setting-blockhigh" class="settings-value off">OFF</span>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Redact Sensitive</span>
+                    <span id="setting-redact" class="settings-value off">OFF</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="footer">
@@ -160,6 +237,18 @@
     <script>
         const { ipcRenderer } = require('electron');
 
+        function updateSettingDisplay(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (typeof value === 'boolean') {
+                el.textContent = value ? 'ON' : 'OFF';
+                el.className = 'settings-value ' + (value ? 'on' : 'off');
+            } else {
+                el.textContent = String(value);
+                el.style.color = '#111';
+            }
+        }
+
         ipcRenderer.on('status-update', (event, data) => {
             document.getElementById('device-id').textContent = data.deviceId;
             document.getElementById('last-sync').textContent = `Last Sync: ${data.lastSync}`;
@@ -168,8 +257,26 @@
             badge.textContent = data.status;
             badge.className = 'status-badge status-' + data.status.toLowerCase();
 
+            const syncBadge = document.getElementById('sync-badge');
+            if (data.firebaseSynced) {
+                syncBadge.textContent = 'Cloud & Realtime Sync';
+                syncBadge.className = 'sync-badge sync-firebase';
+            } else {
+                syncBadge.textContent = 'Remote Policy Sync';
+                syncBadge.className = 'sync-badge sync-legacy';
+            }
+
             const btn = document.getElementById('toggle-btn');
             btn.textContent = data.isMonitoringEnabled ? 'Disable' : 'Enable';
+
+            // Update settings display
+            if (data.settings) {
+                updateSettingDisplay('setting-block', data.settings.blockEnabled);
+                updateSettingDisplay('setting-intercept', data.settings.interceptEnabled);
+                updateSettingDisplay('setting-threshold', data.settings.riskThreshold);
+                updateSettingDisplay('setting-blockhigh', data.settings.blockHighRisk);
+                updateSettingDisplay('setting-redact', data.settings.redactSensitive);
+            }
         });
 
         document.getElementById('toggle-btn').addEventListener('click', () => {

@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(
         JSON.stringify({
             error: "Installer Not Found",
-            message: "The desktop agent build artifact was not found on this server. If you are running in production, please configure AGENT_DOWNLOAD_URL. If running locally, ensure you have run 'npm run build' in the desktop directory.",
+            message: "The desktop agent build artifact was not found on this server. If you are running locally, ensure you have run 'npm run build' in the desktop directory.",
             platform: isWindows ? "Windows" : "macOS",
             expected_path: distPath
         }),

@@ -6,8 +6,11 @@ const sudo = require('sudo-prompt');
 const os = require('os');
 const crypto = require('crypto');
 
-// ─── Configuration ───────────────────────────────────────────────────────────
+// ── Firebase ──────────────────────────────────────────────────────────────────
+const { initFirebase, onAuthStateChanged, signInWithCustomToken } = require('./lib/firebase-config');
+const { FirebaseSettingsSync } = require('./lib/firebase-settings');
 
+// ─── Configuration ───────────────────────────────────────────────────────────
 const AGENT_VERSION = '1.2.0';
 const PROXY_PORT = 8080;
 const PROXY_SCRIPT_PATH = path.join(__dirname, 'scripts', 'proxy-server.js');
@@ -18,7 +21,6 @@ const sudoOptions = {
 };
 
 // ─── State ──────────────────────────────────────────────────────────────────
-
 let tray = null;
 let mainWindow = null;
 let proxyProcess = null;
@@ -27,8 +29,25 @@ let heartbeatInterval = null;
 let deviceId = null;
 let lastSyncTime = 'Never';
 
-// ─── Initialize Device ID ────────────────────────────────────────────────────
+// Firebase state
+let firebaseUid = null;
+const settingsSync = new FirebaseSettingsSync();
 
+// Current settings from Firestore (cached for offline fallback)
+let currentSettings = {
+    blockEnabled: true,
+    interceptEnabled: true,
+    proxyEnabled: true,
+    fullAuditMode: false,
+    blockHighRisk: false,
+    redactSensitive: false,
+    alertOnViolations: true,
+    desktopBypass: false,
+    riskThreshold: 60,
+    retentionDays: 90,
+};
+
+// ─── Initialize Device ID ────────────────────────────────────────────────────
 function getDeviceId() {
     if (deviceId) return deviceId;
     const configPath = path.join(app.getPath('userData'), 'device.json');
@@ -46,8 +65,105 @@ function getDeviceId() {
     return deviceId;
 }
 
-// ─── Heartbeat & Registration ────────────────────────────────────────────────
+// ─── Firebase Auth Initialization ────────────────────────────────────────────
+function initializeFirebaseAuth() {
+    const { auth, db } = initFirebase();
 
+    if (!auth || !db) {
+        console.warn('[firebase] Auth or DB not available, falling back to API sync');
+        startLegacyLifecycle();
+        return;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            console.log('[firebase] No authenticated user — waiting for login');
+            firebaseUid = null;
+            settingsSync.unsubscribe();
+            // Fall back to API-based sync until user logs in
+            startLegacyLifecycle();
+            return;
+        }
+
+        firebaseUid = user.uid;
+        console.log(`[firebase] Authenticated as uid=${user.uid}`);
+
+        // Subscribe to realtime settings from Firestore
+        settingsSync.subscribe(db, user.uid, (settings) => {
+            applyInterceptorSettings(settings);
+        });
+
+        // Stop legacy polling if it was running
+        stopLegacyLifecycle();
+
+        // Continue heartbeat for agent registration (but not settings sync)
+        startHeartbeatOnly();
+    });
+
+    // Attempt to sign in with stored token
+    const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
+    if (fs.existsSync(tokenPath)) {
+        try {
+            const { customToken } = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
+            if (customToken) {
+                signInWithCustomToken(auth, customToken).catch((err) => {
+                    console.warn('[firebase] Stored token expired or invalid:', err.message);
+                });
+            }
+        } catch (e) {
+            console.warn('[firebase] Failed to read stored token:', e.message);
+        }
+    }
+}
+
+// ─── Apply Settings from Firestore (realtime) ───────────────────────────────
+function applyInterceptorSettings(settings) {
+    const prev = { ...currentSettings };
+    currentSettings = { ...currentSettings, ...settings };
+
+    console.log('[settings] Applying:', JSON.stringify(currentSettings));
+
+    // Update monitoring state based on proxyEnabled
+    const shouldMonitor = currentSettings.proxyEnabled && currentSettings.interceptEnabled;
+
+    if (shouldMonitor !== isMonitoringEnabled) {
+        isMonitoringEnabled = shouldMonitor;
+
+        if (isMonitoringEnabled) {
+            startProxy();
+        } else {
+            stopProxy();
+        }
+
+        new Notification({
+            title: 'Complyze Agent',
+            body: isMonitoringEnabled
+                ? 'Monitoring enabled (synced from dashboard)'
+                : 'Monitoring disabled (synced from dashboard)',
+        }).show();
+    }
+
+    // Update proxy environment with current risk threshold & blocking settings
+    if (proxyProcess) {
+        proxyProcess.send({
+            type: 'settings-update',
+            settings: {
+                blockEnabled: currentSettings.blockEnabled,
+                blockHighRisk: currentSettings.blockHighRisk,
+                redactSensitive: currentSettings.redactSensitive,
+                riskThreshold: currentSettings.riskThreshold,
+                desktopBypass: currentSettings.desktopBypass,
+                fullAuditMode: currentSettings.fullAuditMode,
+            },
+        });
+    }
+
+    lastSyncTime = new Date().toLocaleTimeString();
+    updateTray();
+    syncStatusToWindow();
+}
+
+// ─── Heartbeat (registration only — settings come from Firestore) ───────────
 async function sendHeartbeat() {
     const status = isMonitoringEnabled ? (proxyProcess ? 'Healthy' : 'Connecting') : 'Offline';
 
@@ -64,7 +180,8 @@ async function sendHeartbeat() {
                 service_connectivity: true,
                 traffic_routing: isMonitoringEnabled && !!proxyProcess,
                 os_integration: true,
-                workspace_id: 'default_workspace'
+                workspace_id: 'default_workspace',
+                firebase_synced: !!firebaseUid,
             }),
         });
 
@@ -84,28 +201,53 @@ function syncStatusToWindow() {
             status: isMonitoringEnabled ? (proxyProcess ? 'Healthy' : 'Connecting') : 'Offline',
             deviceId: getDeviceId(),
             lastSync: lastSyncTime,
-            isMonitoringEnabled: isMonitoringEnabled
+            isMonitoringEnabled: isMonitoringEnabled,
+            firebaseSynced: !!firebaseUid,
+            settings: currentSettings,
         });
     }
 }
 
-function startLifecycle() {
+// ─── Heartbeat-only loop (when Firebase is active) ───────────────────────────
+function startHeartbeatOnly() {
+    stopLegacyLifecycle();
     sendHeartbeat();
-    syncGlobalSettings(); // Sync settings from dashboard
     heartbeatInterval = setInterval(() => {
         sendHeartbeat();
-        syncGlobalSettings();
-    }, 30000); // 30s heartbeat & sync
+    }, 30000);
 }
 
-async function syncGlobalSettings() {
+// ─── Legacy API-based sync (fallback when Firebase isn't available) ──────────
+let legacyInterval = null;
+
+function startLegacyLifecycle() {
+    if (legacyInterval) return;
+    sendHeartbeat();
+    syncGlobalSettingsLegacy();
+    legacyInterval = setInterval(() => {
+        sendHeartbeat();
+        syncGlobalSettingsLegacy();
+    }, 30000);
+}
+
+function stopLegacyLifecycle() {
+    if (legacyInterval) {
+        clearInterval(legacyInterval);
+        legacyInterval = null;
+    }
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+    }
+}
+
+async function syncGlobalSettingsLegacy() {
     try {
         const res = await fetch(`${DASHBOARD_URL}/api/proxy/settings`);
         if (res.ok) {
             const data = await res.json();
-            // If settings changed on dashboard, reflect them in the agent
             if (data.proxy_enabled !== isMonitoringEnabled) {
-                console.log(`[sync] Updating monitoring state to ${data.proxy_enabled} from dashboard`);
+                console.log(`[sync-legacy] Updating monitoring state to ${data.proxy_enabled} from dashboard`);
                 isMonitoringEnabled = data.proxy_enabled;
                 if (isMonitoringEnabled) {
                     startProxy();
@@ -117,15 +259,15 @@ async function syncGlobalSettings() {
             }
         }
     } catch (err) {
-        console.warn('[sync] settings failed:', err.message);
+        console.warn('[sync-legacy] settings failed:', err.message);
     }
 }
 
 // ─── Proxy Management ─────────────────────────────────────────────────────────
-
 function startProxy() {
     if (proxyProcess || !isMonitoringEnabled) return;
 
+    console.log(`[proxy] Starting from: ${PROXY_SCRIPT_PATH}`);
     try {
         proxyProcess = fork(PROXY_SCRIPT_PATH, ['--port', PROXY_PORT.toString()], {
             stdio: 'inherit',
@@ -133,7 +275,13 @@ function startProxy() {
                 ...process.env,
                 COMPLYZE_API: `${DASHBOARD_URL}/api/proxy/intercept`,
                 MONITOR_MODE: 'observe',
-                CERTS_DIR: path.join(app.getPath('userData'), 'certs')
+                CERTS_DIR: path.join(app.getPath('userData'), 'certs'),
+                // Pass current settings as env vars for initial proxy config
+                BLOCK_ENABLED: String(currentSettings.blockEnabled),
+                BLOCK_HIGH_RISK: String(currentSettings.blockHighRisk),
+                REDACT_SENSITIVE: String(currentSettings.redactSensitive),
+                RISK_THRESHOLD: String(currentSettings.riskThreshold),
+                DESKTOP_BYPASS: String(currentSettings.desktopBypass),
             }
         });
 
@@ -141,6 +289,12 @@ function startProxy() {
             console.log(`Proxy exited with code ${code}`);
             proxyProcess = null;
             updateTray();
+        });
+
+        proxyProcess.on('message', (msg) => {
+            if (msg.type === 'settings-ack') {
+                console.log('[proxy] Settings acknowledged');
+            }
         });
 
         // Enable system proxy
@@ -160,21 +314,30 @@ function stopProxy() {
     updateTray();
 }
 
+// ─── Network Utilities ───────────────────────────────────────────────────────
+
+/**
+ * Finds the currently active network interface (e.g., Wi-Fi, Ethernet)
+ */
 function getActiveInterface() {
     try {
-        // Find the interface with the default gateway
-        const routeCmd = "route -n get default | grep 'interface:' | awk '{print $2}'";
-        const iface = execSync(routeCmd).toString().trim();
-        if (iface) {
-            // Map BSD interface (en0) to Service Name (Wi-Fi)
-            const serviceCmd = `networksetup -listnetworkserviceorder | grep "Device: ${iface}" -B 1 | head -n 1 | cut -d ' ' -f 2-`;
-            const service = execSync(serviceCmd).toString().trim();
-            return service || "Wi-Fi";
+        // Get primary interface via route
+        const activeIf = execSync("route get default | grep interface | awk '{print $2}'", { encoding: 'utf8' }).trim();
+
+        // Map interface ID (en0) to user-friendly name (Wi-Fi)
+        const interfaces = execSync("networksetup -listallnetworkservices", { encoding: 'utf8' }).split('\n');
+
+        for (const service of interfaces) {
+            if (!service || service.includes('*')) continue;
+            try {
+                const device = execSync(`networksetup -gethwportvar "${service}" | grep Device | awk '{print $2}'`, { encoding: 'utf8' }).trim();
+                if (device === activeIf) return service;
+            } catch (e) { }
         }
+        return "Wi-Fi"; // Fallback
     } catch (e) {
-        console.warn('Failed to detect active interface, defaulting to Wi-Fi');
+        return "Wi-Fi";
     }
-    return "Wi-Fi";
 }
 
 function setSystemProxy(enable) {
@@ -184,44 +347,59 @@ function setSystemProxy(enable) {
     let cmd = '';
 
     if (enable) {
-        // Use PAC file for selective interception (prevents blocking all sites)
         const pacUrl = `http://127.0.0.1:${PROXY_PORT}/proxy.pac`;
-        cmd = `networksetup -setautoproxyurl "${interfaceName}" "${pacUrl}" && networksetup -setautoproxystate "${interfaceName}" on`;
+
+        // 🚨 NUCLEAR CLEANUP: Turn off ALL global proxies before enabling PAC
+        // We turn off webproxy, securewebproxy, socksfirewallproxy, and gopherproxy.
+        cmd = `networksetup -setwebproxystate "${interfaceName}" off && ` +
+            `networksetup -setsecurewebproxystate "${interfaceName}" off && ` +
+            `networksetup -setsocksfirewallproxystate "${interfaceName}" off && ` +
+            `networksetup -setgopherproxystate "${interfaceName}" off && ` +
+            `networksetup -setautoproxyurl "${interfaceName}" "${pacUrl}" && ` +
+            `networksetup -setautoproxystate "${interfaceName}" on`;
     } else {
-        cmd = `networksetup -setautoproxystate "${interfaceName}" off`;
+        cmd = `networksetup -setautoproxystate "${interfaceName}" off && ` +
+            `networksetup -setwebproxystate "${interfaceName}" off && ` +
+            `networksetup -setsecurewebproxystate "${interfaceName}" off && ` +
+            `networksetup -setsocksfirewallproxystate "${interfaceName}" off`;
     }
 
     sudo.exec(cmd, sudoOptions, (error) => {
         if (error) console.error('Proxy config error:', error);
-        else console.log(`Proxy ${enable ? 'enabled' : 'disabled'} on interface "${interfaceName}" via PAC`);
+        else console.log(`Proxy ${enable ? 'enabled' : 'disabled'} on interface "${interfaceName}" (Global proxies purged)`);
     });
 }
 
 // ─── UI / Tray ───────────────────────────────────────────────────────────────
-
 function getStatusLabel() {
     if (!isMonitoringEnabled) return 'Monitoring Disabled';
     if (proxyProcess) return 'Monitoring Active';
     return 'Initializing...';
 }
 
+function getSyncLabel() {
+    if (firebaseUid) return 'Realtime Sync (Firebase)';
+    return 'API Sync (Legacy)';
+}
+
 function getStatusIcon() {
     const iconName = isMonitoringEnabled ? 'tray-active.png' : 'tray-inactive.png';
-    return path.join(__dirname, iconName);
+    const iconPath = path.join(__dirname, iconName);
+    // macOS tray icons must be 16x16 (or 32x32 @2x). Resize oversized PNGs.
+    const img = nativeImage.createFromPath(iconPath);
+    if (img.isEmpty()) return iconPath; // fallback to raw path
+    const resized = img.resize({ width: 18, height: 18 });
+    resized.setTemplateImage(true); // respect macOS dark/light menu bar
+    return resized;
 }
 
 function updateTray() {
     if (!tray) return;
 
-    const iconPath = getStatusIcon();
-    let icon = nativeImage.createFromPath(iconPath);
-
-    // Resize to fit macOS tray (typically 18x18 or 22x22)
-    icon = icon.resize({ width: 18, height: 18 });
-
     const contextMenu = Menu.buildFromTemplate([
         { label: `Complyze Agent v${AGENT_VERSION}`, enabled: false },
         { label: `Status: ${getStatusLabel()}`, enabled: false },
+        { label: `Sync: ${getSyncLabel()}`, enabled: false },
         { label: `Last Sync: ${lastSyncTime}`, enabled: false },
         { type: 'separator' },
         { label: 'Open Status Window', click: () => { if (mainWindow) { mainWindow.show(); } else { createWindow(); } } },
@@ -235,18 +413,28 @@ function updateTray() {
         { label: 'Quit Complyze', click: () => { app.isQuiting = true; app.quit(); } },
     ]);
 
-    tray.setImage(icon);
+    tray.setImage(getStatusIcon());
     tray.setToolTip(`Complyze Agent: ${getStatusLabel()}`);
     tray.setContextMenu(contextMenu);
 }
 
 function toggleMonitoring() {
     isMonitoringEnabled = !isMonitoringEnabled;
+
     if (isMonitoringEnabled) {
         startProxy();
     } else {
         stopProxy();
     }
+
+    // Write toggle state back to Firestore so dashboard reflects change
+    if (firebaseUid) {
+        settingsSync.updateSettings({
+            proxyEnabled: isMonitoringEnabled,
+            interceptEnabled: isMonitoringEnabled,
+        });
+    }
+
     sendHeartbeat();
     syncStatusToWindow();
     updateTray();
@@ -296,27 +484,67 @@ ipcMain.on('toggle-monitoring', () => {
     toggleMonitoring();
 });
 
+// Handle Firebase token from dashboard deep link
+ipcMain.on('firebase-token', (event, token) => {
+    if (token) {
+        const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
+        fs.writeFileSync(tokenPath, JSON.stringify({ customToken: token }));
+        const { auth } = initFirebase();
+        if (auth) {
+            signInWithCustomToken(auth, token).catch((err) => {
+                console.error('[firebase] Sign-in with token failed:', err.message);
+            });
+        }
+    }
+});
+
 // ─── App Lifecycle ───────────────────────────────────────────────────────────
+
+// Register protocol for browser deep-linking
+if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+        app.setAsDefaultProtocolClient('complyze', process.execPath, [path.resolve(process.argv[1])]);
+    }
+} else {
+    app.setAsDefaultProtocolClient('complyze');
+}
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.quit();
 } else {
-    app.on('ready', () => {
-        const iconPath = path.join(__dirname, 'tray-active.png');
-        let icon = nativeImage.createFromPath(iconPath);
-        icon = icon.resize({ width: 18, height: 18 });
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        // Someone tried to run a second instance, we should focus our window.
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show();
+            mainWindow.focus();
+        }
 
-        tray = new Tray(icon);
+        // Handle protocol link: complyze://open or complyze://login
+        const url = commandLine.pop();
+        console.log('[protocol] Received deep link:', url);
+    });
+    app.on('ready', () => {
+        // Create Tray IMMEDIATELY for maximum visibility
+        const iconPath = path.join(__dirname, 'tray-active.png');
+        if (!fs.existsSync(iconPath)) fs.writeFileSync(iconPath, '');
+
+        const trayIcon = nativeImage.createFromPath(iconPath);
+        const resizedIcon = trayIcon.isEmpty() ? trayIcon : trayIcon.resize({ width: 18, height: 18 });
+        if (!resizedIcon.isEmpty()) resizedIcon.setTemplateImage(true);
+
+        tray = new Tray(resizedIcon.isEmpty() ? iconPath : resizedIcon);
+        tray.setToolTip('Complyze Agent — Monitoring Active');
         updateTray();
 
-        // Create UI
-        createWindow();
-
-        // Start background tasks
-        startProxy();
-        startLifecycle();
+        // Create UI with slight delay to ensure tray is registered
+        setTimeout(() => {
+            createWindow();
+            initializeFirebaseAuth();
+            startProxy();
+        }, 100);
     });
 
     app.on('window-all-closed', (e) => {
@@ -324,6 +552,8 @@ if (!gotTheLock) {
     });
 
     app.on('before-quit', () => {
+        settingsSync.unsubscribe();
+        stopLegacyLifecycle();
         stopProxy();
     });
 }
