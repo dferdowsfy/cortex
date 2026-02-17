@@ -1,4 +1,4 @@
-const { app, Tray, Menu, shell, Notification, ipcMain, BrowserWindow } = require('electron');
+const { app, Tray, Menu, shell, Notification, ipcMain, BrowserWindow, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { fork, exec, execSync } = require('child_process');
@@ -344,7 +344,13 @@ function getSyncLabel() {
 
 function getStatusIcon() {
     const iconName = isMonitoringEnabled ? 'tray-active.png' : 'tray-inactive.png';
-    return path.join(__dirname, iconName);
+    const iconPath = path.join(__dirname, iconName);
+    // macOS tray icons must be 16x16 (or 32x32 @2x). Resize oversized PNGs.
+    const img = nativeImage.createFromPath(iconPath);
+    if (img.isEmpty()) return iconPath; // fallback to raw path
+    const resized = img.resize({ width: 18, height: 18 });
+    resized.setTemplateImage(true); // respect macOS dark/light menu bar
+    return resized;
 }
 
 function updateTray() {
@@ -460,13 +466,19 @@ if (!gotTheLock) {
     app.quit();
 } else {
     app.on('ready', () => {
-        // Create Tray
+        // Create Tray with properly sized icon
         const iconPath = path.join(__dirname, 'icon.png');
         if (!fs.existsSync(iconPath)) {
             fs.writeFileSync(iconPath, '');
         }
 
-        tray = new Tray(iconPath);
+        const trayIcon = nativeImage.createFromPath(iconPath);
+        const resizedIcon = trayIcon.isEmpty()
+            ? trayIcon
+            : trayIcon.resize({ width: 18, height: 18 });
+        if (!resizedIcon.isEmpty()) resizedIcon.setTemplateImage(true);
+
+        tray = new Tray(resizedIcon.isEmpty() ? iconPath : resizedIcon);
         updateTray();
 
         // Create UI
