@@ -142,20 +142,50 @@ export default function DesktopAgentLauncher({ status = "Offline", lastSeen = "N
                             </div>
 
                             <div className="flex flex-wrap items-center gap-4">
+                                {!isDownloading ? (
+                                    <button
+                                        onClick={handleInstall}
+                                        className="bg-brand-600 hover:bg-brand-700 text-white px-8 py-3 rounded-lg text-sm font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 ring-offset-2"
+                                    >
+                                        Download Installer
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-3 px-8 py-3 rounded-lg bg-gray-50 border border-gray-200 text-gray-400 text-sm font-bold">
+                                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                        Downloading...
+                                    </div>
+                                )}
+
                                 <button
-                                    onClick={handleInstall}
-                                    disabled={isDownloading}
-                                    className="bg-brand-600 hover:bg-brand-700 text-white px-8 py-3 rounded-lg text-sm font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 ring-offset-2 disabled:opacity-50"
+                                    onClick={() => window.location.href = 'complyze://open'}
+                                    className="bg-brand-50 hover:bg-brand-100 text-brand-700 px-8 py-3 rounded-lg text-sm font-bold border border-brand-200 shadow-sm transition-all"
                                 >
-                                    {isDownloading ? "Downloading..." : "Install Agent"}
+                                    Launch Complyze
                                 </button>
+
                                 <button
                                     onClick={() => setIsGuideOpen(true)}
                                     className="bg-white hover:bg-gray-50 text-gray-700 px-8 py-3 rounded-lg text-sm font-bold border border-gray-300 shadow-sm transition-all"
                                 >
-                                    View Deployment Guide
+                                    Deployment Guide
                                 </button>
                             </div>
+
+                            {/* ── macOS Instructions ── */}
+                            {platform === 'macOS' && (
+                                <div className="mt-8 p-5 bg-blue-50/50 border border-blue-100 rounded-xl">
+                                    <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider mb-3">Next Steps for macOS</h4>
+                                    <ol className="text-sm text-blue-800 space-y-3 list-decimal list-inside">
+                                        <li>Open the <strong>Complyze-1.0.0-arm64.dmg</strong> from your downloads.</li>
+                                        <li>Drag <strong>Complyze</strong> into your <strong>Applications</strong> folder.</li>
+                                        <li>If you see a security warning: <strong>System Settings</strong> → <strong>Privacy & Security</strong> → scroll down to <strong>"Open Anyway"</strong>.</li>
+                                        <li>Look for the <strong>green circle</strong> in your top menu bar.</li>
+                                    </ol>
+                                </div>
+                            )}
                         </div>
 
                         <div className="lg:col-span-4 bg-gray-50 border border-gray-100 rounded-xl p-6">

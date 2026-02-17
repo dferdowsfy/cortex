@@ -103,9 +103,29 @@ const PASSTHROUGH_DOMAINS = [
     'oauth2.googleapis.com',
 ];
 
-const MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
-const FAIL_OPEN = true;
+const MONITOR_MODE_DEFAULT = 'observe';
 let desktopBypassEnabled = false;
+let blockHighRiskEnabled = false;
+
+// PAC script content generator
+function generatePAC() {
+    const domains = [...AI_DOMAINS];
+    const domainList = domains.map(d => `"${d}"`).join(', ');
+    return `
+function FindProxyForURL(url, host) {
+    var aiDomains = [${domainList}];
+    for (var i = 0; i < aiDomains.length; i++) {
+        var d = aiDomains[i];
+        if (host === d || host.endsWith('.' + d)) {
+            return "PROXY 127.0.0.1:${PROXY_PORT}";
+        }
+    }
+    return "DIRECT";
+}
+`.trim();
+}
+
+const { updatePolicy } = require('../dlp/policyEngine');
 
 async function syncSettings() {
     try {
@@ -113,6 +133,15 @@ async function syncSettings() {
         if (res.ok) {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
+            blockHighRiskEnabled = !!data.block_high_risk;
+
+            // Sync with local DLP policy engine
+            updatePolicy({
+                blockingEnabled: blockHighRiskEnabled,
+                reuThreshold: 50
+            });
+
+            console.log(`[sync] Settings: bypass=${desktopBypassEnabled}, block=${blockHighRiskEnabled}`);
         }
     } catch { }
 }
@@ -411,7 +440,14 @@ function startProxy() {
         // Handle basic status check or local dashboard hits
         if (req.url === '/' || req.url === '/dashboard') {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
-            res.end('Complyze AI Proxy is running. Use this address as your HTTPS Proxy (127.0.0.1:8080).');
+            res.end('Complyze AI Proxy is running. Deployment Mode: ' + (blockHighRiskEnabled ? 'ENFORCE' : 'OBSERVE'));
+            return;
+        }
+
+        // Serve PAC file for automatic proxy configuration
+        if (req.url === '/proxy.pac') {
+            res.writeHead(200, { 'Content-Type': 'application/x-ns-proxy-autoconfig' });
+            res.end(generatePAC());
             return;
         }
 
@@ -492,13 +528,15 @@ function startProxy() {
         console.log('║           🛡️  Complyze AI Traffic Interceptor                 ║');
         console.log('╠════════════════════════════════════════════════════════════════╣');
         console.log(`║  Proxy:     127.0.0.1:${PROXY_PORT}                                    ║`);
+        console.log(`║  PAC URL:   http://127.0.0.1:${PROXY_PORT}/proxy.pac                   ║`);
         console.log(`║  Dashboard: http://localhost:3737/dashboard                    ║`);
-        console.log(`║  Mode:      ${MONITOR_MODE.toUpperCase()}                                          ║`);
+        console.log(`║  Mode:      ${(blockHighRiskEnabled ? 'ENFORCE' : 'OBSERVE').padEnd(46)}║`);
         console.log('║  Deep Inspection (all AI domains):                             ║');
         AI_DOMAINS.forEach((d) => {
             console.log(`║    🔍 ${d.padEnd(53)}║`);
         });
         console.log('║                                                                ║');
+        console.log('║  Block Sensitive: ' + (blockHighRiskEnabled ? '🟢 ON ' : '🔴 OFF') + '                                   ║');
         console.log('║  Desktop App Bypass: ' + (desktopBypassEnabled ? '🟢 ON ' : '🔴 OFF') + '                                    ║');
         console.log('║  (Toggle in Settings → allows cert-pinned apps)               ║');
         console.log('╚════════════════════════════════════════════════════════════════╝');
@@ -567,7 +605,8 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
         // ─── Policy Enforcement Layer ──────────────────────────────────────────
         const shouldBlock = dlpResult && dlpResult.action === 'BLOCK';
 
-        if ((MONITOR_MODE === 'enforce' && shouldBlock)) {
+        // Only block if "block_high_risk" is toggled on in the dashboard
+        if (blockHighRiskEnabled && shouldBlock) {
             console.log(`   🚫 Blocked by Local DLP Policy: ${targetUrl} (REU: ${dlpResult.finalReu})`);
             try {
                 tlsSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 48\r\n\r\nAccess blocked by local Complyze Security Policy.');

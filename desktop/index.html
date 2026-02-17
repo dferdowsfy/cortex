@@ -259,10 +259,10 @@
 
             const syncBadge = document.getElementById('sync-badge');
             if (data.firebaseSynced) {
-                syncBadge.textContent = 'Realtime Sync';
+                syncBadge.textContent = 'Cloud & Realtime Sync';
                 syncBadge.className = 'sync-badge sync-firebase';
             } else {
-                syncBadge.textContent = 'API Sync';
+                syncBadge.textContent = 'Remote Policy Sync';
                 syncBadge.className = 'sync-badge sync-legacy';
             }
 

@@ -45,7 +45,8 @@ class FirebaseSettingsSync {
         this._uid = uid;
         this._onSettingsChange = onSettingsChange;
 
-        const settingsRef = doc(db, 'users', uid, 'settings', 'config');
+        // UNIFY: Use the same path as the web dashboard
+        const settingsRef = doc(db, 'proxy_config', 'settings');
 
         this._unsubscribe = onSnapshot(
             settingsRef,

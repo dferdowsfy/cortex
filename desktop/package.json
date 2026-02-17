@@ -14,6 +14,7 @@
     "appId": "com.complyze.desktop",
     "productName": "Complyze",
     "copyright": "Copyright © 2026 Complyze",
+    "afterSign": "scripts/notarize.js",
     "directories": {
       "output": "dist"
     },
@@ -26,9 +27,7 @@
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "notarize": {
-        "teamId": "LFSAKXR3UD"
-      }
+      "forceCodeSigning": true
     },
     "dmg": {
       "sign": true

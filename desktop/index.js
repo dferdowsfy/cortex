@@ -267,6 +267,7 @@ async function syncGlobalSettingsLegacy() {
 function startProxy() {
     if (proxyProcess || !isMonitoringEnabled) return;
 
+    console.log(`[proxy] Starting from: ${PROXY_SCRIPT_PATH}`);
     try {
         proxyProcess = fork(PROXY_SCRIPT_PATH, ['--port', PROXY_PORT.toString()], {
             stdio: 'inherit',
@@ -313,20 +314,59 @@ function stopProxy() {
     updateTray();
 }
 
+// ─── Network Utilities ───────────────────────────────────────────────────────
+
+/**
+ * Finds the currently active network interface (e.g., Wi-Fi, Ethernet)
+ */
+function getActiveInterface() {
+    try {
+        // Get primary interface via route
+        const activeIf = execSync("route get default | grep interface | awk '{print $2}'", { encoding: 'utf8' }).trim();
+
+        // Map interface ID (en0) to user-friendly name (Wi-Fi)
+        const interfaces = execSync("networksetup -listallnetworkservices", { encoding: 'utf8' }).split('\n');
+
+        for (const service of interfaces) {
+            if (!service || service.includes('*')) continue;
+            try {
+                const device = execSync(`networksetup -gethwportvar "${service}" | grep Device | awk '{print $2}'`, { encoding: 'utf8' }).trim();
+                if (device === activeIf) return service;
+            } catch (e) { }
+        }
+        return "Wi-Fi"; // Fallback
+    } catch (e) {
+        return "Wi-Fi";
+    }
+}
+
 function setSystemProxy(enable) {
     if (process.platform !== 'darwin') return;
 
-    const interfaceName = "Wi-Fi";
+    const interfaceName = getActiveInterface();
     let cmd = '';
 
     if (enable) {
-        cmd = `networksetup -setwebproxy "${interfaceName}" 127.0.0.1 ${PROXY_PORT} && networksetup -setsecurewebproxy "${interfaceName}" 127.0.0.1 ${PROXY_PORT}`;
+        const pacUrl = `http://127.0.0.1:${PROXY_PORT}/proxy.pac`;
+
+        // 🚨 NUCLEAR CLEANUP: Turn off ALL global proxies before enabling PAC
+        // We turn off webproxy, securewebproxy, socksfirewallproxy, and gopherproxy.
+        cmd = `networksetup -setwebproxystate "${interfaceName}" off && ` +
+            `networksetup -setsecurewebproxystate "${interfaceName}" off && ` +
+            `networksetup -setsocksfirewallproxystate "${interfaceName}" off && ` +
+            `networksetup -setgopherproxystate "${interfaceName}" off && ` +
+            `networksetup -setautoproxyurl "${interfaceName}" "${pacUrl}" && ` +
+            `networksetup -setautoproxystate "${interfaceName}" on`;
     } else {
-        cmd = `networksetup -setwebproxystate "${interfaceName}" off && networksetup -setsecurewebproxystate "${interfaceName}" off`;
+        cmd = `networksetup -setautoproxystate "${interfaceName}" off && ` +
+            `networksetup -setwebproxystate "${interfaceName}" off && ` +
+            `networksetup -setsecurewebproxystate "${interfaceName}" off && ` +
+            `networksetup -setsocksfirewallproxystate "${interfaceName}" off`;
     }
 
     sudo.exec(cmd, sudoOptions, (error) => {
         if (error) console.error('Proxy config error:', error);
+        else console.log(`Proxy ${enable ? 'enabled' : 'disabled'} on interface "${interfaceName}" (Global proxies purged)`);
     });
 }
 
@@ -460,35 +500,51 @@ ipcMain.on('firebase-token', (event, token) => {
 
 // ─── App Lifecycle ───────────────────────────────────────────────────────────
 
+// Register protocol for browser deep-linking
+if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+        app.setAsDefaultProtocolClient('complyze', process.execPath, [path.resolve(process.argv[1])]);
+    }
+} else {
+    app.setAsDefaultProtocolClient('complyze');
+}
+
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.quit();
 } else {
-    app.on('ready', () => {
-        // Create Tray with properly sized icon
-        const iconPath = path.join(__dirname, 'icon.png');
-        if (!fs.existsSync(iconPath)) {
-            fs.writeFileSync(iconPath, '');
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        // Someone tried to run a second instance, we should focus our window.
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show();
+            mainWindow.focus();
         }
 
+        // Handle protocol link: complyze://open or complyze://login
+        const url = commandLine.pop();
+        console.log('[protocol] Received deep link:', url);
+    });
+    app.on('ready', () => {
+        // Create Tray IMMEDIATELY for maximum visibility
+        const iconPath = path.join(__dirname, 'tray-active.png');
+        if (!fs.existsSync(iconPath)) fs.writeFileSync(iconPath, '');
+
         const trayIcon = nativeImage.createFromPath(iconPath);
-        const resizedIcon = trayIcon.isEmpty()
-            ? trayIcon
-            : trayIcon.resize({ width: 18, height: 18 });
+        const resizedIcon = trayIcon.isEmpty() ? trayIcon : trayIcon.resize({ width: 18, height: 18 });
         if (!resizedIcon.isEmpty()) resizedIcon.setTemplateImage(true);
 
         tray = new Tray(resizedIcon.isEmpty() ? iconPath : resizedIcon);
+        tray.setToolTip('Complyze Agent — Monitoring Active');
         updateTray();
 
-        // Create UI
-        createWindow();
-
-        // Initialize Firebase Auth + Firestore settings sync
-        initializeFirebaseAuth();
-
-        // Start proxy
-        startProxy();
+        // Create UI with slight delay to ensure tray is registered
+        setTimeout(() => {
+            createWindow();
+            initializeFirebaseAuth();
+            startProxy();
+        }, 100);
     });
 
     app.on('window-all-closed', (e) => {
