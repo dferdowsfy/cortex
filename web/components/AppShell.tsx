@@ -18,14 +18,16 @@ function NavLink({
     return (
         <Link
             href={href}
-            className={`relative px-1 py-5 text-[14px] font-medium transition-all duration-200 ${isActive
-                ? "text-white"
-                : "text-white/60 hover:text-white/90"
-                }`}
+            className={`relative flex items-center transition-all duration-200 ${
+                isActive
+                    ? "text-white text-[15px] font-semibold pb-[10px] -mb-[10px]"
+                    : "text-white/[0.72] text-[14px] font-medium hover:text-white"
+            }`}
+            style={{ height: '100%' }}
         >
             {children}
             {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white rounded-full" />
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#A78BFA]" />
             )}
         </Link>
     );
@@ -124,10 +126,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* ── Header ── */}
-            <header className="no-print sticky top-0 z-50 bg-[#1e1b4b] border-b border-white/[0.08]">
-                <div className="mx-auto flex max-w-7xl items-center justify-between px-6">
+            <header className="no-print sticky top-0 z-50 bg-[#4F46E5] border-b border-white/[0.08]">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
                     {/* Left: Logo */}
-                    <Link href="/dashboard" className="flex items-center gap-2.5 py-4">
+                    <Link href="/dashboard" className="flex items-center gap-2.5">
                         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-white">
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
@@ -140,7 +142,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
 
                     {/* Center: Navigation tabs */}
-                    <nav className="hidden md:flex items-center gap-7">
+                    <nav className="hidden md:flex items-center justify-center gap-7 h-full">
                         <NavLink href="/dashboard">Dashboard</NavLink>
                         <NavLink href="/scan">Scan Tool</NavLink>
                         <NavLink href="/monitoring">Monitoring</NavLink>
@@ -152,7 +154,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <div className="flex items-center gap-5">
                         <Link
                             href="/install"
-                            className="hidden lg:inline-flex items-center gap-1.5 text-[12px] font-medium text-white/40 hover:text-white/70 transition-colors"
+                            className="hidden lg:inline-flex items-center gap-1.5 text-[13px] font-medium text-white/[0.45] hover:text-white/[0.72] transition-colors"
                         >
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
