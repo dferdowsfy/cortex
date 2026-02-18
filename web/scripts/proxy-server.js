@@ -85,6 +85,7 @@ const PASSTHROUGH_DOMAINS = [
 
 let MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
 let desktopBypassEnabled = false;
+let inspectAttachmentsEnabled = true; // inspect multipart/form-data uploads by default
 
 async function syncSettings() {
     try {
@@ -93,6 +94,9 @@ async function syncSettings() {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
             MONITOR_MODE = data.block_high_risk ? 'enforce' : 'observe';
+            if (typeof data.inspect_attachments === 'boolean') {
+                inspectAttachmentsEnabled = data.inspect_attachments;
+            }
         }
     } catch { }
 }
@@ -212,17 +216,27 @@ function getCertForDomain(domain, ca) {
 
 let eventCount = 0;
 
-async function logToComplyze(targetUrl, method, headers, body, dlpResult = null) {
+async function logToComplyze(targetUrl, method, headers, body, dlpResult = null, attachmentResults = []) {
     eventCount++;
     try {
+        const hasAttachments = attachmentResults.length > 0;
         const payload = {
             target_url: targetUrl,
             method,
             headers: sanitizeHeaders(headers),
-            body: typeof body === 'string' ? body : JSON.stringify(body),
+            body: typeof body === 'string' ? body : '[binary]',
             user_id: 'local-user',
             log_only: true,
-            dlp: dlpResult
+            dlp: dlpResult,
+            is_attachment_upload: hasAttachments,
+            attachments: hasAttachments ? attachmentResults.map(a => ({
+                filename: a.filename,
+                file_type: a.fileType,
+                file_size: a.fileSize,
+                detected_categories: a.detectedCategories,
+                sensitivity_points: a.sensitivityPoints,
+                is_bulk: a.isBulk
+            })) : undefined
         };
         await fetch(COMPLYZE_API, {
             method: 'POST',
@@ -245,8 +259,94 @@ function sanitizeHeaders(headers) {
     return safe;
 }
 
-// ─── HTTP Request Parser ───
+// ─── Multipart Attachment Parser ─────────────────────────────────────────────
 
+/**
+ * Extracts the multipart boundary from a Content-Type header value.
+ * e.g. "multipart/form-data; boundary=----WebKitFormBoundaryXYZ" -> "----WebKitFormBoundaryXYZ"
+ */
+function parseMultipartBoundary(contentType) {
+    const match = contentType.match(/boundary=([^\s;]+)/i);
+    return match ? match[1] : null;
+}
+
+/**
+ * Parses a multipart/form-data body buffer and inspects any file parts
+ * for sensitive content using the DLP attachment inspector.
+ *
+ * @param {Buffer} bodyBuffer - The raw multipart body
+ * @param {string} contentType - The Content-Type header value
+ * @returns {Promise<Array>} Array of attachment inspection results
+ */
+async function parseAndInspectMultipart(bodyBuffer, contentType) {
+    const boundary = parseMultipartBoundary(contentType);
+    if (!boundary) return [];
+
+    const { inspectAttachmentBuffer } = require('./dlp/attachmentInspector');
+    const results = [];
+    const boundaryBuf = Buffer.from('--' + boundary);
+    const closingBuf = Buffer.from('--' + boundary + '--');
+
+    let searchStart = 0;
+
+    while (searchStart < bodyBuffer.length) {
+        // Find the next boundary marker
+        const boundaryPos = bodyBuffer.indexOf(boundaryBuf, searchStart);
+        if (boundaryPos === -1) break;
+
+        // Check if this is the closing boundary
+        const closingCheck = bodyBuffer.slice(boundaryPos, boundaryPos + closingBuf.length);
+        if (closingCheck.equals(closingBuf)) break;
+
+        const partStart = boundaryPos + boundaryBuf.length;
+
+        // Skip \r\n after boundary
+        const dataStart = partStart + (bodyBuffer[partStart] === 0x0d && bodyBuffer[partStart + 1] === 0x0a ? 2 : 0);
+
+        // Find end of this part (next boundary)
+        const nextBoundary = bodyBuffer.indexOf(boundaryBuf, dataStart);
+        if (nextBoundary === -1) break;
+
+        // Part data ends before \r\n before next boundary
+        const partEnd = nextBoundary - 2; // strip trailing \r\n
+        const partData = bodyBuffer.slice(dataStart, partEnd > dataStart ? partEnd : dataStart);
+
+        // Find end of part headers
+        const headerEnd = partData.indexOf('\r\n\r\n');
+        if (headerEnd !== -1) {
+            const partHeaderStr = partData.slice(0, headerEnd).toString();
+            const partBody = partData.slice(headerEnd + 4);
+
+            // Extract filename from Content-Disposition
+            const filenameMatch = partHeaderStr.match(/Content-Disposition:[^\r\n]*filename="([^"]+)"/i);
+            if (filenameMatch && partBody.length > 0) {
+                const filename = filenameMatch[1];
+                try {
+                    console.log(`[DLP] Inspecting attachment: ${filename} (${partBody.length} bytes)`);
+                    const result = await inspectAttachmentBuffer(partBody, filename);
+                    results.push({ filename, ...result });
+                    if (result.sensitivityPoints > 0) {
+                        console.log(`[DLP] Attachment "${filename}" — ${result.sensitivityPoints} pts, categories: ${result.detectedCategories.join(', ')}`);
+                    }
+                } catch (err) {
+                    console.error(`[DLP] Failed to inspect attachment "${filename}":`, err.message);
+                }
+            }
+        }
+
+        searchStart = nextBoundary;
+    }
+
+    return results;
+}
+
+// ─── HTTP Request Parser (binary-safe) ───────────────────────────────────────
+
+/**
+ * Parses raw HTTP/1.1 request bytes from a TLS socket stream.
+ * Keeps the body as a Buffer (binary-safe) for multipart/binary uploads.
+ * Calls onRequest(method, path, headers, bodyBuffer) when a full request is ready.
+ */
 class HTTPRequestParser {
     constructor(onRequest) {
         this.onRequest = onRequest;
@@ -254,6 +354,9 @@ class HTTPRequestParser {
         this.state = 'HEADERS';
         this.headers = {};
         this.bodyBuffer = Buffer.alloc(0);
+        this.method = '';
+        this.path = '';
+        this.contentLength = 0;
     }
     feed(chunk) {
         this.buffer = Buffer.concat([this.buffer, chunk]);
@@ -280,7 +383,8 @@ class HTTPRequestParser {
         }
         if (this.state === 'BODY') {
             if (this.contentLength === 0) {
-                this.onRequest(this.method, this.path, this.headers, '');
+                // Pass empty buffer — onRequest handles the empty case
+                this.onRequest(this.method, this.path, this.headers, Buffer.alloc(0));
                 this._reset();
                 if (this.buffer.length > 0) this._parse();
                 return;
@@ -288,9 +392,9 @@ class HTTPRequestParser {
             this.bodyBuffer = Buffer.concat([this.bodyBuffer, this.buffer]);
             this.buffer = Buffer.alloc(0);
             if (this.bodyBuffer.length >= this.contentLength) {
-                const body = this.bodyBuffer.slice(0, this.contentLength).toString();
+                const bodyBuf = this.bodyBuffer.slice(0, this.contentLength);
                 const remaining = this.bodyBuffer.slice(this.contentLength);
-                this.onRequest(this.method, this.path, this.headers, body);
+                this.onRequest(this.method, this.path, this.headers, bodyBuf);
                 this._reset();
                 this.buffer = remaining;
                 if (remaining.length > 0) this._parse();
@@ -330,25 +434,70 @@ function startProxy() {
             clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
             const domainCert = getCertForDomain(hostname, ca);
             const tlsSocket = new tls.TLSSocket(clientSocket, { isServer: true, key: domainCert.key, cert: domainCert.cert });
-            const { processOutgoingPrompt } = require('./dlp/textInterceptor');
-            const parser = new HTTPRequestParser(async (method, reqPath, headers, body) => {
+            const { processOutgoingPrompt, processAttachmentUpload } = require('./dlp/textInterceptor');
+
+            // bodyBuffer is now always a Buffer (binary-safe)
+            const parser = new HTTPRequestParser(async (method, reqPath, headers, bodyBuffer) => {
+                const contentType = headers['content-type'] || '';
+                const isMultipart = contentType.includes('multipart/form-data');
                 let dlpResult = null;
-                if (method === 'POST' && body.length > 0) {
-                    dlpResult = await processOutgoingPrompt(body, { appName: 'Desktop/Web', destinationType: 'public_ai' });
+                let attachmentResults = [];
+
+                if (method === 'POST' && bodyBuffer.length > 0) {
+                    if (isMultipart && inspectAttachmentsEnabled) {
+                        // ── Attachment Upload Path ──────────────────────────────
+                        try {
+                            attachmentResults = await parseAndInspectMultipart(bodyBuffer, contentType);
+                        } catch (err) {
+                            console.error('[DLP] Multipart parse error:', err.message);
+                        }
+                        if (attachmentResults.length > 0) {
+                            dlpResult = await processAttachmentUpload(attachmentResults, {
+                                appName: hostname,
+                                destinationType: 'public_ai'
+                            });
+                        }
+                    } else if (!isMultipart) {
+                        // ── Text / JSON Prompt Path ─────────────────────────────
+                        const bodyStr = bodyBuffer.toString('utf8');
+                        dlpResult = await processOutgoingPrompt(bodyStr, {
+                            appName: 'Desktop/Web',
+                            destinationType: 'public_ai'
+                        });
+                    }
                 }
-                logToComplyze(`https://${hostname}${reqPath}`, method, headers, body, dlpResult);
+
+                // Log body: sanitize binary multipart as a placeholder string
+                const logBody = isMultipart
+                    ? `[multipart/form-data; ${attachmentResults.length} file(s)]`
+                    : bodyBuffer.toString('utf8');
+
+                logToComplyze(
+                    `https://${hostname}${reqPath}`,
+                    method,
+                    headers,
+                    logBody,
+                    dlpResult,
+                    attachmentResults
+                );
+
                 if (MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
-                    tlsSocket.write('HTTP/1.1 403 Forbidden\r\n\r\nBlocked by Policy');
+                    const blockMsg = isMultipart
+                        ? 'Blocked by Complyze Policy: Sensitive attachment detected'
+                        : 'Blocked by Complyze Policy: Critical risk content detected';
+                    tlsSocket.write(`HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: ${blockMsg.length}\r\n\r\n${blockMsg}`);
                     tlsSocket.end();
                     return;
                 }
+
                 const proxyReq = https.request({ hostname, port, path: reqPath, method, headers: { ...headers, host: hostname } }, (proxyRes) => {
                     tlsSocket.write(`HTTP/1.1 ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}\r\n`);
                     proxyRes.rawHeaders.forEach((v, i) => { if (i % 2 === 0) tlsSocket.write(`${v}: ${proxyRes.rawHeaders[i + 1]}\r\n`); });
                     tlsSocket.write('\r\n');
                     proxyRes.pipe(tlsSocket);
                 });
-                proxyReq.write(body);
+                // Write the original buffer (preserves binary for multipart)
+                proxyReq.write(bodyBuffer);
                 proxyReq.end();
             });
             tlsSocket.on('data', (chunk) => parser.feed(chunk));

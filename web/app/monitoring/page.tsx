@@ -31,6 +31,10 @@ interface ActivityEvent {
     risk_category: string;
     timestamp: string;
     token_count_estimate: number;
+    is_attachment_upload?: boolean;
+    attachment_count?: number;
+    attachment_filenames?: string[];
+    attachment_types?: string[];
 }
 
 interface DynamicToolRisk {
@@ -614,8 +618,10 @@ export default function MonitoringPage() {
                         {events.map((e) => (
                             <div
                                 key={e.id}
-                                className={`flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors ${e.policy_violation_flag ? "border-l-4 border-l-red-400" : ""
-                                    }`}
+                                className={`flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors ${
+                                    e.policy_violation_flag ? "border-l-4 border-l-red-400" :
+                                    e.is_attachment_upload ? "border-l-4 border-l-blue-300" : ""
+                                }`}
                             >
                                 <div className="flex items-center gap-4 min-w-0">
                                     <div className="flex flex-col items-center">
@@ -627,9 +633,22 @@ export default function MonitoringPage() {
                                         >
                                             {e.sensitivity_score}
                                         </div>
+                                        {e.is_attachment_upload && (
+                                            <span className="mt-1 text-[9px] text-blue-500 font-bold">FILE</span>
+                                        )}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="font-medium text-gray-900 text-sm truncate">{e.tool}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-medium text-gray-900 text-sm truncate">{e.tool}</p>
+                                            {e.is_attachment_upload && (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 shrink-0">
+                                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                                                    </svg>
+                                                    {e.attachment_count} file{(e.attachment_count ?? 0) > 1 ? "s" : ""}
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                             {e.sensitivity_categories
                                                 .filter((c) => c !== "none")
@@ -640,6 +659,18 @@ export default function MonitoringPage() {
                                                 ))}
                                             {e.sensitivity_categories.includes("none") && (
                                                 <span className="text-[10px] text-gray-400">Clean</span>
+                                            )}
+                                            {e.is_attachment_upload && e.attachment_types && e.attachment_types.length > 0 && (
+                                                e.attachment_types.map((ft) => (
+                                                    <span key={ft} className="rounded bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-[10px] font-mono text-blue-600">
+                                                        {ft}
+                                                    </span>
+                                                ))
+                                            )}
+                                            {e.is_attachment_upload && e.attachment_filenames && e.attachment_filenames.length > 0 && (
+                                                <span className="text-[10px] text-gray-400 truncate max-w-[200px]" title={e.attachment_filenames.join(", ")}>
+                                                    {e.attachment_filenames[0]}{e.attachment_filenames.length > 1 ? ` +${e.attachment_filenames.length - 1}` : ""}
+                                                </span>
                                             )}
                                         </div>
                                     </div>

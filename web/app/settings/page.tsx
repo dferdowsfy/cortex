@@ -172,6 +172,7 @@ export default function SettingsPage() {
             if ("redactSensitive" in partial) proxyMap.redact_sensitive = partial.redactSensitive;
             if ("alertOnViolations" in partial) proxyMap.alert_on_violations = partial.alertOnViolations;
             if ("desktopBypass" in partial) proxyMap.desktop_bypass = partial.desktopBypass;
+            if ("inspectAttachments" in partial) proxyMap.inspect_attachments = partial.inspectAttachments;
             if ("retentionDays" in partial) proxyMap.retention_days = partial.retentionDays;
 
             // 3. Push to Local Agent API (The "Sync Bridge")
@@ -465,6 +466,13 @@ export default function SettingsPage() {
                     label="Desktop App Bypass"
                     description="Allow certificate-pinned desktop apps (ChatGPT, Claude) to bypass deep inspection."
                     warning="Enabling this creates a monitoring gap. Recommended: OFF."
+                />
+
+                <Toggle
+                    enabled={settings.inspectAttachments}
+                    onChange={(val) => handleSave({ inspectAttachments: val })}
+                    label="Inspect File Attachments"
+                    description="Scan files uploaded to AI tools (PDF, DOCX, CSV, TXT) through the proxy for sensitive content. Applies the same DLP classification and policy enforcement as text prompts."
                 />
 
                 <Toggle

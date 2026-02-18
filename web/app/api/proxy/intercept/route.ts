@@ -3,6 +3,7 @@
  * The proxy endpoint. Receives AI requests, classifies them,
  * logs activity events, applies policy (block/redact), and forwards to the AI provider.
  *
+ * Supports both text/JSON prompts and multipart attachment uploads.
  * Latency target: < 250ms added overhead (classification is regex-based, not LLM-based).
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -15,7 +16,7 @@ import {
     identifyTool,
     redactSensitiveContent,
 } from "@/lib/proxy-classifier";
-import type { ActivityEvent } from "@/lib/proxy-types";
+import type { ActivityEvent, AttachmentScanResult, SensitivityCategory } from "@/lib/proxy-types";
 
 export const maxDuration = 120;
 
@@ -35,6 +36,9 @@ export async function POST(req: NextRequest) {
             body: reqBody,
             user_id,
             log_only,
+            // Attachment-specific fields from the proxy server
+            is_attachment_upload,
+            attachments,
         } = body;
 
         // In log_only mode (from the local proxy server), we skip the
@@ -54,21 +58,13 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const contentToClassify = reqBody || "";
         const startTime = Date.now();
 
         // ── 1. Capture metadata ──
         const domain = extractToolDomain(target_url);
         const tool = identifyTool(domain);
         const userHash = hashString(user_id || "anonymous");
-        const promptHash = hashString(contentToClassify);
-        const promptLength = contentToClassify.length;
-        const tokenEstimate = estimateTokens(contentToClassify);
 
-        // ── 2. Run lightweight classification ──
-        const classification = classifyContent(contentToClassify);
-
-        // ── 3. Generate structured activity event ──
         let apiEndpoint = "/";
         try {
             apiEndpoint = new URL(target_url).pathname;
@@ -76,6 +72,91 @@ export async function POST(req: NextRequest) {
             apiEndpoint = target_url;
         }
 
+        let classification;
+        let promptLength: number;
+        let tokenEstimate: number;
+        let promptHash: string;
+
+        if (is_attachment_upload && Array.isArray(attachments) && attachments.length > 0) {
+            // ── Attachment Upload Classification ──────────────────────────────────────
+            // Derive classification from aggregated attachment scan results
+            const typedAttachments = attachments as AttachmentScanResult[];
+
+            // Aggregate detected categories from all files
+            const allRawCategories: string[] = [];
+            let totalSensitivityPoints = 0;
+            for (const att of typedAttachments) {
+                totalSensitivityPoints += att.sensitivity_points || 0;
+                if (att.detected_categories) {
+                    allRawCategories.push(...att.detected_categories);
+                }
+            }
+
+            // Map DLP scanner category names → proxy classifier SensitivityCategory
+            const categoryMapping: Record<string, SensitivityCategory> = {
+                "SSN": "pii",
+                "Credit Card": "financial",
+                "Bank Account/Routing": "financial",
+                "Email Address": "pii",
+                "Phone Number": "pii",
+                "Employee ID": "pii",
+                "Personal Name": "pii",
+                "Medical Terminology": "phi",
+                "Private Key Block": "trade_secret",
+                "API Key (High Entropy)": "trade_secret",
+                "Structured Dataset with PII": "pii",
+            };
+
+            const mappedCategories = new Set<SensitivityCategory>();
+            for (const raw of allRawCategories) {
+                // Match by prefix (e.g. "SSN (2)" -> "SSN")
+                const key = Object.keys(categoryMapping).find(k => raw.startsWith(k));
+                if (key) mappedCategories.add(categoryMapping[key]);
+            }
+
+            const categories: SensitivityCategory[] = mappedCategories.size > 0
+                ? Array.from(mappedCategories)
+                : ["none"];
+
+            // Normalize sensitivity points to 0–100 score
+            const rawScore = Math.min(Math.round((totalSensitivityPoints / 50) * 100), 100);
+            const hasCritical = categories.includes("phi") ||
+                (categories.includes("pii") && categories.length > 1);
+            let riskCategory: string;
+            if (hasCritical || rawScore >= 80) riskCategory = "critical";
+            else if (rawScore >= 50) riskCategory = "high";
+            else if (rawScore >= 25) riskCategory = "moderate";
+            else riskCategory = "low";
+
+            const policyViolation = categories.some((c) =>
+                ["pii", "phi", "trade_secret", "financial"].includes(c)
+            );
+
+            classification = {
+                categories_detected: categories,
+                sensitivity_score: rawScore,
+                policy_violation_flag: policyViolation,
+                risk_category: riskCategory,
+                details: typedAttachments.map(a =>
+                    `${a.filename} (${a.file_type}, ${Math.round(a.file_size / 1024)}KB): ${a.sensitivity_points} pts`
+                ),
+            };
+
+            // Prompt-equivalent fields for attachments
+            const totalBytes = typedAttachments.reduce((s, a) => s + (a.file_size || 0), 0);
+            promptLength = totalBytes;
+            tokenEstimate = Math.ceil(totalBytes / 4);
+            promptHash = hashString(typedAttachments.map(a => a.filename).join(","));
+        } else {
+            // ── Text / JSON Prompt Classification ────────────────────────────────────
+            const contentToClassify = reqBody || "";
+            promptLength = contentToClassify.length;
+            tokenEstimate = estimateTokens(contentToClassify);
+            promptHash = hashString(contentToClassify);
+            classification = classifyContent(contentToClassify);
+        }
+
+        // ── 2. Build structured activity event ───────────────────────────────────────
         const event: ActivityEvent = {
             id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
             tool,
@@ -92,12 +173,21 @@ export async function POST(req: NextRequest) {
             timestamp: new Date().toISOString(),
         };
 
-        // ── 4. Store full prompt only in Full Audit Mode ──
-        if (settings.full_audit_mode) {
-            event.full_prompt = contentToClassify;
+        // ── 3. Attachment metadata ────────────────────────────────────────────────────
+        if (is_attachment_upload && Array.isArray(attachments) && attachments.length > 0) {
+            event.is_attachment_upload = true;
+            event.attachment_count = attachments.length;
+            event.attachment_filenames = (attachments as AttachmentScanResult[]).map(a => a.filename);
+            event.attachment_types = [...new Set((attachments as AttachmentScanResult[]).map(a => a.file_type))];
+            event.attachments = attachments as AttachmentScanResult[];
         }
 
-        // ── 4.1 Check and mark blocked status ──
+        // ── 4. Full Audit Mode ────────────────────────────────────────────────────────
+        if (settings.full_audit_mode && !is_attachment_upload) {
+            event.full_prompt = reqBody || "";
+        }
+
+        // ── 5. Block flag ─────────────────────────────────────────────────────────────
         if (settings.block_high_risk && classification.risk_category === "critical") {
             event.blocked = true;
         }
@@ -107,12 +197,14 @@ export async function POST(req: NextRequest) {
 
         const processingTime = Date.now() - startTime;
 
-        // ── 5. Log-only mode: return immediately (used by proxy server) ──
+        // ── 6. Log-only mode (from proxy server) ─────────────────────────────────────
         if (log_only) {
             return NextResponse.json({
                 logged: true,
                 event_id: event.id,
                 tool,
+                is_attachment_upload: !!is_attachment_upload,
+                attachment_count: event.attachment_count ?? 0,
                 sensitivity_score: classification.sensitivity_score,
                 risk_category: classification.risk_category,
                 categories: classification.categories_detected,
@@ -120,11 +212,13 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // ── 6. Policy enforcement (forward mode) ──
+        // ── 7. Policy enforcement (forward mode — text-only path) ─────────────────────
         if (settings.block_high_risk && classification.risk_category === "critical") {
             return NextResponse.json({
                 blocked: true,
-                reason: "Prompt blocked by policy: critical sensitivity level detected",
+                reason: is_attachment_upload
+                    ? `Attachment blocked by policy: sensitive content detected in ${event.attachment_count} file(s)`
+                    : "Prompt blocked by policy: critical sensitivity level detected",
                 classification: {
                     sensitivity_score: classification.sensitivity_score,
                     categories: classification.categories_detected,
@@ -135,13 +229,13 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // ── 7. Prepare forwarded body ──
-        let forwardBody = contentToClassify;
-        if (settings.redact_sensitive && classification.policy_violation_flag) {
-            forwardBody = redactSensitiveContent(contentToClassify);
+        // ── 8. Prepare forwarded body (text path only — attachments forwarded by proxy) ──
+        let forwardBody = reqBody || "";
+        if (!is_attachment_upload && settings.redact_sensitive && classification.policy_violation_flag) {
+            forwardBody = redactSensitiveContent(forwardBody);
         }
 
-        // ── 8. Forward to original AI provider ──
+        // ── 9. Forward to original AI provider ──
         const forwardHeaders: Record<string, string> = {
             "Content-Type": "application/json",
             ...(reqHeaders || {}),
@@ -155,13 +249,14 @@ export async function POST(req: NextRequest) {
 
         const aiData = await aiResponse.text();
 
-        // ── 9. Return response to user with metadata ──
+        // ── 10. Return response to user with metadata ──
         return new NextResponse(aiData, {
             status: aiResponse.status,
             headers: {
                 "Content-Type": aiResponse.headers.get("Content-Type") || "application/json",
                 "X-Complyze-Event-Id": event.id,
                 "X-Complyze-Sensitivity": classification.sensitivity_score.toString(),
+                "X-Complyze-Is-Attachment": is_attachment_upload ? "true" : "false",
                 "X-Complyze-Processing-Ms": (Date.now() - startTime).toString(),
             },
         });

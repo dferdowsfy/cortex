@@ -14,6 +14,7 @@ export interface ProxySettings {
     redact_sensitive: boolean;        // redact PII before forwarding
     alert_on_violations: boolean;     // alert admin on policy violations
     desktop_bypass: boolean;          // allow cert-pinned desktop apps (metadata only)
+    inspect_attachments: boolean;     // scan multipart/form-data file uploads for sensitivity
     retention_days: number;           // configurable retention period
     proxy_endpoint: string;           // generated endpoint URL
     updated_at: string;
@@ -26,6 +27,7 @@ export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
     redact_sensitive: false,
     alert_on_violations: true,
     desktop_bypass: false,            // default: deep inspect everything
+    inspect_attachments: true,        // default: inspect attachments
     retention_days: 90,
     proxy_endpoint: "",
     updated_at: new Date().toISOString(),
@@ -52,6 +54,17 @@ export interface ClassificationResult {
 
 /* ── Activity Event ── */
 
+/* ── Attachment Scan Result ── */
+
+export interface AttachmentScanResult {
+    filename: string;
+    file_type: string;
+    file_size: number;
+    detected_categories: string[];
+    sensitivity_points: number;
+    is_bulk: boolean;
+}
+
 export interface ActivityEvent {
     id: string;
     tool: string;
@@ -69,6 +82,12 @@ export interface ActivityEvent {
     blocked?: boolean; // tracking enforcement action
     // Only present when full_audit_mode is enabled
     full_prompt?: string;
+    // Attachment upload fields (set when is_attachment_upload is true)
+    is_attachment_upload?: boolean;
+    attachment_count?: number;
+    attachment_filenames?: string[];
+    attachment_types?: string[];
+    attachments?: AttachmentScanResult[];
 }
 
 /* ── Activity Summary (Dashboard) ── */

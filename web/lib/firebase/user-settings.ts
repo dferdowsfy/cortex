@@ -25,6 +25,7 @@ export interface UserSettings {
     redactSensitive: boolean;
     alertOnViolations: boolean;
     desktopBypass: boolean;
+    inspectAttachments: boolean;      // scan file uploads through the proxy for sensitivity
     riskThreshold: number;
     retentionDays: number;
     userAttributionEnabled: boolean;
@@ -40,6 +41,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     redactSensitive: false,
     alertOnViolations: true,
     desktopBypass: false,
+    inspectAttachments: true,         // default: inspect attachments
     riskThreshold: 60,
     retentionDays: 90,
     userAttributionEnabled: true,
