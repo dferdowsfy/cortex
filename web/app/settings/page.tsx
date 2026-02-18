@@ -157,15 +157,37 @@ export default function SettingsPage() {
         return () => clearInterval(interval);
     }, [checkAgentStatus, checkSetupStatus, isCloud]);
 
-    // ── Save handler: writes directly to Firestore ──────────────
+    // ── Save handler: Bridge sync between User Settings & Proxy Agent ──
     async function handleSave(partial: Partial<typeof settings>) {
         setError("");
         try {
+            // 1. Save to Firestore (Realtime UI logic)
             await saveSettings(partial);
+
+            // 2. Map to Proxy Backend (snake_case)
+            const proxyMap: Record<string, any> = {};
+            if ("proxyEnabled" in partial) proxyMap.proxy_enabled = partial.proxyEnabled;
+            if ("fullAuditMode" in partial) proxyMap.full_audit_mode = partial.fullAuditMode;
+            if ("blockHighRisk" in partial) proxyMap.block_high_risk = partial.blockHighRisk;
+            if ("redactSensitive" in partial) proxyMap.redact_sensitive = partial.redactSensitive;
+            if ("alertOnViolations" in partial) proxyMap.alert_on_violations = partial.alertOnViolations;
+            if ("desktopBypass" in partial) proxyMap.desktop_bypass = partial.desktopBypass;
+            if ("retentionDays" in partial) proxyMap.retention_days = partial.retentionDays;
+
+            // 3. Push to Local Agent API (The "Sync Bridge")
+            if (Object.keys(proxyMap).length > 0) {
+                await fetch("/api/proxy/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(proxyMap),
+                });
+            }
+
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
-        } catch {
-            setError("Failed to save settings. Please try again.");
+        } catch (err) {
+            console.error("[settings] Sync failure:", err);
+            setError("Settings saved to cloud, but failed to sync to local agent.");
         }
     }
 
@@ -488,6 +510,13 @@ export default function SettingsPage() {
                     label="Full Audit Mode"
                     description="Store full prompt text alongside classification metadata."
                     warning="Increases data sensitivity. Ensure access controls are in place."
+                />
+
+                <Toggle
+                    enabled={settings.userAttributionEnabled}
+                    onChange={(val) => handleSave({ userAttributionEnabled: val })}
+                    label="Enable User Attribution"
+                    description="Link risk incidents to authenticated user IDs for trend analysis and repeat offender detection."
                 />
 
                 <div className="py-4 last:border-0">

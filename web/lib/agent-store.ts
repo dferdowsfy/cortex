@@ -9,6 +9,7 @@ const memAgents = new Map<string, AgentRegistration>();
 class AgentStore {
     async registerAgent(agent: AgentRegistration): Promise<void> {
         try {
+            if (!adminDb) throw new Error("Database not initialized");
             await adminDb.ref(`${AGENTS_PATH}/${agent.device_id}`).set({
                 ...agent,
                 updated_at: new Date().toISOString(),
@@ -21,6 +22,7 @@ class AgentStore {
 
     async updateHeartbeat(deviceId: string, data: Partial<AgentRegistration>): Promise<void> {
         try {
+            if (!adminDb || !adminDb.app.options.databaseURL) throw new Error("DB Unavailable");
             await adminDb.ref(`${AGENTS_PATH}/${deviceId}`).update({
                 ...data,
                 last_sync: new Date().toISOString(),
@@ -37,6 +39,7 @@ class AgentStore {
 
     async getAgent(deviceId: string): Promise<AgentRegistration | null> {
         try {
+            if (!adminDb || !adminDb.app.options.databaseURL) throw new Error("DB Unavailable");
             const snap = await adminDb.ref(`${AGENTS_PATH}/${deviceId}`).get();
             return snap.exists() ? (snap.val() as AgentRegistration) : memAgents.get(deviceId) || null;
         } catch (err) {
@@ -47,6 +50,7 @@ class AgentStore {
     async listAgents(): Promise<AgentRegistration[]> {
         let agents: AgentRegistration[] = [];
         try {
+            if (!adminDb || !adminDb.app.options.databaseURL) throw new Error("DB Unavailable");
             const snap = await adminDb.ref(AGENTS_PATH).get();
             if (snap.exists()) {
                 const data = snap.val() as Record<string, AgentRegistration>;

@@ -282,6 +282,8 @@ function startProxy() {
                 REDACT_SENSITIVE: String(currentSettings.redactSensitive),
                 RISK_THRESHOLD: String(currentSettings.riskThreshold),
                 DESKTOP_BYPASS: String(currentSettings.desktopBypass),
+                USER_ATTRIBUTION_ENABLED: String(currentSettings.userAttributionEnabled),
+                FIREBASE_UID: firebaseUid || '',
             }
         });
 

@@ -109,6 +109,10 @@ export function classifyContent(text: string): ClassificationResult {
             categories.push(group.category);
             const groupScore = Math.min(groupMatches.length * group.weight, 20);
             totalScore += groupScore;
+            // Boost critical types to ensure they move the needle
+            if (["pii", "phi", "financial", "trade_secret"].includes(group.category)) {
+                totalScore += 20; // Immediate jump to moderate/high
+            }
             matchCount += groupMatches.length;
             details.push(
                 `${group.label}: ${groupMatches.length} pattern${groupMatches.length > 1 ? "s" : ""} matched`
@@ -116,12 +120,12 @@ export function classifyContent(text: string): ClassificationResult {
         }
     }
 
-    // Normalize to 0–100 scale
-    const sensitivityScore = Math.min(Math.round((totalScore / 40) * 100), 100);
+    // Normalized to 0–100 scale (adjusted for boost)
+    const sensitivityScore = Math.min(Math.round((totalScore / 50) * 100), 100);
 
     // Determine risk category
     let riskCategory: string;
-    if (sensitivityScore >= 75) {
+    if (sensitivityScore >= 80 || categories.includes("phi") || (categories.includes("pii") && matchCount > 1)) {
         riskCategory = "critical";
     } else if (sensitivityScore >= 50) {
         riskCategory = "high";

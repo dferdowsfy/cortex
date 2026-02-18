@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS = {
     desktopBypass: false,
     riskThreshold: 60,
     retentionDays: 90,
+    userAttributionEnabled: true,
 };
 
 class FirebaseSettingsSync {

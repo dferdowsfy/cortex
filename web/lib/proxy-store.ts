@@ -126,6 +126,18 @@ class ProxyStore {
         globalStore._memEvents.unshift(event);
         if (globalStore._memEvents.length > 1000) globalStore._memEvents.pop();
 
+        // Auto-register tool in inventory
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { toolRegistryStore } = require("./tool-registry-store");
+            toolRegistryStore.addTool({
+                id: event.tool.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+                tool_name: event.tool,
+                vendor: event.tool_domain,
+                risk_tier: event.risk_category as any,
+            }).catch(() => { });
+        } catch { }
+
         await this.checkThresholds(event);
     }
 
@@ -237,17 +249,69 @@ class ProxyStore {
         if (total === 0) return this.emptySummary();
 
         const violations = events.filter((e) => e.policy_violation_flag).length;
+        const blocked = events.filter((e) => e.blocked).length;
         const sensitive = events.filter((e) => e.sensitivity_score > 0).length;
         const avgScore = events.reduce((sum, e) => sum + e.sensitivity_score, 0) / total;
 
+        // ── Top Categories ──
+        const catMap = new Map<string, number>();
+        events.forEach(e => {
+            e.sensitivity_categories.forEach(c => {
+                if (c !== "none") catMap.set(c, (catMap.get(c) || 0) + 1);
+            });
+        });
+        const top_risk_categories = Array.from(catMap.entries())
+            .map(([category, count]) => ({ category, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        // ── Top Tools ──
+        const toolMap = new Map<string, { count: number, score: number }>();
+        events.forEach(e => {
+            const current = toolMap.get(e.tool) || { count: 0, score: 0 };
+            toolMap.set(e.tool, {
+                count: current.count + 1,
+                score: current.score + e.sensitivity_score
+            });
+        });
+        const total_tools = toolMap.size;
+        const top_tools = Array.from(toolMap.entries())
+            .map(([tool, data]) => ({
+                tool,
+                count: data.count,
+                avg_sensitivity: Math.round(data.score / data.count)
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        // ── Risk Trend (Daily) ──
+        const trendMap = new Map<string, { score: number, count: number }>();
+        events.forEach(e => {
+            const date = e.timestamp.split("T")[0];
+            const current = trendMap.get(date) || { score: 0, count: 0 };
+            trendMap.set(date, {
+                score: current.score + e.sensitivity_score,
+                count: current.count + 1
+            });
+        });
+        const risk_trend = Array.from(trendMap.entries())
+            .map(([date, data]) => ({
+                date,
+                score: Math.round(data.score / data.count),
+                requests: data.count
+            }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+
         return {
             total_requests: total,
+            total_tools,
             total_violations: violations,
+            total_blocked: blocked,
             sensitive_prompt_pct: Math.round((sensitive / total) * 100),
             avg_sensitivity_score: Math.round(avgScore),
-            top_risk_categories: [],
-            top_tools: [],
-            risk_trend: [],
+            top_risk_categories,
+            top_tools,
+            risk_trend,
             activity_score: Math.round(avgScore * 1.5),
             period: period as "7d" | "30d",
         };
@@ -285,7 +349,9 @@ class ProxyStore {
     private emptySummary(): ActivitySummary {
         return {
             total_requests: 0,
+            total_tools: 0,
             total_violations: 0,
+            total_blocked: 0,
             sensitive_prompt_pct: 0,
             avg_sensitivity_score: 0,
             top_risk_categories: [],

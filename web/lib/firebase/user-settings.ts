@@ -27,6 +27,7 @@ export interface UserSettings {
     desktopBypass: boolean;
     riskThreshold: number;
     retentionDays: number;
+    userAttributionEnabled: boolean;
     updatedAt?: number; // epoch ms
 }
 
@@ -41,6 +42,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     desktopBypass: false,
     riskThreshold: 60,
     retentionDays: 90,
+    userAttributionEnabled: true,
 };
 
 // ── Ref helper ───────────────────────────────────────────────────

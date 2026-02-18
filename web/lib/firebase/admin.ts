@@ -1,13 +1,5 @@
 /**
  * Firebase Admin SDK — initialized for server-side use (API routes).
- *
- * Strategy:
- * 1. If FIREBASE_SERVICE_ACCOUNT_KEY env var exists, use it (full admin access)
- * 2. Otherwise, use project-id-only initialization (limited but works for Firestore
- *    when running on GCP or when Firestore rules allow)
- *
- * For Vercel deployment, you need to generate a service account key from the
- * Firebase Console and store it as the FIREBASE_SERVICE_ACCOUNT_KEY env var.
  */
 import {
     initializeApp,
@@ -17,6 +9,7 @@ import {
     type ServiceAccount,
 } from "firebase-admin/app";
 import { getDatabase } from "firebase-admin/database";
+import { getFirestore } from "firebase-admin/firestore";
 
 const RTDB_URL =
     process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL ||
@@ -69,16 +62,35 @@ function getAdminApp() {
         }
     }
 
-    // Option 3: Project-ID only
-    console.warn(
-        "[firebase-admin] No service account credentials found. " +
-        "Using project-ID only initialization. " +
-        "Set FIREBASE_SERVICE_ACCOUNT_KEY for full admin access."
-    );
-    return initializeApp({ projectId, databaseURL: RTDB_URL });
+    // Option 3: Fallback (Highly restricted)
+    if (process.env.NODE_ENV === "development") {
+        console.warn(
+            "[firebase-admin] No service account found. " +
+            "Running in Local Dev mode with restricted DB access. " +
+            "Set FIREBASE_SERVICE_ACCOUNT_KEY for full cloud sync."
+        );
+    }
+
+    // If no credentials at all, return a project-only app but warn that RTDB won't work
+    return initializeApp({ projectId });
 }
 
 const adminApp = getAdminApp();
-const adminDb = getDatabase(adminApp);
+let adminDb: ReturnType<typeof getDatabase> | null = null;
+let adminFirestore: ReturnType<typeof getFirestore> | null = null;
 
-export { adminApp, adminDb };
+try {
+    if (RTDB_URL && RTDB_URL.includes("firebaseio.com")) {
+        adminDb = getDatabase(adminApp);
+    }
+} catch (err) {
+    console.warn("[firebase-admin] RTDB initialization failed:", err);
+}
+
+try {
+    adminFirestore = getFirestore(adminApp);
+} catch (err) {
+    console.warn("[firebase-admin] Firestore initialization failed:", err);
+}
+
+export { adminApp, adminDb, adminFirestore };

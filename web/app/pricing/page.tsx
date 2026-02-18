@@ -7,113 +7,167 @@ import MarketingFooter from "@/components/MarketingFooter";
 export default function PricingPage() {
     const tiers = [
         {
-            name: "Starter",
-            price: "$2,500",
-            description: "For organizations starting their AI governance journey.",
+            name: "VISIBILITY",
+            tagline: "See Your AI Exposure",
+            displayPrice: "$700",
+            priceDetails: "$7 per employee / month · Minimum 100 employees · Billed annually",
+            description: "Monitor AI usage and understand your exposure risk.",
             features: [
-                "Up to 25 AI tools",
-                "Structured assessments",
-                "Governance registry",
-                "Basic reporting",
-                "Email support",
+                "AI app detection (desktop + browser)",
+                "Prompt monitoring (read-only)",
+                "Sensitive data exposure detection",
+                "Real-time AI Risk Score (0–100)",
+                "High-risk event flagging",
+                "Executive dashboard",
+                "Monthly risk summary report",
             ],
+            cta: "Start Monitoring",
+            href: "/request-demo",
         },
         {
-            name: "Growth",
-            price: "$5,000",
-            description: "Comprehensive governance for scaling AI environments.",
+            name: "CONTROL",
+            tagline: "See It. Score It. Stop It.",
+            displayPrice: "$1,200",
+            priceDetails: "$12 per employee / month · Minimum 100 employees · Billed annually",
+            description: "Full monitoring plus real-time enforcement.",
             features: [
-                "Up to 100 AI tools",
-                "Automated reassessments",
-                "Governance gap tracking",
-                "Audit trail history",
-                "Role-based access controls",
-                "Priority support",
+                "All Visibility features included",
+                "Attachment scanning (local-first)",
+                "Real-time blocking at configurable thresholds",
+                "Interceptor toggle (on/off by policy)",
+                "Monitor all desktop and browser AI tools",
+                "Audit logs of blocked activity",
+                "Trend reporting",
+                "Role-based admin controls",
             ],
+            cta: "Enable Control",
+            href: "/request-demo",
             featured: true,
         },
         {
-            name: "Enterprise",
-            price: "Custom",
-            description: "Full-scale governance automation for the enterprise.",
+            name: "ENTERPRISE",
+            tagline: "Institutional AI Governance",
+            displayPrice: "Custom",
+            priceDetails: "Tailored for organization-wide scale",
+            description: "Institutional AI governance for complex organizations.",
             features: [
-                "Unlimited AI tools",
-                "Advanced governance automation",
-                "Custom control frameworks",
+                "Unlimited endpoints",
+                "SSO integration",
+                "Custom risk scoring logic",
+                "API access",
                 "Dedicated onboarding",
-                "Executive reporting suite",
-                "SLA support",
+                "SLA-backed support",
+                "Board-ready reporting",
             ],
+            cta: "Contact Sales",
+            href: "/request-demo",
+        },
+    ];
+
+    const faqs = [
+        {
+            question: "How is pricing calculated?",
+            answer: "Pricing is based on total employees to ensure complete coverage.",
+        },
+        {
+            question: "Does this slow down employees?",
+            answer: "Visibility does not interfere. Control only blocks high-risk activity.",
+        },
+        {
+            question: "Do you store our prompts?",
+            answer: "No. Sensitive data detection is processed securely and locally when possible.",
         },
     ];
 
     return (
-        <div className="bg-background-light dark:bg-background-dark text-neutral-800 dark:text-white font-display antialiased overflow-x-hidden min-h-screen">
+        <div className="bg-[#111121] text-white font-sans antialiased min-h-screen">
             <MarketingNav />
 
-            <main className="py-24">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-20">
-                        <h1 className="text-4xl font-bold mb-4">Enterprise AI Governance Pricing</h1>
-                        <p className="text-neutral-500 dark:text-neutral-400 max-w-2xl mx-auto">
-                            Choose the plan that fits your organization's governance needs.
-                        </p>
-                    </div>
+            <main className="pt-16 pb-12">
+                {/* Hero Section */}
+                <div className="max-w-4xl mx-auto px-6 text-center mb-12">
+                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 text-white">
+                        Simple AI Risk Monitoring for Mid-Market Teams
+                    </h1>
+                    <p className="text-xl text-white/70 leading-relaxed">
+                        Complyze monitors AI usage across desktop and browser apps, scores exposure risk, and optionally blocks sensitive activity — without slowing teams down.
+                    </p>
+                </div>
 
+                {/* Pricing Tiers */}
+                <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     <div className="grid md:grid-cols-3 gap-8">
                         {tiers.map((tier) => (
                             <div
                                 key={tier.name}
-                                className={`relative p-8 rounded-2xl border ${tier.featured
-                                        ? "border-primary bg-primary/5 shadow-xl shadow-primary/5"
-                                        : "border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50"
-                                    } flex flex-col`}
+                                className={`relative flex flex-col h-full p-6 rounded-xl border border-white/10 transition-all duration-200 ${tier.featured
+                                    ? "bg-white/[0.02] shadow-2xl ring-1 ring-white/20 -translate-y-2 z-10"
+                                    : "bg-transparent hover:border-white/20"
+                                    }`}
                             >
                                 {tier.featured && (
-                                    <div className="absolute top-0 right-8 -translate-y-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase">
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3B36DB] text-white text-[10px] font-bold tracking-widest px-3 py-1 rounded-full uppercase">
                                         Most Popular
                                     </div>
                                 )}
-                                <div className="mb-8">
-                                    <h3 className="text-xl font-bold mb-2">{tier.name}</h3>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-4xl font-bold">{tier.price}</span>
-                                        {tier.price !== "Custom" && <span className="text-neutral-500 text-sm">/ month</span>}
+
+                                <div className="mb-5 text-center sm:text-left">
+                                    <h3 className="text-sm font-bold tracking-widest uppercase text-white/50 mb-2">
+                                        {tier.name}
+                                    </h3>
+                                    <p className="text-lg font-medium text-white mb-6">
+                                        {tier.tagline}
+                                    </p>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-baseline gap-2 justify-center sm:justify-start">
+                                            <span className="text-5xl font-bold tracking-tight">{tier.displayPrice}</span>
+                                            {tier.displayPrice !== "Custom" && <span className="text-white/50 text-sm">/ month</span>}
+                                        </div>
+                                        <p className="text-[13px] text-white/40 mt-1 leading-relaxed">
+                                            {tier.priceDetails}
+                                        </p>
                                     </div>
-                                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-4 leading-relaxed">
+                                    <p className="text-sm text-white/70 mt-4 font-medium">
                                         {tier.description}
                                     </p>
                                 </div>
-                                <ul className="space-y-4 mb-10 flex-grow">
+
+                                <ul className="space-y-3 mb-8 flex-grow border-t border-white/5 pt-5">
                                     {tier.features.map((feature) => (
-                                        <li key={feature} className="flex items-center gap-3 text-sm text-neutral-600 dark:text-neutral-300">
-                                            <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <li key={feature} className="flex items-start gap-3 text-sm text-white/80">
+                                            <svg className="w-5 h-5 text-[#3B36DB] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                             </svg>
-                                            {feature}
+                                            <span>{feature}</span>
                                         </li>
                                     ))}
                                 </ul>
+
                                 <Link
-                                    href="/request-demo"
-                                    className={`w-full py-3 px-4 rounded-lg text-center font-semibold transition-all ${tier.featured
-                                            ? "bg-primary text-white hover:bg-primary/90"
-                                            : "bg-neutral-800 dark:bg-neutral-700 text-white hover:bg-neutral-700 dark:hover:bg-neutral-600"
-                                        }`}
+                                    href={tier.href}
+                                    className="w-full py-3 px-6 rounded-lg text-center font-bold tracking-wide bg-[#3B36DB] text-white hover:bg-[#4d48ef] transition-all duration-200"
                                 >
-                                    Request Demo
+                                    {tier.cta}
                                 </Link>
                             </div>
                         ))}
                     </div>
+                </div>
 
-                    <div className="mt-16 text-center">
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400 flex items-center justify-center gap-2">
-                            <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                            All plans include secure data handling and structured audit records.
-                        </p>
+                {/* FAQ Section */}
+                <div className="max-w-3xl mx-auto px-6 mt-16 border-t border-white/5 pt-12">
+                    <h2 className="text-2xl font-bold text-center mb-8 text-white">Frequently Asked Questions</h2>
+                    <div className="grid gap-12 sm:grid-cols-1">
+                        {faqs.map((faq, index) => (
+                            <div key={index}>
+                                <h4 className="text-lg font-bold text-white mb-2">
+                                    {index + 1}. {faq.question}
+                                </h4>
+                                <p className="text-white/70 leading-relaxed">
+                                    {faq.answer}
+                                </p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </main>

@@ -66,6 +66,7 @@ export interface ActivityEvent {
     policy_violation_flag: boolean;
     risk_category: string;
     timestamp: string;
+    blocked?: boolean; // tracking enforcement action
     // Only present when full_audit_mode is enabled
     full_prompt?: string;
 }
@@ -74,7 +75,9 @@ export interface ActivityEvent {
 
 export interface ActivitySummary {
     total_requests: number;
+    total_tools: number;
     total_violations: number;
+    total_blocked: number;
     sensitive_prompt_pct: number;     // % containing sensitive markers
     avg_sensitivity_score: number;
     top_risk_categories: { category: string; count: number }[];

@@ -93,6 +93,11 @@ export async function POST(req: NextRequest) {
             event.full_prompt = contentToClassify;
         }
 
+        // ── 4.1 Check and mark blocked status ──
+        if (settings.block_high_risk && classification.risk_category === "critical") {
+            event.blocked = true;
+        }
+
         // Log the event
         await store.addEvent(event);
 

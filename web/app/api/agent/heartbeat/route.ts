@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
     try {
         const agents = await agentStore.listAgents();
-        const primaryAgent = agents[0] || null;
+        const primaryAgent = agents.find(a => a.status === "Healthy") || agents[0] || null;
 
         return NextResponse.json({
             agents,

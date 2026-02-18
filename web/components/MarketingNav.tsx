@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function MarketingNav() {
     return (
-        <nav className="sticky top-0 z-50 w-full border-b border-neutral-200 dark:border-neutral-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
+        <nav className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#111121] shadow-sm backdrop-blur-md">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
@@ -12,20 +12,20 @@ export default function MarketingNav() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                             </svg>
                         </div>
-                        <Link href="/" className="font-bold text-lg tracking-tight text-neutral-800 dark:text-white">
+                        <Link href="/" className="font-bold text-lg tracking-tight text-white">
                             Complyze
                         </Link>
                     </div>
                     {/* Desktop Menu */}
                     <div className="hidden md:flex items-center space-x-10">
                         <Link
-                            className="text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
+                            className="text-base font-medium text-white/80 hover:text-white transition-colors"
                             href="/platform"
                         >
                             Platform
                         </Link>
                         <Link
-                            className="text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
+                            className="text-base font-medium text-white/80 hover:text-white transition-colors"
                             href="/pricing"
                         >
                             Pricing
@@ -35,7 +35,7 @@ export default function MarketingNav() {
                     <div className="hidden md:flex items-center gap-6">
                         <Link
                             href="/login"
-                            className="text-base font-medium text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
+                            className="text-base font-medium text-white/80 hover:text-white transition-colors"
                         >
                             Sign In
                         </Link>

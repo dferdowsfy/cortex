@@ -24,6 +24,7 @@ const net = require('net');
 const tls = require('tls');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 let forge;
 try {
@@ -106,6 +107,28 @@ const PASSTHROUGH_DOMAINS = [
 const MONITOR_MODE_DEFAULT = 'observe';
 let desktopBypassEnabled = false;
 let blockHighRiskEnabled = false;
+let userAttributionEnabled = process.env.USER_ATTRIBUTION_ENABLED === 'true';
+let authenticatedUserId = process.env.FIREBASE_UID || null;
+
+// Handle settings updates from main process
+process.on('message', (msg) => {
+    if (msg.type === 'settings-update') {
+        const { settings } = msg;
+        blockHighRiskEnabled = !!settings.blockHighRisk;
+        desktopBypassEnabled = !!settings.desktopBypass;
+        userAttributionEnabled = !!settings.userAttributionEnabled;
+        authenticatedUserId = settings.uid || null;
+
+        // Sync with local DLP policy engine
+        updatePolicy({
+            blockingEnabled: blockHighRiskEnabled,
+            reuThreshold: settings.riskThreshold || 60
+        });
+
+        console.log(`[proxy-msg] Settings Updated: attribution=${userAttributionEnabled ? 'ON' : 'OFF'}, user=${authenticatedUserId ? 'auth' : 'none'}`);
+        process.send({ type: 'settings-ack' });
+    }
+});
 
 // PAC script content generator
 function generatePAC() {
@@ -134,14 +157,15 @@ async function syncSettings() {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
             blockHighRiskEnabled = !!data.block_high_risk;
+            userAttributionEnabled = !!data.user_attribution_enabled;
 
             // Sync with local DLP policy engine
             updatePolicy({
                 blockingEnabled: blockHighRiskEnabled,
-                reuThreshold: 50
+                reuThreshold: data.risk_threshold || 60
             });
 
-            console.log(`[sync] Settings: bypass=${desktopBypassEnabled}, block=${blockHighRiskEnabled}`);
+            console.log(`[sync] Settings: bypass=${desktopBypassEnabled}, block=${blockHighRiskEnabled}, attribution=${userAttributionEnabled}`);
         }
     } catch { }
 }
@@ -279,14 +303,31 @@ async function logToComplyze(targetUrl, method, headers, body, dlpResult = null)
     const n = eventCount;
 
     try {
+        // Deterministic User ID logic
+        let userId = 'ANON';
+        if (userAttributionEnabled && authenticatedUserId) {
+            // Hash the UID for security (never store email/name)
+            userId = crypto.createHash('sha256').update(authenticatedUserId).digest('hex').substring(0, 16);
+        }
+
+        // Output Schema (Deterministic JSON)
         const payload = {
+            incident_id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            application: extractAppName(headers, targetUrl),
+            risk_score: dlpResult ? dlpResult.finalReu : 0,
+            severity: mapRiskToSeverity(dlpResult ? dlpResult.finalReu : 0),
+            violation_category: dlpResult && dlpResult.violations ? dlpResult.violations[0] : 'None',
+            user_id: userId,
+            blocked: blockHighRiskEnabled && dlpResult && dlpResult.action === 'BLOCK',
+
+            // Raw data for optional audit (if Full Audit Mode is on, handled server-side)
             target_url: targetUrl,
             method,
             headers: sanitizeHeaders(headers),
             body: typeof body === 'string' ? body : JSON.stringify(body),
-            user_id: 'system-proxy',
-            log_only: true,
-            dlp: dlpResult // Include local scan results
+            log_only: true, // Legacy flag
+            dlp: dlpResult
         };
 
         const res = await fetch(COMPLYZE_API, {
@@ -298,13 +339,27 @@ async function logToComplyze(targetUrl, method, headers, body, dlpResult = null)
         if (res.ok) {
             const data = await res.json();
             const eid = data.event_id || data['X-Complyze-Event-Id'] || 'ok';
-            console.log(`      ✅ Logged event #${n} (${eid})`);
+            console.log(`      ✅ Logged [${payload.user_id}] event #${n} (${eid})`);
         } else {
             console.log(`      ⚠️  Log failed #${n}: HTTP ${res.status}`);
         }
     } catch (e) {
         console.error(`      ❌ Log error #${n}: ${e.message}`);
     }
+}
+
+function extractAppName(headers, url) {
+    const ua = headers['user-agent'] || '';
+    if (ua.includes('ChatGPT')) return 'ChatGPT Desktop';
+    if (ua.includes('Claude')) return 'Claude Desktop';
+    return new URL(url).hostname;
+}
+
+function mapRiskToSeverity(score) {
+    if (score >= 90) return 'Critical';
+    if (score >= 70) return 'High';
+    if (score >= 40) return 'Medium';
+    return 'Low';
 }
 
 function sanitizeHeaders(headers) {
@@ -321,22 +376,34 @@ async function logMetadata(hostname) {
     const n = eventCount;
 
     try {
+        let userId = 'ANON';
+        if (userAttributionEnabled && authenticatedUserId) {
+            userId = crypto.createHash('sha256').update(authenticatedUserId).digest('hex').substring(0, 16);
+        }
+
         const res = await fetch(COMPLYZE_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                incident_id: crypto.randomUUID(),
+                timestamp: new Date().toISOString(),
+                application: hostname,
+                risk_score: 0,
+                severity: 'Low',
+                violation_category: 'None',
+                user_id: userId,
+                blocked: false,
                 target_url: `https://${hostname}/`,
                 method: 'CONNECT',
                 headers: {},
                 body: `[metadata-only: cert-pinned app connection to ${hostname}]`,
-                user_id: 'system-proxy',
                 log_only: true,
             }),
         });
 
         if (res.ok) {
             const data = await res.json();
-            console.log(`      📊 Metadata logged #${n} (${data.event_id || 'ok'})`);
+            console.log(`      📊 Metadata logged [${userId}] #${n} (${data.event_id || 'ok'})`);
         }
     } catch {
         // Silent fail for metadata — non-critical

@@ -6,16 +6,6 @@
  * logs requests through the Complyze monitoring API, and forwards to the real
  * destination. This allows organizations to monitor and govern AI usage across
  * desktop apps, browsers, and CLI tools.
- *
- * Usage:
- *   node scripts/proxy-server.js [--port 8080]
- *
- * First-time setup:
- *   1. Run this script (auto-generates CA certificate on first run)
- *   2. Trust CA: sudo security add-trusted-cert -d -r trustRoot \
- *        -k /Library/Keychains/System.keychain certs/ca-cert.pem
- *   3. macOS: System Settings → Wi-Fi → Details → Proxies
- *      → Enable "HTTPS Proxy" → 127.0.0.1 : 8080
  */
 
 const http = require('http');
@@ -44,20 +34,9 @@ const COMPLYZE_API =
 const CERTS_DIR = path.join(__dirname, '..', 'certs');
 
 // ─── Domain Configuration ────────────────────────────────────────────────────
-//
-// Architecture:
-//   1. ALL AI domains are deep-inspected by default (full prompt visibility)
-//   2. Infrastructure domains (Firebase auth, etc.) always pass through
-//   3. Admin can enable "Desktop App Bypass" to allow cert-pinned apps
-//      — when enabled, UI domains fall back to metadata-only logging
-//
-// This ensures maximum security posture by default while giving admins
-// explicit control over the desktop app compatibility tradeoff.
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ALL AI domains — deep inspection by default
 const AI_DOMAINS = [
-    // API backends
     'api.openai.com',
     'api.anthropic.com',
     'api.cohere.com',
@@ -70,17 +49,16 @@ const AI_DOMAINS = [
     'api.fireworks.ai',
     'api.replicate.com',
     'generativelanguage.googleapis.com',
-    // Web/app UI domains (also inspected — works in browsers)
     'chatgpt.com',
     'chat.openai.com',
     'ab.chatgpt.com',
     'cdn.oaistatic.com',
     'claude.ai',
+    'perplexity.ai',
+    'www.perplexity.ai',
 ];
 
-// Domains that cert-pinned desktop apps use — only relevant when
-// "Desktop App Bypass" is enabled by the admin. When bypass is ON,
-// these switch from deep inspection to metadata-only passthrough.
+// Domains that cert-pinned desktop apps use
 const DESKTOP_APP_DOMAINS = [
     'chatgpt.com',
     'chat.openai.com',
@@ -89,10 +67,11 @@ const DESKTOP_APP_DOMAINS = [
     'claude.ai',
     'ios.chat.openai.com',
     'ws.chatgpt.com',
+    'perplexity.ai',
+    'www.perplexity.ai',
 ];
 
 // Infrastructure domains — ALWAYS transparent passthrough (never inspect)
-// These handle auth, database, etc. and must never be MITM'd.
 const PASSTHROUGH_DOMAINS = [
     'identitytoolkit.googleapis.com',
     'securetoken.googleapis.com',
@@ -103,8 +82,7 @@ const PASSTHROUGH_DOMAINS = [
     'oauth2.googleapis.com',
 ];
 
-const MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
-const FAIL_OPEN = true;
+let MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
 let desktopBypassEnabled = false;
 
 async function syncSettings() {
@@ -113,7 +91,28 @@ async function syncSettings() {
         if (res.ok) {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
+            MONITOR_MODE = data.block_high_risk ? 'enforce' : 'observe';
         }
+    } catch { }
+}
+
+async function registerHeartbeat() {
+    try {
+        await fetch('http://localhost:3737/api/agent/heartbeat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                device_id: 'local-proxy-server',
+                hostname: require('os').hostname(),
+                os: 'macOS',
+                version: '1.0.0-proxy',
+                status: 'Healthy',
+                workspace_id: 'local-dev',
+                service_connectivity: true,
+                traffic_routing: true,
+                os_integration: true
+            }),
+        });
     } catch { }
 }
 
@@ -155,25 +154,20 @@ function ensureCA() {
     const certPath = path.join(CERTS_DIR, 'ca-cert.pem');
 
     if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-        console.log('🔐 Loading existing CA certificate...');
         return {
             key: forge.pki.privateKeyFromPem(fs.readFileSync(keyPath, 'utf8')),
             cert: forge.pki.certificateFromPem(fs.readFileSync(certPath, 'utf8')),
         };
     }
 
-    console.log('🔐 Generating new CA certificate...');
     fs.mkdirSync(CERTS_DIR, { recursive: true });
-
     const keys = forge.pki.rsa.generateKeyPair(2048);
     const cert = forge.pki.createCertificate();
     cert.publicKey = keys.publicKey;
     cert.serialNumber = '01';
     cert.validity.notBefore = new Date();
     cert.validity.notAfter = new Date();
-    cert.validity.notAfter.setFullYear(
-        cert.validity.notBefore.getFullYear() + 10
-    );
+    cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 10);
 
     const attrs = [
         { name: 'commonName', value: 'Complyze AI Proxy CA' },
@@ -184,59 +178,31 @@ function ensureCA() {
     cert.setIssuer(attrs);
     cert.setExtensions([
         { name: 'basicConstraints', cA: true, critical: true },
-        {
-            name: 'keyUsage',
-            keyCertSign: true,
-            cRLSign: true,
-            digitalSignature: true,
-            critical: true,
-        },
+        { name: 'keyUsage', keyCertSign: true, cRLSign: true, digitalSignature: true, critical: true },
         { name: 'subjectKeyIdentifier' },
     ]);
     cert.sign(keys.privateKey, forge.md.sha256.create());
 
-    const keyPem = forge.pki.privateKeyToPem(keys.privateKey);
-    const certPem = forge.pki.certificateToPem(cert);
-
-    fs.writeFileSync(keyPath, keyPem);
-    fs.writeFileSync(certPath, certPem);
-
-    console.log(`   ✅ CA cert: ${certPath}`);
-    console.log(`   ✅ CA key:  ${keyPath}`);
+    fs.writeFileSync(keyPath, forge.pki.privateKeyToPem(keys.privateKey));
+    fs.writeFileSync(certPath, forge.pki.certificateToPem(cert));
 
     return { key: keys.privateKey, cert };
 }
 
 function getCertForDomain(domain, ca) {
     if (certCache.has(domain)) return certCache.get(domain);
-
     const keys = forge.pki.rsa.generateKeyPair(2048);
     const cert = forge.pki.createCertificate();
     cert.publicKey = keys.publicKey;
     cert.serialNumber = Date.now().toString(16);
     cert.validity.notBefore = new Date();
     cert.validity.notAfter = new Date();
-    cert.validity.notAfter.setFullYear(
-        cert.validity.notBefore.getFullYear() + 1
-    );
-
+    cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
     cert.setSubject([{ name: 'commonName', value: domain }]);
     cert.setIssuer(ca.cert.subject.attributes);
-    cert.setExtensions([
-        {
-            name: 'subjectAltName',
-            altNames: [
-                { type: 2, value: domain },
-                { type: 2, value: '*.' + domain },
-            ],
-        },
-    ]);
+    cert.setExtensions([{ name: 'subjectAltName', altNames: [{ type: 2, value: domain }, { type: 2, value: '*.' + domain }] }]);
     cert.sign(ca.key, forge.md.sha256.create());
-
-    const result = {
-        key: forge.pki.privateKeyToPem(keys.privateKey),
-        cert: forge.pki.certificateToPem(cert),
-    };
+    const result = { key: forge.pki.privateKeyToPem(keys.privateKey), cert: forge.pki.certificateToPem(cert) };
     certCache.set(domain, result);
     return result;
 }
@@ -247,74 +213,35 @@ let eventCount = 0;
 
 async function logToComplyze(targetUrl, method, headers, body, dlpResult = null) {
     eventCount++;
-    const n = eventCount;
-
     try {
         const payload = {
             target_url: targetUrl,
             method,
             headers: sanitizeHeaders(headers),
             body: typeof body === 'string' ? body : JSON.stringify(body),
-            user_id: 'system-proxy',
+            user_id: 'local-user',
             log_only: true,
-            dlp: dlpResult // Include local scan results
+            dlp: dlpResult
         };
-
-        const res = await fetch(COMPLYZE_API, {
+        await fetch(COMPLYZE_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
-
-        if (res.ok) {
-            const data = await res.json();
-            const eid = data.event_id || data['X-Complyze-Event-Id'] || 'ok';
-            console.log(`      ✅ Logged event #${n} (${eid})`);
-        } else {
-            console.log(`      ⚠️  Log failed #${n}: HTTP ${res.status}`);
-        }
     } catch (e) {
-        console.error(`      ❌ Log error #${n}: ${e.message}`);
+        console.error(`❌ Log error: ${e.message}`);
     }
 }
 
 function sanitizeHeaders(headers) {
     const safe = { ...headers };
-    // Strip auth tokens from stored logs
     delete safe['authorization'];
     delete safe['x-api-key'];
+    delete safe['cookie'];
     return safe;
 }
 
-// Log metadata for cert-pinned domains (connection-level, no content)
-async function logMetadata(hostname) {
-    eventCount++;
-    const n = eventCount;
-
-    try {
-        const res = await fetch(COMPLYZE_API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                target_url: `https://${hostname}/`,
-                method: 'CONNECT',
-                headers: {},
-                body: `[metadata-only: cert-pinned app connection to ${hostname}]`,
-                user_id: 'system-proxy',
-                log_only: true,
-            }),
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            console.log(`      📊 Metadata logged #${n} (${data.event_id || 'ok'})`);
-        }
-    } catch {
-        // Silent fail for metadata — non-critical
-    }
-}
-
-// ─── HTTP Request Parser (from raw TLS stream) ──────────────────────────────
+// ─── HTTP Request Parser ───
 
 class HTTPRequestParser {
     constructor(onRequest) {
@@ -322,51 +249,31 @@ class HTTPRequestParser {
         this.buffer = Buffer.alloc(0);
         this.state = 'HEADERS';
         this.headers = {};
-        this.rawHeaderStr = '';
-        this.method = '';
-        this.path = '';
-        this.httpVersion = '';
-        this.contentLength = 0;
         this.bodyBuffer = Buffer.alloc(0);
     }
-
     feed(chunk) {
         this.buffer = Buffer.concat([this.buffer, chunk]);
         this._parse();
     }
-
     _parse() {
         if (this.state === 'HEADERS') {
             const idx = this.buffer.indexOf('\r\n\r\n');
-            if (idx === -1) return; // Need more data
-
-            this.rawHeaderStr = this.buffer.slice(0, idx).toString();
-            const lines = this.rawHeaderStr.split('\r\n');
-
-            // Parse request line: "POST /v1/chat/completions HTTP/1.1"
+            if (idx === -1) return;
+            const lines = this.buffer.slice(0, idx).toString().split('\r\n');
             const parts = lines[0].split(' ');
             this.method = parts[0];
             this.path = parts[1];
-            this.httpVersion = parts[2] || 'HTTP/1.1';
-
-            // Parse headers
-            this.headers = {};
             for (let i = 1; i < lines.length; i++) {
                 const colonIdx = lines[i].indexOf(':');
                 if (colonIdx > 0) {
-                    const key = lines[i].substring(0, colonIdx).trim().toLowerCase();
-                    const val = lines[i].substring(colonIdx + 1).trim();
-                    this.headers[key] = val;
+                    this.headers[lines[i].substring(0, colonIdx).trim().toLowerCase()] = lines[i].substring(colonIdx + 1).trim();
                 }
             }
-
             this.contentLength = parseInt(this.headers['content-length'] || '0');
             this.buffer = this.buffer.slice(idx + 4);
-            this.bodyBuffer = Buffer.alloc(0);
             this.state = 'BODY';
             this._parse();
         }
-
         if (this.state === 'BODY') {
             if (this.contentLength === 0) {
                 this.onRequest(this.method, this.path, this.headers, '');
@@ -374,10 +281,8 @@ class HTTPRequestParser {
                 if (this.buffer.length > 0) this._parse();
                 return;
             }
-
             this.bodyBuffer = Buffer.concat([this.bodyBuffer, this.buffer]);
             this.buffer = Buffer.alloc(0);
-
             if (this.bodyBuffer.length >= this.contentLength) {
                 const body = this.bodyBuffer.slice(0, this.contentLength).toString();
                 const remaining = this.bodyBuffer.slice(this.contentLength);
@@ -388,253 +293,77 @@ class HTTPRequestParser {
             }
         }
     }
-
-    _reset() {
-        this.state = 'HEADERS';
-        this.headers = {};
-        this.rawHeaderStr = '';
-        this.method = '';
-        this.path = '';
-        this.httpVersion = '';
-        this.contentLength = 0;
-        this.bodyBuffer = Buffer.alloc(0);
-    }
+    _reset() { this.state = 'HEADERS'; this.headers = {}; this.bodyBuffer = Buffer.alloc(0); }
 }
 
-// ─── Proxy Server ────────────────────────────────────────────────────────────
+// ─── Main Proxy ───
 
 function startProxy() {
     const ca = ensureCA();
-    let connCount = 0;
-
     const server = http.createServer((req, res) => {
-        // Handle basic status check or local dashboard hits
-        if (req.url === '/' || req.url === '/dashboard') {
-            res.writeHead(200, { 'Content-Type': 'text/plain' });
-            res.end('Complyze AI Proxy is running. Use this address as your HTTPS Proxy (127.0.0.1:8080).');
+        if (req.url === '/proxy.pac') {
+            const domains = [...AI_DOMAINS, ...PASSTHROUGH_DOMAINS];
+            const pacScript = `function FindProxyForURL(url, host) {
+                if (isPlainHostName(host) || host === "127.0.0.1" || host === "localhost" || shExpMatch(host, "*.local")) return "DIRECT";
+                var aiDomains = ${JSON.stringify(domains)};
+                for (var i = 0; i < aiDomains.length; i++) {
+                    if (host === aiDomains[i] || shExpMatch(host, "*." + aiDomains[i])) return "PROXY 127.0.0.1:8080";
+                }
+                return "DIRECT";
+            }`;
+            res.writeHead(200, { 'Content-Type': 'application/x-ns-proxy-autoconfig' });
+            res.end(pacScript);
             return;
         }
-
-        try {
-            // Handle plain HTTP proxy requests
-            const target = new URL(req.url);
-
-            if (isAIDomain(target.hostname)) {
-                let body = '';
-                req.on('data', (chunk) => (body += chunk.toString()));
-                req.on('end', () => {
-                    console.log(`\n📡 [HTTP] ${req.method} ${req.url}`);
-                    logToComplyze(req.url, req.method, req.headers, body);
-
-                    const proxyReq = http.request(
-                        { hostname: target.hostname, port: target.port || 80, path: target.pathname + target.search, method: req.method, headers: req.headers },
-                        (proxyRes) => {
-                            res.writeHead(proxyRes.statusCode, proxyRes.headers);
-                            proxyRes.pipe(res);
-                        }
-                    );
-                    proxyReq.on('error', () => res.end());
-                    if (body) proxyReq.write(body);
-                    proxyReq.end();
-                });
-            } else {
-                // Forward non-AI HTTP traffic
-                const proxyReq = http.request(req.url, { method: req.method, headers: req.headers }, (proxyRes) => {
-                    res.writeHead(proxyRes.statusCode, proxyRes.headers);
-                    proxyRes.pipe(res);
-                });
-                proxyReq.on('error', () => res.end());
-                req.pipe(proxyReq);
-            }
-        } catch (err) {
-            console.error(`[proxy] invalid URL request: ${req.url}`, err.message);
-            res.writeHead(400);
-            res.end('Invalid Proxy Request');
-        }
+        res.writeHead(200);
+        res.end('Complyze AI Proxy is active.');
     });
 
-    // Handle HTTPS CONNECT tunneling
     server.on('connect', (req, clientSocket, head) => {
         const [hostname, portStr] = req.url.split(':');
         const port = parseInt(portStr) || 443;
-        connCount++;
-        const id = connCount;
-
-        if (isPassthroughDomain(hostname)) {
-            // Infrastructure domains — always transparent, never inspect
-            handleTunnel(hostname, port, clientSocket, head);
-        } else if (shouldDeepInspect(hostname)) {
-            // Deep inspection: MITM to read full prompt content
-            console.log(`\n🔍 [#${id}] INTERCEPTING → ${hostname}:${port}`);
-            handleMITM(hostname, port, clientSocket, head, ca, id);
-        } else if (shouldLogMetadata(hostname)) {
-            // Desktop bypass mode: metadata-only logging
-            console.log(`\n📊 [#${id}] METADATA (desktop bypass) → ${hostname}:${port}`);
-            logMetadata(hostname);
-            handleTunnel(hostname, port, clientSocket, head);
-        } else {
-            // Transparent pass-through for non-AI domains
-            handleTunnel(hostname, port, clientSocket, head);
-        }
-    });
-
-    server.on('error', (err) => {
-        console.error('Server error:', err.message);
-    });
-
-    // Sync desktop bypass setting on startup and every 30 seconds
-    syncSettings();
-    setInterval(syncSettings, 30000);
-
-    server.listen(PROXY_PORT, '127.0.0.1', () => {
-        console.log('');
-        console.log('╔════════════════════════════════════════════════════════════════╗');
-        console.log('║           🛡️  Complyze AI Traffic Interceptor                 ║');
-        console.log('╠════════════════════════════════════════════════════════════════╣');
-        console.log(`║  Proxy:     127.0.0.1:${PROXY_PORT}                                    ║`);
-        console.log(`║  Dashboard: http://localhost:3737/dashboard                    ║`);
-        console.log(`║  Mode:      ${MONITOR_MODE.toUpperCase()}                                          ║`);
-        console.log('║  Deep Inspection (all AI domains):                             ║');
-        AI_DOMAINS.forEach((d) => {
-            console.log(`║    🔍 ${d.padEnd(53)}║`);
-        });
-        console.log('║                                                                ║');
-        console.log('║  Desktop App Bypass: ' + (desktopBypassEnabled ? '🟢 ON ' : '🔴 OFF') + '                                    ║');
-        console.log('║  (Toggle in Settings → allows cert-pinned apps)               ║');
-        console.log('╚════════════════════════════════════════════════════════════════╝');
-        console.log('');
-        console.log('Waiting for AI traffic... (press Ctrl+C to stop)\n');
-    });
-}
-
-// Transparent TCP tunnel (for non-AI domains)
-function handleTunnel(hostname, port, clientSocket, head) {
-    const serverSocket = net.connect(port, hostname, () => {
-        clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-        serverSocket.write(head);
-        serverSocket.pipe(clientSocket);
-        clientSocket.pipe(serverSocket);
-    });
-
-    serverSocket.on('error', () => clientSocket.destroy());
-    clientSocket.on('error', () => serverSocket.destroy());
-    clientSocket.on('close', () => serverSocket.destroy());
-    serverSocket.on('close', () => clientSocket.destroy());
-}
-
-// MITM handler: decrypt, log, and forward AI traffic
-function handleMITM(hostname, port, clientSocket, head, ca, connId) {
-    // Tell the client the tunnel is ready
-    clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-
-    // Generate a domain-specific certificate signed by our CA
-    const domainCert = getCertForDomain(hostname, ca);
-
-    // Wrap the client connection in TLS (we act as the HTTPS "server")
-    const tlsSocket = new tls.TLSSocket(clientSocket, {
-        isServer: true,
-        key: domainCert.key,
-        cert: domainCert.cert,
-    });
-
-    // Link to local AI-DLP engine
-    const { processOutgoingPrompt } = require('./dlp/textInterceptor');
-
-    // Parse decrypted HTTP requests from the TLS stream
-    const parser = new HTTPRequestParser(async (method, reqPath, headers, body) => {
-        const targetUrl = `https://${hostname}${reqPath}`;
-        const bodyLen = body ? body.length : 0;
-
-        // ─── 🛡️ LOCAL AI-DLP SCANNING ──────────────────────────────────────────
-        let dlpResult = null;
-        if (method === 'POST' && bodyLen > 0) {
-            try {
-                dlpResult = await processOutgoingPrompt(body, {
-                    appName: 'Browser/Web',
-                    destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown'
-                });
-                console.log(`   🛡️  DLP SCAN: REU=${dlpResult.finalReu} | ${dlpResult.explanation}`);
-            } catch (err) {
-                console.error(`   ⚠️  DLP Scan failed: ${err.message}`);
-            }
-        }
-
-        console.log(`   📨 ${method} ${reqPath} (${bodyLen} bytes)`);
-
-        // Log to Complyze asynchronously
-        logToComplyze(targetUrl, method, headers, body || '', dlpResult);
-
-        // ─── Policy Enforcement Layer ──────────────────────────────────────────
-        const shouldBlock = dlpResult && dlpResult.action === 'BLOCK';
-
-        if ((MONITOR_MODE === 'enforce' && shouldBlock)) {
-            console.log(`   🚫 Blocked by Local DLP Policy: ${targetUrl} (REU: ${dlpResult.finalReu})`);
-            try {
-                tlsSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 48\r\n\r\nAccess blocked by local Complyze Security Policy.');
-                tlsSocket.end();
-            } catch { }
-            return;
-        }
-
-        // Forward to the real AI server
-        const fwdHeaders = { ...headers, host: hostname };
-        delete fwdHeaders['proxy-connection'];
-
-        const proxyReq = https.request(
-            { hostname, port, path: reqPath, method, headers: fwdHeaders },
-            (proxyRes) => {
-                // Build raw HTTP response to send back through the TLS socket
-                let head = `HTTP/1.1 ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}\r\n`;
-                const rh = proxyRes.rawHeaders;
-                for (let i = 0; i < rh.length; i += 2) {
-                    head += `${rh[i]}: ${rh[i + 1]}\r\n`;
+        if (shouldDeepInspect(hostname)) {
+            clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+            const domainCert = getCertForDomain(hostname, ca);
+            const tlsSocket = new tls.TLSSocket(clientSocket, { isServer: true, key: domainCert.key, cert: domainCert.cert });
+            const { processOutgoingPrompt } = require('./dlp/textInterceptor');
+            const parser = new HTTPRequestParser(async (method, reqPath, headers, body) => {
+                let dlpResult = null;
+                if (method === 'POST' && body.length > 0) {
+                    dlpResult = await processOutgoingPrompt(body, { appName: 'Desktop/Web', destinationType: 'public_ai' });
                 }
-                head += '\r\n';
-
-                const isChunked = proxyRes.headers['transfer-encoding'] === 'chunked';
-                try {
-                    tlsSocket.write(head);
-                    proxyRes.on('data', (chunk) => {
-                        if (!chunk || chunk.length === 0) return;
-                        try {
-                            if (isChunked) {
-                                tlsSocket.write(chunk.length.toString(16) + '\r\n');
-                                tlsSocket.write(chunk);
-                                tlsSocket.write('\r\n');
-                            } else {
-                                tlsSocket.write(chunk);
-                            }
-                        } catch { }
-                    });
-                    proxyRes.on('end', () => {
-                        if (isChunked) {
-                            try { tlsSocket.write('0\r\n\r\n'); } catch { }
-                        }
-                        console.log(`   📬 ← ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}`);
-                    });
-                } catch { }
-            }
-        );
-
-        proxyReq.on('error', (err) => {
-            console.error(`   ❌ Forward error: ${err.message}`);
-            try {
-                tlsSocket.write('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n');
-            } catch { }
-        });
-
-        if (body) proxyReq.write(body);
-        proxyReq.end();
-    });
-
-    tlsSocket.on('data', (chunk) => parser.feed(chunk));
-
-    tlsSocket.on('error', (err) => {
-        if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') {
-            console.error(`   ⚠️  [#${connId}] TLS: ${err.message}`);
+                logToComplyze(`https://${hostname}${reqPath}`, method, headers, body, dlpResult);
+                if (MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
+                    tlsSocket.write('HTTP/1.1 403 Forbidden\r\n\r\nBlocked by Policy');
+                    tlsSocket.end();
+                    return;
+                }
+                const proxyReq = https.request({ hostname, port, path: reqPath, method, headers: { ...headers, host: hostname } }, (proxyRes) => {
+                    tlsSocket.write(`HTTP/1.1 ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}\r\n`);
+                    proxyRes.rawHeaders.forEach((v, i) => { if (i % 2 === 0) tlsSocket.write(`${v}: ${proxyRes.rawHeaders[i + 1]}\r\n`); });
+                    tlsSocket.write('\r\n');
+                    proxyRes.pipe(tlsSocket);
+                });
+                proxyReq.write(body);
+                proxyReq.end();
+            });
+            tlsSocket.on('data', (chunk) => parser.feed(chunk));
+        } else {
+            const serverSocket = net.connect(port, hostname, () => {
+                clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+                serverSocket.write(head);
+                serverSocket.pipe(clientSocket);
+                clientSocket.pipe(serverSocket);
+            });
+            serverSocket.on('error', () => clientSocket.destroy());
         }
     });
+
+    syncSettings();
+    registerHeartbeat();
+    setInterval(syncSettings, 10000);
+    setInterval(registerHeartbeat, 15000);
+    server.listen(PROXY_PORT, '127.0.0.1', () => console.log(`🚀 Proxy active on ${PROXY_PORT} | Mode: ${MONITOR_MODE}`));
 }
 
-// ─── Start ───────────────────────────────────────────────────────────────────
 startProxy();

@@ -18,16 +18,15 @@ function NavLink({
     return (
         <Link
             href={href}
-            className={`relative flex items-center transition-all duration-200 ${
-                isActive
-                    ? "text-white text-[15px] font-semibold pb-[10px] -mb-[10px]"
-                    : "text-white/[0.72] text-[14px] font-medium hover:text-white"
-            }`}
+            className={`relative flex items-center transition-all duration-200 ${isActive
+                ? "text-white text-base font-bold pb-[18px] -mb-[20px]"
+                : "text-white/[0.72] text-[15px] font-semibold hover:text-white"
+                }`}
             style={{ height: '100%' }}
         >
             {children}
             {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#A78BFA]" />
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/40" />
             )}
         </Link>
     );
@@ -51,10 +50,10 @@ function UserDropdown({ user, signOut }: { user: { email: string | null }; signO
                 onClick={() => setOpen(!open)}
                 className="flex items-center gap-2.5 py-1 text-sm text-white/70 hover:text-white transition-colors"
             >
-                <div className="h-7 w-7 rounded-full bg-white/15 flex items-center justify-center text-[11px] font-semibold text-white uppercase">
+                <div className="h-8 w-8 rounded-full bg-white/15 flex items-center justify-center text-[12px] font-bold text-white uppercase">
                     {user.email?.[0]}
                 </div>
-                <span className="text-[13px] font-medium hidden sm:inline">
+                <span className="text-sm font-bold hidden sm:inline">
                     {user.email?.split('@')[0]}
                 </span>
                 <svg className="h-3.5 w-3.5 text-white/40" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -124,9 +123,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-[#0B1220]">
             {/* ── Header ── */}
-            <header className="no-print sticky top-0 z-50 bg-[#4F46E5] border-b border-white/[0.08]">
+            <header className="no-print sticky top-0 z-50 bg-[#0B1220] border-b border-white/5">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
                     {/* Left: Logo */}
                     <Link href="/dashboard" className="flex items-center gap-2.5">
@@ -135,9 +134,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                             </svg>
                         </div>
-                        <span className="text-[15px] font-semibold text-white">Complyze</span>
-                        <span className="hidden sm:inline text-[11px] text-white/30 font-medium ml-0.5">
-                            AI Governance Platform
+                        <span className="text-lg font-bold text-white tracking-tight">Complyze</span>
+                        <span className="hidden sm:inline text-xs text-white/40 font-bold ml-1 uppercase tracking-wider">
+                            Risk Engine
                         </span>
                     </Link>
 
@@ -150,27 +149,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <NavLink href="/settings">Settings</NavLink>
                     </nav>
 
-                    {/* Right: Deploy + User */}
+                    {/* Right: User */}
                     <div className="flex items-center gap-5">
-                        <Link
-                            href="/install"
-                            className="hidden lg:inline-flex items-center gap-1.5 text-[13px] font-medium text-white/[0.45] hover:text-white/[0.72] transition-colors"
-                        >
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-                            Deploy Agent
-                        </Link>
-
-                        <div className="h-5 w-px bg-white/10 hidden lg:block" />
-
                         <UserDropdown user={user} signOut={signOut} />
                     </div>
                 </div>
             </header>
 
             {/* ── Main Content ── */}
-            <main className="mx-auto max-w-7xl px-6 py-8">
+            <main className={`${normalizedPath === "/dashboard" ? "" : "mx-auto max-w-7xl px-6 py-8"}`}>
                 {children}
             </main>
         </div>
