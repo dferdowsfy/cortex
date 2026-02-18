@@ -14,6 +14,9 @@ const net = require('net');
 const tls = require('tls');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const { execSync } = require('child_process');
+const { spawn } = require('child_process');
 
 let forge;
 try {
@@ -33,6 +36,11 @@ const COMPLYZE_API =
     process.env.COMPLYZE_API || 'http://localhost:3737/api/proxy/intercept';
 const WORKSPACE_ID = process.env.COMPLYZE_WORKSPACE || 'local-dev';
 const CERTS_DIR = path.join(__dirname, '..', 'certs');
+const STRICT_PIN_MODE = String(process.env.STRICT_PIN_MODE || 'false').toLowerCase() === 'true';
+const PROXY_STATE_FILE = path.join(__dirname, '..', 'proxy-state.json');
+const WATCHDOG_MODE = process.argv.includes('--watchdog');
+const CHILD_PROXY_MODE = process.argv.includes('--child-proxy');
+const BETA_MODE = String(process.env.BETA_MODE || 'false').toLowerCase() === 'true';
 
 // ─── Domain Configuration ────────────────────────────────────────────────────
 
@@ -84,8 +92,250 @@ const PASSTHROUGH_DOMAINS = [
 ];
 
 let MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
+if (BETA_MODE) MONITOR_MODE = 'observe';
 let desktopBypassEnabled = false;
 let inspectAttachmentsEnabled = true; // inspect multipart/form-data uploads by default
+
+const INSPECTION_WARNING_MS = 300;
+const LATENCY_WINDOW_SIZE = 100;
+
+const certPinningState = new Map();
+
+const proxyMetrics = {
+    totalRequests: 0,
+    totalInspectionWarnings: 0,
+    recentLatenciesMs: [],
+    rollingAverageLatencyMs: 0,
+    lastRequest: null,
+};
+
+
+function looksLikePinningFailure(error) {
+    const msg = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
+    return [
+        'alert certificate unknown',
+        'unknown ca',
+        'bad certificate',
+        'certificate verify failed',
+        'handshake failure',
+        'socket hang up',
+        'tlsv1 alert',
+        'ecconnreset'
+    ].some((token) => msg.includes(token));
+}
+
+function markHostAsPinned(hostname, reason = 'tls_handshake_failed') {
+    if (!hostname) return;
+    const current = certPinningState.get(hostname) || {
+        hostname,
+        mode: 'deep-inspect',
+        detections: 0,
+        metadataConnections: 0,
+        bytesTransferred: 0,
+        lastDetectedAt: null,
+        lastMetadataAt: null,
+        reason,
+    };
+
+    current.mode = STRICT_PIN_MODE ? 'deep-inspect' : 'metadata-only';
+    current.reason = reason;
+    current.detections += 1;
+    current.lastDetectedAt = new Date().toISOString();
+    certPinningState.set(hostname, current);
+
+    if (STRICT_PIN_MODE) {
+        console.warn(`[PINNING] Detected TLS pinning for ${hostname}, but STRICT_PIN_MODE=true so deep inspection remains enabled.`);
+    } else {
+        console.warn(`[PINNING] Detected TLS pinning for ${hostname}. Switching to metadata-only mode.`);
+    }
+}
+
+function recordMetadataTraffic(hostname, bytesTransferred) {
+    if (!hostname) return;
+    const current = certPinningState.get(hostname) || {
+        hostname,
+        mode: 'metadata-only',
+        detections: 0,
+        metadataConnections: 0,
+        bytesTransferred: 0,
+        lastDetectedAt: null,
+        lastMetadataAt: null,
+        reason: 'metadata_only',
+    };
+
+    current.mode = current.mode || 'metadata-only';
+    current.metadataConnections += 1;
+    current.bytesTransferred += bytesTransferred;
+    current.lastMetadataAt = new Date().toISOString();
+    certPinningState.set(hostname, current);
+
+    console.log(`[METADATA] hostname=${hostname} bytes=${bytesTransferred} frequency=${current.metadataConnections}`);
+}
+
+function createTransparentTunnel(clientSocket, head, hostname, port, trackMetadata = false) {
+    const serverSocket = net.connect(port, hostname, () => {
+        clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+        if (head && head.length) {
+            serverSocket.write(head);
+        }
+
+        let bytesUpstream = 0;
+        let bytesDownstream = 0;
+
+        if (trackMetadata) {
+            clientSocket.on('data', (chunk) => { bytesUpstream += chunk.length; });
+            serverSocket.on('data', (chunk) => { bytesDownstream += chunk.length; });
+        }
+
+        let finalized = false;
+        const finalize = () => {
+            if (!trackMetadata || finalized) return;
+            finalized = true;
+            const totalBytes = bytesUpstream + bytesDownstream;
+            recordMetadataTraffic(hostname, totalBytes);
+        };
+
+        clientSocket.once('close', finalize);
+        serverSocket.once('close', finalize);
+
+        serverSocket.pipe(clientSocket);
+        clientSocket.pipe(serverSocket);
+    });
+
+    serverSocket.on('error', () => clientSocket.destroy());
+}
+
+
+function canManageSystemProxy() {
+    return process.platform === 'darwin';
+}
+
+function listNetworkServices() {
+    if (!canManageSystemProxy()) return [];
+    try {
+        const output = execSync('networksetup -listallnetworkservices', { encoding: 'utf8' });
+        return output
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line && !line.startsWith('An asterisk'));
+    } catch {
+        return [];
+    }
+}
+
+function readSecureWebProxy(service) {
+    try {
+        const output = execSync(`networksetup -getsecurewebproxy "${service}"`, { encoding: 'utf8' });
+        const enabled = /Enabled:\s+Yes/i.test(output);
+        const hostMatch = output.match(/Server:\s+(.+)/i);
+        const portMatch = output.match(/Port:\s+(\d+)/i);
+        return {
+            enabled,
+            server: hostMatch ? hostMatch[1].trim() : '',
+            port: portMatch ? Number(portMatch[1]) : 0,
+        };
+    } catch {
+        return { enabled: false, server: '', port: 0 };
+    }
+}
+
+function captureProxyState() {
+    const services = listNetworkServices();
+    return {
+        timestamp: new Date().toISOString(),
+        pid: process.pid,
+        proxyHost: '127.0.0.1',
+        proxyPort: PROXY_PORT,
+        services: services.map((name) => ({ name, secureWebProxy: readSecureWebProxy(name) })),
+    };
+}
+
+function applyManagedProxySettings() {
+    if (!canManageSystemProxy()) {
+        console.warn('[PROXY-RECOVERY] System proxy management is only supported on macOS.');
+        return;
+    }
+    const services = listNetworkServices();
+    for (const service of services) {
+        try {
+            execSync(`networksetup -setsecurewebproxy "${service}" 127.0.0.1 ${PROXY_PORT}`);
+            execSync(`networksetup -setsecurewebproxystate "${service}" on`);
+        } catch (err) {
+            console.warn(`[PROXY-RECOVERY] Failed to set proxy for ${service}: ${err.message}`);
+        }
+    }
+}
+
+function restoreProxyState(state, reason = 'shutdown') {
+    if (!state || !canManageSystemProxy()) return;
+    for (const service of state.services || []) {
+        try {
+            const cfg = service.secureWebProxy || { enabled: false, server: '', port: 0 };
+            if (cfg.enabled && cfg.server && cfg.port) {
+                execSync(`networksetup -setsecurewebproxy "${service.name}" ${cfg.server} ${cfg.port}`);
+                execSync(`networksetup -setsecurewebproxystate "${service.name}" on`);
+            } else {
+                execSync(`networksetup -setsecurewebproxystate "${service.name}" off`);
+            }
+        } catch (err) {
+            console.warn(`[PROXY-RECOVERY] Failed restoring proxy for ${service.name}: ${err.message}`);
+        }
+    }
+    console.log(`[PROXY-RECOVERY] Restored system proxy settings (${reason}).`);
+}
+
+function persistProxyState(state) {
+    try {
+        fs.writeFileSync(PROXY_STATE_FILE, JSON.stringify(state, null, 2));
+    } catch (err) {
+        console.warn(`[PROXY-RECOVERY] Failed to persist state: ${err.message}`);
+    }
+}
+
+function readPersistedProxyState() {
+    try {
+        if (!fs.existsSync(PROXY_STATE_FILE)) return null;
+        return JSON.parse(fs.readFileSync(PROXY_STATE_FILE, 'utf8'));
+    } catch {
+        return null;
+    }
+}
+
+function clearPersistedProxyState() {
+    try {
+        if (fs.existsSync(PROXY_STATE_FILE)) fs.unlinkSync(PROXY_STATE_FILE);
+    } catch { }
+}
+
+function repairOrphanedProxyStateOnStartup() {
+    if (!canManageSystemProxy()) return;
+    const persisted = readPersistedProxyState();
+    if (!persisted || !Array.isArray(persisted.services)) return;
+
+    let orphanDetected = false;
+    for (const service of persisted.services) {
+        const current = readSecureWebProxy(service.name);
+        if (current.enabled && current.server === '127.0.0.1' && current.port === persisted.proxyPort) {
+            orphanDetected = true;
+            break;
+        }
+    }
+
+    if (orphanDetected) {
+        console.warn('[PROXY-RECOVERY] Detected orphaned local proxy settings. Auto-repairing network state.');
+        restoreProxyState(persisted, 'startup-repair');
+    }
+    clearPersistedProxyState();
+}
+
+function updateRollingLatency(latencyMs) {
+    proxyMetrics.recentLatenciesMs.push(latencyMs);
+    if (proxyMetrics.recentLatenciesMs.length > LATENCY_WINDOW_SIZE) {
+        proxyMetrics.recentLatenciesMs.shift();
+    }
+    const sum = proxyMetrics.recentLatenciesMs.reduce((acc, val) => acc + val, 0);
+    proxyMetrics.rollingAverageLatencyMs = sum / proxyMetrics.recentLatenciesMs.length;
+}
 
 async function syncSettings() {
     try {
@@ -93,7 +343,7 @@ async function syncSettings() {
         if (res.ok) {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
-            MONITOR_MODE = data.block_high_risk ? 'enforce' : 'observe';
+            MONITOR_MODE = BETA_MODE ? 'observe' : (data.block_high_risk ? 'enforce' : 'observe');
             if (typeof data.inspect_attachments === 'boolean') {
                 inspectAttachmentsEnabled = data.inspect_attachments;
             }
@@ -108,7 +358,7 @@ async function registerHeartbeat() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 device_id: 'local-proxy-server',
-                hostname: require('os').hostname(),
+                hostname: os.hostname(),
                 os: 'macOS',
                 version: '1.0.0-proxy',
                 status: 'Healthy',
@@ -140,6 +390,10 @@ function shouldDeepInspect(hostname) {
     if (!hostname) return false;
     if (isPassthroughDomain(hostname)) return false;
     if (!isAIDomain(hostname)) return false;
+
+    const pinnedState = certPinningState.get(hostname);
+    if (!STRICT_PIN_MODE && pinnedState?.mode === 'metadata-only') return false;
+
     if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return false;
     return true;
 }
@@ -408,7 +662,51 @@ class HTTPRequestParser {
 
 function startProxy() {
     const ca = ensureCA();
+    const originalProxyState = captureProxyState();
+    applyManagedProxySettings();
+    persistProxyState(originalProxyState);
+
+    let shuttingDown = false;
+    const gracefulShutdown = (reason) => {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        restoreProxyState(originalProxyState, reason);
+        clearPersistedProxyState();
+        process.exit(0);
+    };
+
+    process.on('SIGINT', () => gracefulShutdown('sigint'));
+    process.on('SIGTERM', () => gracefulShutdown('sigterm'));
+    process.on('uncaughtException', (err) => {
+        console.error('[PROXY-RECOVERY] Uncaught exception:', err);
+        restoreProxyState(originalProxyState, 'crash-uncaught-exception');
+        clearPersistedProxyState();
+        process.exit(1);
+    });
+    process.on('unhandledRejection', (err) => {
+        console.error('[PROXY-RECOVERY] Unhandled rejection:', err);
+        restoreProxyState(originalProxyState, 'crash-unhandled-rejection');
+        clearPersistedProxyState();
+        process.exit(1);
+    });
+
     const server = http.createServer((req, res) => {
+        if (req.url === '/proxy/metrics') {
+            const response = {
+                totalRequests: proxyMetrics.totalRequests,
+                rollingAverageLatencyMs: Number(proxyMetrics.rollingAverageLatencyMs.toFixed(2)),
+                inspectionWarningsOver300ms: proxyMetrics.totalInspectionWarnings,
+                windowSize: proxyMetrics.recentLatenciesMs.length,
+                lastRequest: proxyMetrics.lastRequest,
+                strictPinMode: STRICT_PIN_MODE,
+                betaMode: BETA_MODE,
+                certPinningHosts: Array.from(certPinningState.values()),
+            };
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(response, null, 2));
+            return;
+        }
+
         if (req.url === '/proxy.pac') {
             const domains = [...AI_DOMAINS, ...PASSTHROUGH_DOMAINS];
             const pacScript = `function FindProxyForURL(url, host) {
@@ -423,8 +721,9 @@ function startProxy() {
             res.end(pacScript);
             return;
         }
-        res.writeHead(200);
-        res.end('Complyze AI Proxy is active.');
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        const banner = BETA_MODE ? '\nMonitoring Mode Active' : '';
+        res.end(`Complyze AI Proxy is active.${banner}`);
     });
 
     server.on('connect', (req, clientSocket, head) => {
@@ -438,33 +737,49 @@ function startProxy() {
 
             // bodyBuffer is now always a Buffer (binary-safe)
             const parser = new HTTPRequestParser(async (method, reqPath, headers, bodyBuffer) => {
+                const requestStart = Date.now();
                 const contentType = headers['content-type'] || '';
                 const isMultipart = contentType.includes('multipart/form-data');
                 let dlpResult = null;
                 let attachmentResults = [];
+                let textInspectionMs = 0;
+                let attachmentParsingMs = 0;
 
                 if (method === 'POST' && bodyBuffer.length > 0) {
                     if (isMultipart && inspectAttachmentsEnabled) {
                         // ── Attachment Upload Path ──────────────────────────────
+                        const attachmentParseStart = Date.now();
                         try {
                             attachmentResults = await parseAndInspectMultipart(bodyBuffer, contentType);
                         } catch (err) {
                             console.error('[DLP] Multipart parse error:', err.message);
                         }
+                        attachmentParsingMs = Date.now() - attachmentParseStart;
+
                         if (attachmentResults.length > 0) {
+                            const textInspectionStart = Date.now();
                             dlpResult = await processAttachmentUpload(attachmentResults, {
                                 appName: hostname,
                                 destinationType: 'public_ai'
                             });
+                            textInspectionMs = Date.now() - textInspectionStart;
                         }
                     } else if (!isMultipart) {
                         // ── Text / JSON Prompt Path ─────────────────────────────
                         const bodyStr = bodyBuffer.toString('utf8');
+                        const textInspectionStart = Date.now();
                         dlpResult = await processOutgoingPrompt(bodyStr, {
                             appName: 'Desktop/Web',
                             destinationType: 'public_ai'
                         });
+                        textInspectionMs = Date.now() - textInspectionStart;
                     }
+                }
+
+                const inspectionLatencyMs = textInspectionMs + attachmentParsingMs;
+                if (inspectionLatencyMs > INSPECTION_WARNING_MS) {
+                    proxyMetrics.totalInspectionWarnings += 1;
+                    console.warn(`[PERF] Inspection latency ${inspectionLatencyMs}ms exceeded ${INSPECTION_WARNING_MS}ms for ${method} https://${hostname}${reqPath}`);
                 }
 
                 // Log body: sanitize binary multipart as a placeholder string
@@ -481,7 +796,7 @@ function startProxy() {
                     attachmentResults
                 );
 
-                if (MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
+                if (!BETA_MODE && MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
                     const blockMsg = isMultipart
                         ? 'Blocked by Complyze Policy: Sensitive attachment detected'
                         : 'Blocked by Complyze Policy: Critical risk content detected';
@@ -489,6 +804,21 @@ function startProxy() {
                     tlsSocket.end();
                     return;
                 }
+
+                const interceptToForwardMs = Date.now() - requestStart;
+                proxyMetrics.totalRequests += 1;
+                updateRollingLatency(interceptToForwardMs);
+                proxyMetrics.lastRequest = {
+                    timestamp: new Date().toISOString(),
+                    target: `https://${hostname}${reqPath}`,
+                    method,
+                    interceptToForwardMs,
+                    textInspectionMs,
+                    attachmentParsingMs,
+                    inspectionLatencyMs,
+                };
+
+                console.log(`[PERF] ${method} https://${hostname}${reqPath} | intercept→forward=${interceptToForwardMs}ms | textInspection=${textInspectionMs}ms | attachmentParsing=${attachmentParsingMs}ms | rollingAvg=${proxyMetrics.rollingAverageLatencyMs.toFixed(2)}ms`);
 
                 const proxyReq = https.request({ hostname, port, path: reqPath, method, headers: { ...headers, host: hostname } }, (proxyRes) => {
                     tlsSocket.write(`HTTP/1.1 ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}\r\n`);
@@ -500,15 +830,25 @@ function startProxy() {
                 proxyReq.write(bodyBuffer);
                 proxyReq.end();
             });
+            let handshakeFailureHandled = false;
             tlsSocket.on('data', (chunk) => parser.feed(chunk));
-        } else {
-            const serverSocket = net.connect(port, hostname, () => {
-                clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-                serverSocket.write(head);
-                serverSocket.pipe(clientSocket);
-                clientSocket.pipe(serverSocket);
+            tlsSocket.on('error', (err) => {
+                if (!handshakeFailureHandled && looksLikePinningFailure(err)) {
+                    handshakeFailureHandled = true;
+                    markHostAsPinned(hostname, err.code || 'tls_handshake_failed');
+                }
+                tlsSocket.destroy();
             });
-            serverSocket.on('error', () => clientSocket.destroy());
+            clientSocket.on('error', (err) => {
+                if (!handshakeFailureHandled && looksLikePinningFailure(err)) {
+                    handshakeFailureHandled = true;
+                    markHostAsPinned(hostname, err.code || 'client_tls_handshake_failed');
+                }
+            });
+        } else {
+            const pinnedState = certPinningState.get(hostname);
+            const metadataOnly = shouldLogMetadata(hostname) || pinnedState?.mode === 'metadata-only';
+            createTransparentTunnel(clientSocket, head, hostname, port, metadataOnly);
         }
     });
 
@@ -516,7 +856,47 @@ function startProxy() {
     registerHeartbeat();
     setInterval(syncSettings, 10000);
     setInterval(registerHeartbeat, 15000);
-    server.listen(PROXY_PORT, '127.0.0.1', () => console.log(`🚀 Proxy active on ${PROXY_PORT} | Mode: ${MONITOR_MODE}`));
+    server.listen(PROXY_PORT, '127.0.0.1', () => {
+        console.log(`🚀 Proxy active on ${PROXY_PORT} | Mode: ${MONITOR_MODE}${BETA_MODE ? ' | Beta Mode' : ''}`);
+        if (BETA_MODE) {
+            console.log('📢 Monitoring Mode Active');
+            console.log('📢 Beta Mode: inspection runs, policy enforcement disabled, events are log-only.');
+        }
+    });
 }
 
-startProxy();
+function startWatchdog() {
+    let shuttingDown = false;
+    let child = null;
+
+    const spawnChild = () => {
+        if (shuttingDown) return;
+        child = spawn(process.execPath, [__filename, '--child-proxy'], {
+            stdio: 'inherit',
+            env: process.env,
+        });
+
+        child.on('exit', (code, signal) => {
+            if (shuttingDown) return;
+            console.warn(`[WATCHDOG] Proxy exited (code=${code}, signal=${signal}). Restarting...`);
+            setTimeout(spawnChild, 1000);
+        });
+    };
+
+    const stop = () => {
+        shuttingDown = true;
+        if (child && !child.killed) child.kill('SIGTERM');
+        process.exit(0);
+    };
+
+    process.on('SIGINT', stop);
+    process.on('SIGTERM', stop);
+    spawnChild();
+}
+
+repairOrphanedProxyStateOnStartup();
+if (WATCHDOG_MODE || !CHILD_PROXY_MODE) {
+    startWatchdog();
+} else {
+    startProxy();
+}
