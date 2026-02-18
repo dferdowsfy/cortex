@@ -16,6 +16,7 @@ export interface ProxySettings {
     desktop_bypass: boolean;          // allow cert-pinned desktop apps (metadata only)
     retention_days: number;           // configurable retention period
     proxy_endpoint: string;           // generated endpoint URL
+    inspect_attachments: boolean;     // NEW: Deep scan file uploads
     updated_at: string;
 }
 
@@ -28,6 +29,7 @@ export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
     desktop_bypass: false,            // default: deep inspect everything
     retention_days: 90,
     proxy_endpoint: "",
+    inspect_attachments: false,       // default: OFF
     updated_at: new Date().toISOString(),
 };
 
@@ -69,6 +71,7 @@ export interface ActivityEvent {
     blocked?: boolean; // tracking enforcement action
     // Only present when full_audit_mode is enabled
     full_prompt?: string;
+    attachment_inspection_enabled?: boolean;
 }
 
 /* ── Activity Summary (Dashboard) ── */

@@ -110,6 +110,8 @@ let desktopBypassEnabled = false;
 let blockHighRiskEnabled = false;
 let userAttributionEnabled = process.env.USER_ATTRIBUTION_ENABLED === 'true';
 let authenticatedUserId = process.env.FIREBASE_UID || null;
+let inspectAttachmentsEnabled = false; // NEW: Attachment Toggle
+const TRACE_MODE = process.env.TRACE_MODE === 'true';
 
 // ─── Fail-Open Configuration ─────────────────────────────────────────────────
 // When FAIL_OPEN=true (default), any inspection error causes the proxy to
@@ -126,11 +128,11 @@ const FAIL_OPEN = process.env.FAIL_OPEN !== 'false'; // default: true
 // INSPECTION_TIMEOUT_MS  : hard wall-clock limit for one inspection call.
 // MAX_MEMORY_MB          : heap threshold that triggers a warning log.
 const MAX_INSPECTION_SIZE_MB = parseFloat(process.env.MAX_INSPECTION_SIZE_MB || '15');
-const MAX_INSPECTION_BYTES   = MAX_INSPECTION_SIZE_MB * 1024 * 1024;
-const MAX_BODY_SIZE_MB       = parseFloat(process.env.MAX_BODY_SIZE_MB || '50');
-const MAX_BODY_BYTES         = MAX_BODY_SIZE_MB * 1024 * 1024;
-const INSPECTION_TIMEOUT_MS  = parseInt(process.env.INSPECTION_TIMEOUT_MS || '3000');
-const MAX_MEMORY_MB          = parseInt(process.env.MAX_MEMORY_MB || '512');
+const MAX_INSPECTION_BYTES = MAX_INSPECTION_SIZE_MB * 1024 * 1024;
+const MAX_BODY_SIZE_MB = parseFloat(process.env.MAX_BODY_SIZE_MB || '50');
+const MAX_BODY_BYTES = MAX_BODY_SIZE_MB * 1024 * 1024;
+const INSPECTION_TIMEOUT_MS = parseInt(process.env.INSPECTION_TIMEOUT_MS || '3000');
+const MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '512');
 
 // Handle settings updates from main process
 process.on('message', (msg) => {
@@ -139,6 +141,7 @@ process.on('message', (msg) => {
         blockHighRiskEnabled = !!settings.blockHighRisk;
         desktopBypassEnabled = !!settings.desktopBypass;
         userAttributionEnabled = !!settings.userAttributionEnabled;
+        inspectAttachmentsEnabled = !!settings.inspectAttachments;
         authenticatedUserId = settings.uid || null;
 
         // Sync with local DLP policy engine
@@ -180,6 +183,7 @@ async function syncSettings() {
             desktopBypassEnabled = !!data.desktop_bypass;
             blockHighRiskEnabled = !!data.block_high_risk;
             userAttributionEnabled = !!data.user_attribution_enabled;
+            inspectAttachmentsEnabled = !!data.inspect_attachments;
 
             // Sync with local DLP policy engine
             updatePolicy({
@@ -192,9 +196,27 @@ async function syncSettings() {
     } catch { }
 }
 
+/**
+ * Determines if a hostname belongs to an AI service provider.
+ */
 function isAIDomain(hostname) {
     if (!hostname) return false;
-    return AI_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
+    const aiList = [
+        "api.openai.com",
+        "chat.openai.com",
+        "claude.ai",
+        "api.anthropic.com",
+        "perplexity.ai",
+        "openrouter.ai",
+        "api.cohere.com",
+        "api.mistral.ai",
+        "api.together.ai",
+        "api.groq.com",
+        "api.fireworks.ai",
+        "api.replicate.com",
+        "generativelanguage.googleapis.com"
+    ];
+    return aiList.some(domain => hostname === domain || hostname.endsWith('.' + domain));
 }
 
 function isPassthroughDomain(hostname) {
@@ -537,22 +559,22 @@ function startMemoryWatchdog() {
 
 class HTTPRequestParser {
     constructor(onRequest, onLargeBody = null, onOversizedBody = null) {
-        this.onRequest       = onRequest;
-        this.onLargeBody     = onLargeBody;
-        this.onOversizedBody = onOversizedBody || (() => {});
-        this.buffer          = Buffer.alloc(0);
-        this.state           = 'HEADERS';
-        this.headers         = {};
-        this.rawHeaderStr    = '';
-        this.method          = '';
-        this.path            = '';
-        this.httpVersion     = '';
-        this.contentLength   = 0;
-        this.bodyBuffer      = Buffer.alloc(0);
+        this.onRequest = onRequest;
+        this.onLargeBody = onLargeBody;
+        this.onOversizedBody = onOversizedBody || (() => { });
+        this.buffer = Buffer.alloc(0);
+        this.state = 'HEADERS';
+        this.headers = {};
+        this.rawHeaderStr = '';
+        this.method = '';
+        this.path = '';
+        this.httpVersion = '';
+        this.contentLength = 0;
+        this.bodyBuffer = Buffer.alloc(0);
         // Streaming / draining bookkeeping
-        this.streamSink      = null;
-        this.bytesStreamed   = 0;
-        this.drainRemaining  = 0;
+        this.streamSink = null;
+        this.bytesStreamed = 0;
+        this.drainRemaining = 0;
     }
 
     feed(chunk) {
@@ -570,8 +592,8 @@ class HTTPRequestParser {
 
             // Parse request line: "POST /v1/chat/completions HTTP/1.1"
             const parts = lines[0].split(' ');
-            this.method      = parts[0];
-            this.path        = parts[1];
+            this.method = parts[0];
+            this.path = parts[1];
             this.httpVersion = parts[2] || 'HTTP/1.1';
 
             // Parse headers
@@ -586,28 +608,28 @@ class HTTPRequestParser {
             }
 
             this.contentLength = parseInt(this.headers['content-length'] || '0');
-            this.buffer        = this.buffer.slice(idx + 4);
-            this.bodyBuffer    = Buffer.alloc(0);
+            this.buffer = this.buffer.slice(idx + 4);
+            this.bodyBuffer = Buffer.alloc(0);
 
             // ── Size guards (evaluated once, at header-parse time) ───────────
 
             if (this.contentLength > MAX_BODY_BYTES) {
                 // Body is too large to buffer — reject before reading any data.
-                this.state          = 'DRAINING';
+                this.state = 'DRAINING';
                 this.drainRemaining = this.contentLength;
                 this.onOversizedBody(this.method, this.path, this.headers, this.contentLength);
                 this._advanceDrain();
                 return;
             }
 
-            const ct          = (this.headers['content-type'] || '').toLowerCase();
+            const ct = (this.headers['content-type'] || '').toLowerCase();
             const isMultipart = ct.includes('multipart/form-data');
 
             if (this.contentLength > MAX_INSPECTION_BYTES && isMultipart && this.onLargeBody) {
                 // Large attachment — stream to upstream immediately, skip DLP.
-                this.state         = 'STREAMING';
+                this.state = 'STREAMING';
                 this.bytesStreamed = 0;
-                this.streamSink    = this.onLargeBody(
+                this.streamSink = this.onLargeBody(
                     this.method, this.path, this.headers, this.contentLength
                 );
                 this._advanceStream();
@@ -627,10 +649,10 @@ class HTTPRequestParser {
             }
 
             this.bodyBuffer = Buffer.concat([this.bodyBuffer, this.buffer]);
-            this.buffer     = Buffer.alloc(0);
+            this.buffer = Buffer.alloc(0);
 
             if (this.bodyBuffer.length >= this.contentLength) {
-                const body      = this.bodyBuffer.slice(0, this.contentLength).toString();
+                const body = this.bodyBuffer.slice(0, this.contentLength).toString();
                 const remaining = this.bodyBuffer.slice(this.contentLength);
                 this.onRequest(this.method, this.path, this.headers, body);
                 this._reset();
@@ -640,7 +662,7 @@ class HTTPRequestParser {
         }
 
         if (this.state === 'STREAMING') { this._advanceStream(); }
-        if (this.state === 'DRAINING')  { this._advanceDrain();  }
+        if (this.state === 'DRAINING') { this._advanceDrain(); }
     }
 
     // Forward buffered bytes to the stream sink; detect end-of-body.
@@ -648,7 +670,7 @@ class HTTPRequestParser {
         if (!this.buffer.length) return;
         const needed = this.contentLength - this.bytesStreamed;
         if (this.buffer.length >= needed) {
-            const bodyEnd  = this.buffer.slice(0, needed);
+            const bodyEnd = this.buffer.slice(0, needed);
             const overflow = this.buffer.slice(needed);
             this.bytesStreamed += bodyEnd.length;
             if (this.streamSink) { this.streamSink.write(bodyEnd); this.streamSink.end(); }
@@ -678,16 +700,16 @@ class HTTPRequestParser {
     }
 
     _reset() {
-        this.state          = 'HEADERS';
-        this.headers        = {};
-        this.rawHeaderStr   = '';
-        this.method         = '';
-        this.path           = '';
-        this.httpVersion    = '';
-        this.contentLength  = 0;
-        this.bodyBuffer     = Buffer.alloc(0);
-        this.streamSink     = null;
-        this.bytesStreamed  = 0;
+        this.state = 'HEADERS';
+        this.headers = {};
+        this.rawHeaderStr = '';
+        this.method = '';
+        this.path = '';
+        this.httpVersion = '';
+        this.contentLength = 0;
+        this.bodyBuffer = Buffer.alloc(0);
+        this.streamSink = null;
+        this.bytesStreamed = 0;
         this.drainRemaining = 0;
     }
 }
@@ -710,6 +732,14 @@ function startProxy() {
         if (req.url === '/proxy.pac') {
             res.writeHead(200, { 'Content-Type': 'application/x-ns-proxy-autoconfig' });
             res.end(generatePAC());
+            return;
+        }
+
+        if (req.url === '/proxy/metrics') {
+            const mode = blockHighRiskEnabled ? 'enforce' : 'observe';
+            const metrics = telemetry.getMetricsSnapshot(mode);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(metrics, null, 2));
             return;
         }
 
@@ -820,35 +850,54 @@ function startProxy() {
                 } else {
                     console.log('[DIAGNOSE] ✅ All compatibility checks passed.');
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         } catch { }
     });
 }
 
 // Transparent TCP tunnel (for non-AI domains)
 function handleTunnel(hostname, port, clientSocket, head) {
+    console.log(JSON.stringify({ hostname, mode: "passthrough", timestamp: new Date().toISOString() }));
+
     const serverSocket = net.connect(port, hostname, () => {
         clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-        serverSocket.write(head);
+        if (head && head.length > 0) serverSocket.write(head);
         serverSocket.pipe(clientSocket);
         clientSocket.pipe(serverSocket);
     });
 
-    serverSocket.on('error', () => clientSocket.destroy());
-    clientSocket.on('error', () => serverSocket.destroy());
+    serverSocket.setTimeout(5000);
+    serverSocket.on('timeout', () => {
+        console.warn(`[TUNNEL] Timeout connecting to ${hostname}`);
+        serverSocket.destroy();
+        clientSocket.destroy();
+    });
+
+    serverSocket.on('error', (err) => {
+        console.error(`[TUNNEL] Upstream error (${hostname}): ${err.message}`);
+        clientSocket.destroy();
+    });
+
+    clientSocket.on('error', (err) => {
+        console.error(`[TUNNEL] Client error (${hostname}): ${err.message}`);
+        serverSocket.destroy();
+    });
+
     clientSocket.on('close', () => serverSocket.destroy());
     serverSocket.on('close', () => clientSocket.destroy());
 }
 
 // MITM handler: decrypt, inspect, and forward AI traffic
 function handleMITM(hostname, port, clientSocket, head, ca, connId) {
+    console.log(JSON.stringify({ hostname, mode: "inspection", timestamp: new Date().toISOString() }));
+
     // Tell the client the tunnel is ready
     clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
 
     const domainCert = getCertForDomain(hostname, ca);
-    const tlsSocket  = new tls.TLSSocket(clientSocket, {
+    const tlsSocket = new tls.TLSSocket(clientSocket, {
         isServer: true,
-        key:  domainCert.key,
+        key: domainCert.key,
         cert: domainCert.cert,
     });
 
@@ -888,7 +937,7 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
     // {write, end} sink so the parser can pipe bytes without buffering them.
     const onLargeBody = (method, reqPath, headers, contentLength) => {
         const request_id = crypto.randomUUID();
-        const sizeMB     = (contentLength / (1024 * 1024)).toFixed(1);
+        const sizeMB = (contentLength / (1024 * 1024)).toFixed(1);
         console.log(
             `   📎 LARGE ATTACHMENT [${request_id}]: ${sizeMB}MB > ` +
             `${MAX_INSPECTION_SIZE_MB}MB limit — streaming without inspection`
@@ -898,6 +947,10 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
             `https://${hostname}${reqPath}`, method, headers,
             `[attachment: ${contentLength} bytes — size limit, inspection skipped]`, null
         );
+
+        if (TRACE_MODE) {
+            console.log(`[TRACE] Attachment detected. IDs: ${request_id}, Skipped: Size limit`);
+        }
 
         const fwdHeaders = { ...headers, host: hostname };
         delete fwdHeaders['proxy-connection'];
@@ -912,7 +965,7 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
 
         return {
             write: (chunk) => { try { proxyReq.write(chunk); } catch { } },
-            end:   ()      => { try { proxyReq.end();         } catch { } },
+            end: () => { try { proxyReq.end(); } catch { } },
         };
     };
 
@@ -932,10 +985,11 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
     // ── Normal (buffered) request handler ───────────────────────────────────
     const parser = new HTTPRequestParser(
         async (method, reqPath, headers, body) => {
-            const targetUrl  = `https://${hostname}${reqPath}`;
-            const bodyLen    = body ? body.length : 0;
+            const requestStart = Date.now();
+            const targetUrl = `https://${hostname}${reqPath}`;
+            const bodyLen = body ? body.length : 0;
             const request_id = crypto.randomUUID();
-            const ct         = (headers['content-type'] || '').toLowerCase();
+            const ct = (headers['content-type'] || '').toLowerCase();
             const isMultipart = ct.includes('multipart/form-data');
 
             // ─── 🛡️  LOCAL AI-DLP SCANNING ─────────────────────────────────
@@ -967,29 +1021,63 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
             }
 
             if (method === 'POST' && bodyLen > 0 && isMultipart) {
-                // ── Attachment Inspection (body within size limit) ──
-                // Multipart bodies carry file uploads. We scan the raw body text
-                // for embedded sensitive patterns; file_size is logged for triage.
-                const inspectionStart = Date.now();
-                try {
-                    dlpResult = await withInspectionTimeout(processOutgoingPrompt(body, {
-                        appName: 'Browser/Web',
-                        destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown',
-                    }));
-                    const inspectionMs = Date.now() - inspectionStart;
-                    telemetry.recordInspectionTime(inspectionMs, 'attachment');
-                    console.log(`   📎 ATTACHMENT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${bodyLen} bytes | ${inspectionMs}ms`);
-                } catch (err) {
-                    const inspectionMs = Date.now() - inspectionStart;
-                    logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
-                    if (!FAIL_OPEN) {
-                        try {
-                            tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
-                            tlsSocket.end();
-                        } catch { }
-                        return;
+                // ── Attachment Inspection Toggle Check ──
+                if (!inspectAttachmentsEnabled) {
+                    console.log(`   📎 ATTACHMENT SCAN SKIPPED [${request_id}]: Inspection is disabled via settings.`);
+                    logToComplyze(targetUrl, method, headers, body, {
+                        action: 'LOG',
+                        reason: 'Attachment inspection disabled',
+                        bypassed: true
+                    });
+
+                    if (TRACE_MODE) {
+                        const boundary = (ct.split('boundary=')[1] || '').split(';')[0];
+                        const attachmentCount = boundary ? (body.split('--' + boundary).length - 2) : 1;
+                        console.log(JSON.stringify({
+                            request_id,
+                            inspect_attachments_enabled: false,
+                            attachment_detected: true,
+                            attachment_count: Math.max(0, attachmentCount),
+                            inspection_skipped_due_to_toggle: true
+                        }));
                     }
-                    dlpResult = null; // FAIL_OPEN: bypass, forward unchanged
+                } else {
+                    // ── Attachment Inspection (body within size limit) ──
+                    // Multipart bodies carry file uploads. We scan the raw body text
+                    // for embedded sensitive patterns; file_size is logged for triage.
+                    const inspectionStart = Date.now();
+                    try {
+                        dlpResult = await withInspectionTimeout(processOutgoingPrompt(body, {
+                            appName: 'Browser/Web',
+                            destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown',
+                        }));
+                        const inspectionMs = Date.now() - inspectionStart;
+                        telemetry.recordInspectionTime(inspectionMs, 'attachment');
+                        console.log(`   📎 ATTACHMENT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${bodyLen} bytes | ${inspectionMs}ms`);
+
+                        if (TRACE_MODE) {
+                            const boundary = (ct.split('boundary=')[1] || '').split(';')[0];
+                            const attachmentCount = boundary ? (body.split('--' + boundary).length - 2) : 1;
+                            console.log(JSON.stringify({
+                                request_id,
+                                inspect_attachments_enabled: true,
+                                attachment_detected: true,
+                                attachment_count: Math.max(0, attachmentCount),
+                                inspection_skipped_due_to_toggle: false
+                            }));
+                        }
+                    } catch (err) {
+                        const inspectionMs = Date.now() - inspectionStart;
+                        logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
+                        if (!FAIL_OPEN) {
+                            try {
+                                tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
+                                tlsSocket.end();
+                            } catch { }
+                            return;
+                        }
+                        dlpResult = null; // FAIL_OPEN: bypass, forward unchanged
+                    }
                 }
             }
 
@@ -1020,6 +1108,10 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
             });
             if (body) proxyReq.write(body);
             proxyReq.end();
+
+            const totalLatency = Date.now() - requestStart;
+            telemetry.recordRequestLatency(totalLatency);
+            console.log(`   ⏱️  LATENCY [${request_id}]: ${totalLatency}ms (total)`);
         },
         onLargeBody,
         onOversizedBody
@@ -1030,6 +1122,7 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
         if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') {
             console.error(`   ⚠️  [#${connId}] TLS: ${err.message}`);
         }
+        clientSocket.destroy();
     });
 }
 

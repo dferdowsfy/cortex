@@ -54,8 +54,6 @@ const AI_DOMAINS = [
     'generativelanguage.googleapis.com',
     'chatgpt.com',
     'chat.openai.com',
-    'ab.chatgpt.com',
-    'cdn.oaistatic.com',
     'claude.ai',
     'perplexity.ai',
     'www.perplexity.ai',
@@ -65,11 +63,9 @@ const AI_DOMAINS = [
 const DESKTOP_APP_DOMAINS = [
     'chatgpt.com',
     'chat.openai.com',
-    'ab.chatgpt.com',
-    'cdn.oaistatic.com',
+    'chatgpt.com',
+    'chat.openai.com',
     'claude.ai',
-    'ios.chat.openai.com',
-    'ws.chatgpt.com',
     'perplexity.ai',
     'www.perplexity.ai',
 ];
@@ -79,14 +75,27 @@ const PASSTHROUGH_DOMAINS = [
     'identitytoolkit.googleapis.com',
     'securetoken.googleapis.com',
     'firestore.googleapis.com',
+    'firebaseio.com',
+    'firebase.io',
+    'googleapis.com',
     'www.googleapis.com',
     'apis.google.com',
     'accounts.google.com',
     'oauth2.googleapis.com',
+    'gstatic.com',
+    'www.google-analytics.com',
+    'googletagmanager.com',
+    'firebase.googleapis.com',
+    'firebasestorage.googleapis.com',
+    'cloudfirestore.googleapis.com',
+    'firebaseapp.com',
+    'firebase.com',
 ];
 
 let MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
 let desktopBypassEnabled = false;
+let inspectAttachmentsEnabled = false; // NEW: Attachment Toggle
+const TRACE_MODE = process.env.TRACE_MODE === 'true';
 
 // ─── Fail-Open Configuration ─────────────────────────────────────────────────
 // When FAIL_OPEN=true (default), any inspection error causes the proxy to
@@ -103,11 +112,11 @@ const FAIL_OPEN = process.env.FAIL_OPEN !== 'false'; // default: true
 // INSPECTION_TIMEOUT_MS  : hard wall-clock limit for one inspection call.
 // MAX_MEMORY_MB          : heap threshold that triggers a warning log.
 const MAX_INSPECTION_SIZE_MB = parseFloat(process.env.MAX_INSPECTION_SIZE_MB || '15');
-const MAX_INSPECTION_BYTES   = MAX_INSPECTION_SIZE_MB * 1024 * 1024;
-const MAX_BODY_SIZE_MB       = parseFloat(process.env.MAX_BODY_SIZE_MB || '50');
-const MAX_BODY_BYTES         = MAX_BODY_SIZE_MB * 1024 * 1024;
-const INSPECTION_TIMEOUT_MS  = parseInt(process.env.INSPECTION_TIMEOUT_MS || '3000');
-const MAX_MEMORY_MB          = parseInt(process.env.MAX_MEMORY_MB || '512');
+const MAX_INSPECTION_BYTES = MAX_INSPECTION_SIZE_MB * 1024 * 1024;
+const MAX_BODY_SIZE_MB = parseFloat(process.env.MAX_BODY_SIZE_MB || '50');
+const MAX_BODY_BYTES = MAX_BODY_SIZE_MB * 1024 * 1024;
+const INSPECTION_TIMEOUT_MS = parseInt(process.env.INSPECTION_TIMEOUT_MS || '3000');
+const MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '512');
 
 async function syncSettings() {
     try {
@@ -115,9 +124,15 @@ async function syncSettings() {
         if (res.ok) {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
+            inspectAttachmentsEnabled = !!data.inspect_attachments;
             MONITOR_MODE = data.block_high_risk ? 'enforce' : 'observe';
+        } else {
+            console.warn(`[SETTINGS_SYNC] ⚠️ Fetch failed (${res.status}). Attachment inspection defaults to ${inspectAttachmentsEnabled}.`);
         }
-    } catch { }
+    } catch (err) {
+        console.warn(`[SETTINGS_SYNC] ⚠️ Connection error: ${err.message}. Attachment inspection disabled.`);
+        inspectAttachmentsEnabled = false; // Fail-safe: OFF
+    }
 }
 
 async function registerHeartbeat() {
@@ -140,9 +155,36 @@ async function registerHeartbeat() {
     } catch { }
 }
 
+/**
+ * Determines if a hostname belongs to an AI service provider.
+ */
 function isAIDomain(hostname) {
     if (!hostname) return false;
-    return AI_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
+    return AI_DOMAINS.some(domain => hostname === domain || hostname.endsWith('.' + domain));
+}
+
+function handleTunnel(hostname, port, clientSocket, head) {
+    if (TRACE_MODE) console.log(`[TUNNEL] Passing through: ${hostname}:${port}`);
+
+    const serverSocket = net.connect(port, hostname, () => {
+        if (clientSocket.destroyed) return serverSocket.destroy();
+        clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+        if (head && head.length > 0) serverSocket.write(head);
+        serverSocket.pipe(clientSocket);
+        clientSocket.pipe(serverSocket);
+    });
+
+    serverSocket.on('error', (err) => {
+        if (TRACE_MODE) console.error(`[TUNNEL] Upstream error (${hostname}): ${err.message}`);
+        clientSocket.destroy();
+    });
+
+    clientSocket.on('error', (err) => {
+        serverSocket.destroy();
+    });
+
+    clientSocket.on('close', () => serverSocket.destroy());
+    serverSocket.on('close', () => clientSocket.destroy());
 }
 
 function isPassthroughDomain(hostname) {
@@ -157,6 +199,8 @@ function isDesktopAppDomain(hostname) {
 
 function shouldDeepInspect(hostname) {
     if (!hostname) return false;
+    // Safety: never inspect loopback or local dashboard
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local')) return false;
     if (isPassthroughDomain(hostname)) return false;
     if (!isAIDomain(hostname)) return false;
     if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return false;
@@ -368,19 +412,19 @@ function startMemoryWatchdog() {
 
 class HTTPRequestParser {
     constructor(onRequest, onLargeBody = null, onOversizedBody = null) {
-        this.onRequest       = onRequest;
-        this.onLargeBody     = onLargeBody;
-        this.onOversizedBody = onOversizedBody || (() => {});
-        this.buffer          = Buffer.alloc(0);
-        this.state           = 'HEADERS';
-        this.headers         = {};
-        this.bodyBuffer      = Buffer.alloc(0);
-        this.method          = '';
-        this.path            = '';
-        this.contentLength   = 0;
-        this.streamSink      = null;
-        this.bytesStreamed   = 0;
-        this.drainRemaining  = 0;
+        this.onRequest = onRequest;
+        this.onLargeBody = onLargeBody;
+        this.onOversizedBody = onOversizedBody || (() => { });
+        this.buffer = Buffer.alloc(0);
+        this.state = 'HEADERS';
+        this.headers = {};
+        this.bodyBuffer = Buffer.alloc(0);
+        this.method = '';
+        this.path = '';
+        this.contentLength = 0;
+        this.streamSink = null;
+        this.bytesStreamed = 0;
+        this.drainRemaining = 0;
     }
     feed(chunk) {
         this.buffer = Buffer.concat([this.buffer, chunk]);
@@ -393,7 +437,7 @@ class HTTPRequestParser {
             const lines = this.buffer.slice(0, idx).toString().split('\r\n');
             const parts = lines[0].split(' ');
             this.method = parts[0];
-            this.path   = parts[1];
+            this.path = parts[1];
             for (let i = 1; i < lines.length; i++) {
                 const colonIdx = lines[i].indexOf(':');
                 if (colonIdx > 0) {
@@ -407,20 +451,20 @@ class HTTPRequestParser {
             // ── Size guards (evaluated once, at header-parse time) ───────────
 
             if (this.contentLength > MAX_BODY_BYTES) {
-                this.state          = 'DRAINING';
+                this.state = 'DRAINING';
                 this.drainRemaining = this.contentLength;
                 this.onOversizedBody(this.method, this.path, this.headers, this.contentLength);
                 this._advanceDrain();
                 return;
             }
 
-            const ct          = (this.headers['content-type'] || '').toLowerCase();
+            const ct = (this.headers['content-type'] || '').toLowerCase();
             const isMultipart = ct.includes('multipart/form-data');
 
             if (this.contentLength > MAX_INSPECTION_BYTES && isMultipart && this.onLargeBody) {
-                this.state         = 'STREAMING';
+                this.state = 'STREAMING';
                 this.bytesStreamed = 0;
-                this.streamSink    = this.onLargeBody(
+                this.streamSink = this.onLargeBody(
                     this.method, this.path, this.headers, this.contentLength
                 );
                 this._advanceStream();
@@ -440,7 +484,7 @@ class HTTPRequestParser {
             this.bodyBuffer = Buffer.concat([this.bodyBuffer, this.buffer]);
             this.buffer = Buffer.alloc(0);
             if (this.bodyBuffer.length >= this.contentLength) {
-                const body      = this.bodyBuffer.slice(0, this.contentLength).toString();
+                const body = this.bodyBuffer.slice(0, this.contentLength).toString();
                 const remaining = this.bodyBuffer.slice(this.contentLength);
                 this.onRequest(this.method, this.path, this.headers, body);
                 this._reset();
@@ -449,13 +493,13 @@ class HTTPRequestParser {
             }
         }
         if (this.state === 'STREAMING') { this._advanceStream(); }
-        if (this.state === 'DRAINING')  { this._advanceDrain();  }
+        if (this.state === 'DRAINING') { this._advanceDrain(); }
     }
     _advanceStream() {
         if (!this.buffer.length) return;
         const needed = this.contentLength - this.bytesStreamed;
         if (this.buffer.length >= needed) {
-            const bodyEnd  = this.buffer.slice(0, needed);
+            const bodyEnd = this.buffer.slice(0, needed);
             const overflow = this.buffer.slice(needed);
             this.bytesStreamed += bodyEnd.length;
             if (this.streamSink) { this.streamSink.write(bodyEnd); this.streamSink.end(); }
@@ -482,14 +526,14 @@ class HTTPRequestParser {
         }
     }
     _reset() {
-        this.state          = 'HEADERS';
-        this.headers        = {};
-        this.bodyBuffer     = Buffer.alloc(0);
-        this.method         = '';
-        this.path           = '';
-        this.contentLength  = 0;
-        this.streamSink     = null;
-        this.bytesStreamed  = 0;
+        this.state = 'HEADERS';
+        this.headers = {};
+        this.bodyBuffer = Buffer.alloc(0);
+        this.method = '';
+        this.path = '';
+        this.contentLength = 0;
+        this.streamSink = null;
+        this.bytesStreamed = 0;
         this.drainRemaining = 0;
     }
 }
@@ -500,7 +544,7 @@ function startProxy() {
     const ca = ensureCA();
     const server = http.createServer((req, res) => {
         if (req.url === '/proxy.pac') {
-            const domains = [...AI_DOMAINS, ...PASSTHROUGH_DOMAINS];
+            const domains = [...AI_DOMAINS];
             const pacScript = `function FindProxyForURL(url, host) {
                 if (isPlainHostName(host) || host === "127.0.0.1" || host === "localhost" || shExpMatch(host, "*.local")) return "DIRECT";
                 var aiDomains = ${JSON.stringify(domains)};
@@ -513,149 +557,143 @@ function startProxy() {
             res.end(pacScript);
             return;
         }
+
+        if (req.url === '/proxy/metrics') {
+            const metrics = telemetry.getMetricsSnapshot(MONITOR_MODE);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(metrics, null, 2));
+            return;
+        }
         res.writeHead(200);
         res.end('Complyze AI Proxy is active.');
     });
 
-    server.on('connect', (req, clientSocket, head) => {
-        const [hostname, portStr] = req.url.split(':');
-        const port = parseInt(portStr) || 443;
-        if (shouldDeepInspect(hostname)) {
-            clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-            const domainCert = getCertForDomain(hostname, ca);
-            const tlsSocket  = new tls.TLSSocket(clientSocket, { isServer: true, key: domainCert.key, cert: domainCert.cert });
-            const { processOutgoingPrompt } = require('./dlp/textInterceptor');
+    // Internal MITM Server for handling decrypted traffic
+    const mitmServer = http.createServer(async (req, res) => {
+        const hostname = req.headers.host; // Host header from the intercepted request
+        const reqPath = req.url;
+        const method = req.method;
+        const { processOutgoingPrompt } = require('./dlp/textInterceptor');
 
-            // ── Large-attachment streaming handler ────────────────────────────
-            const onLargeBody = (method, reqPath, headers, contentLength) => {
-                const request_id = crypto.randomUUID();
-                const sizeMB     = (contentLength / (1024 * 1024)).toFixed(1);
-                console.log(`   📎 LARGE ATTACHMENT [${request_id}]: ${sizeMB}MB > ${MAX_INSPECTION_SIZE_MB}MB — streaming without inspection`);
-                logOversizedBody({ request_id, hostname, content_length: contentLength, reason: 'attachment_size_limit' });
-                logToComplyze(
-                    `https://${hostname}${reqPath}`, method, headers,
-                    `[attachment: ${contentLength} bytes — size limit, inspection skipped]`, null
-                );
-                const fwdHeaders = { ...headers, host: hostname };
-                delete fwdHeaders['proxy-connection'];
-                const proxyReq = https.request(
-                    { hostname, port, path: reqPath, method, headers: fwdHeaders },
-                    (proxyRes) => {
-                        tlsSocket.write(`HTTP/1.1 ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}\r\n`);
-                        proxyRes.rawHeaders.forEach((v, i) => { if (i % 2 === 0) tlsSocket.write(`${v}: ${proxyRes.rawHeaders[i + 1]}\r\n`); });
-                        tlsSocket.write('\r\n');
-                        proxyRes.pipe(tlsSocket);
-                    }
-                );
-                proxyReq.on('error', (err) => console.error(`   ❌ Stream error [${request_id}]: ${err.message}`));
-                return {
-                    write: (chunk) => { try { proxyReq.write(chunk); } catch { } },
-                    end:   ()      => { try { proxyReq.end();         } catch { } },
-                };
-            };
+        // Helper to forward stream without inspection
+        const pipeToUpstream = (initialBody = null) => {
+            const fwdHeaders = { ...req.headers };
+            delete fwdHeaders['proxy-connection'];
+            delete fwdHeaders['connection'];
+            delete fwdHeaders['keep-alive'];
+            delete fwdHeaders['transfer-encoding'];
 
-            // ── Oversized-body rejection handler ─────────────────────────────
-            const onOversizedBody = (method, reqPath, headers, contentLength) => {
-                const request_id = crypto.randomUUID();
-                logOversizedBody({ request_id, hostname, content_length: contentLength, reason: 'body_too_large' });
-                const msg = `Request body (${(contentLength / (1024 * 1024)).toFixed(1)}MB) exceeds the proxy size limit of ${MAX_BODY_SIZE_MB}MB.`;
-                try {
-                    tlsSocket.write(
-                        `HTTP/1.1 413 Content Too Large\r\nContent-Type: text/plain\r\n` +
-                        `Content-Length: ${msg.length}\r\n\r\n${msg}`
-                    );
-                } catch { }
-            };
-
-            const parser = new HTTPRequestParser(
-                async (method, reqPath, headers, body) => {
-                    const bodyLen    = body ? body.length : 0;
-                    const request_id = crypto.randomUUID();
-                    const ct         = (headers['content-type'] || '').toLowerCase();
-                    const isMultipart = ct.includes('multipart/form-data');
-
-                    let dlpResult = null;
-
-                    if (method === 'POST' && bodyLen > 0 && !isMultipart) {
-                        // ── Text Inspection ──
-                        const inspectionStart = Date.now();
-                        try {
-                            dlpResult = await withInspectionTimeout(
-                                processOutgoingPrompt(body, { appName: 'Desktop/Web', destinationType: 'public_ai' })
-                            );
-                            const inspectionMs = Date.now() - inspectionStart;
-                            telemetry.recordInspectionTime(inspectionMs, 'text');
-                            console.log(`   🛡️  TEXT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${inspectionMs}ms`);
-                        } catch (err) {
-                            const inspectionMs = Date.now() - inspectionStart;
-                            logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
-                            if (!FAIL_OPEN) {
-                                try {
-                                    tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
-                                    tlsSocket.end();
-                                } catch { }
-                                return;
-                            }
-                            dlpResult = null; // FAIL_OPEN: bypass, forward unchanged
-                        }
-                    }
-
-                    if (method === 'POST' && bodyLen > 0 && isMultipart) {
-                        // ── Attachment Inspection (body within size limit) ──
-                        const inspectionStart = Date.now();
-                        try {
-                            dlpResult = await withInspectionTimeout(
-                                processOutgoingPrompt(body, { appName: 'Desktop/Web', destinationType: 'public_ai' })
-                            );
-                            const inspectionMs = Date.now() - inspectionStart;
-                            telemetry.recordInspectionTime(inspectionMs, 'attachment');
-                            console.log(`   📎 ATTACHMENT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${bodyLen} bytes | ${inspectionMs}ms`);
-                        } catch (err) {
-                            const inspectionMs = Date.now() - inspectionStart;
-                            logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
-                            if (!FAIL_OPEN) {
-                                try {
-                                    tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
-                                    tlsSocket.end();
-                                } catch { }
-                                return;
-                            }
-                            dlpResult = null; // FAIL_OPEN: bypass, forward unchanged
-                        }
-                    }
-
-                    logToComplyze(`https://${hostname}${reqPath}`, method, headers, body, dlpResult);
-                    if (MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
-                        tlsSocket.write('HTTP/1.1 403 Forbidden\r\n\r\nBlocked by Policy');
-                        tlsSocket.end();
-                        return;
-                    }
-                    const fwdHeaders = { ...headers, host: hostname };
-                    delete fwdHeaders['proxy-connection'];
-                    const proxyReq = https.request(
-                        { hostname, port, path: reqPath, method, headers: fwdHeaders },
-                        (proxyRes) => {
-                            tlsSocket.write(`HTTP/1.1 ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}\r\n`);
-                            proxyRes.rawHeaders.forEach((v, i) => { if (i % 2 === 0) tlsSocket.write(`${v}: ${proxyRes.rawHeaders[i + 1]}\r\n`); });
-                            tlsSocket.write('\r\n');
-                            proxyRes.pipe(tlsSocket);
-                        }
-                    );
-                    if (body) proxyReq.write(body);
-                    proxyReq.end();
-                },
-                onLargeBody,
-                onOversizedBody
-            );
-            tlsSocket.on('data', (chunk) => parser.feed(chunk));
-        } else {
-            const serverSocket = net.connect(port, hostname, () => {
-                clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-                serverSocket.write(head);
-                serverSocket.pipe(clientSocket);
-                clientSocket.pipe(serverSocket);
+            const proxyReq = https.request({
+                hostname,
+                port: 443,
+                path: reqPath,
+                method,
+                headers: fwdHeaders,
+                rejectUnauthorized: true
+            }, (proxyRes) => {
+                res.writeHead(proxyRes.statusCode, proxyRes.headers);
+                proxyRes.pipe(res);
             });
-            serverSocket.on('error', () => clientSocket.destroy());
+
+            proxyReq.on('error', (err) => {
+                if (!res.headersSent) {
+                    res.writeHead(502);
+                    res.end('Bad Gateway');
+                }
+            });
+
+            if (initialBody) {
+                proxyReq.write(initialBody);
+            }
+            // If we haven't consumed the req stream yet, or have partial, we might need piping
+            // But if we already buffered, we don't pipe req.
+            // If we are here from "Large Body" check, we might want to pipe req.
+            if (!initialBody && !req.readableEnded) {
+                req.pipe(proxyReq);
+            } else {
+                proxyReq.end();
+            }
+        };
+
+        try {
+            // Check for large uploads (attachments)
+            const contentLength = parseInt(req.headers['content-length'] || '0');
+            const isMultipart = (req.headers['content-type'] || '').includes('multipart/form-data');
+
+            if (contentLength > MAX_INSPECTION_BYTES && isMultipart) {
+                const request_id = crypto.randomUUID();
+                console.log(`   📎 LARGE ATTACHMENT [${request_id}]: ${(contentLength / 1024 / 1024).toFixed(1)}MB > ${MAX_INSPECTION_SIZE_MB}MB — skipping inspection`);
+                logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, `[attachment: ${contentLength} bytes — skipped]`, null);
+                pipeToUpstream();
+                return;
+            }
+
+            // For small requests, buffer and inspect
+            const chunks = [];
+            req.on('data', chunk => chunks.push(chunk));
+            req.on('end', async () => {
+                const bodyBuffer = Buffer.concat(chunks);
+                const bodyStr = bodyBuffer.toString(); // Naive utf8, but fine for JSON/Text prompts
+
+                // DLP Inspection
+                let dlpResult = null;
+                if (method === 'POST' && bodyBuffer.length > 0 && bodyBuffer.length < MAX_INSPECTION_BYTES) {
+                    try {
+                        dlpResult = await withInspectionTimeout(processOutgoingPrompt(bodyStr, { appName: 'Web', destinationType: 'public_ai' }));
+                    } catch (e) {
+                        if (!FAIL_OPEN) {
+                            res.writeHead(503);
+                            res.end('Inspection Failed');
+                            return;
+                        }
+                    }
+                }
+
+                logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, bodyStr.substring(0, 2000), dlpResult);
+
+                if (MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
+                    res.writeHead(403);
+                    res.end('Blocked by Policy');
+                    return;
+                }
+
+                // Forward after inspection
+                pipeToUpstream(bodyBuffer);
+            });
+
+        } catch (err) {
+            console.error('[MITM] Error:', err);
+            res.writeHead(500);
+            res.end();
+        }
+    });
+
+    server.on('connect', (req, clientSocket, head) => {
+        let hostname, port;
+        try {
+            const parts = req.url.split(':');
+            hostname = parts[0];
+            port = parseInt(parts[1]) || 443;
+
+            if (shouldDeepInspect(hostname)) {
+                console.log(JSON.stringify({ hostname, mode: "inspection", timestamp: new Date().toISOString() }));
+                clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+                const domainCert = getCertForDomain(hostname, ca);
+                const tlsSocket = new tls.TLSSocket(clientSocket, { isServer: true, key: domainCert.key, cert: domainCert.cert });
+
+                // Use internal MITM server to handle the decrypted traffic
+                mitmServer.emit('connection', tlsSocket);
+
+                tlsSocket.on('error', (err) => {
+                    if (TRACE_MODE) console.error(`[TLS] Error: ${err.message}`);
+                    clientSocket.destroy();
+                });
+            } else {
+                handleTunnel(hostname, port, clientSocket, head);
+            }
+        } catch (err) {
+            console.error(`[CONNECT] Proxy error for ${hostname || req.url}:`, err.message);
+            handleTunnel(hostname || (req.url ? req.url.split(':')[0] : 'unknown'), port || 443, clientSocket, head);
         }
     });
 
@@ -680,9 +718,16 @@ function startProxy() {
                 } else {
                     console.log('[DIAGNOSE] ✅ All compatibility checks passed.');
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         } catch { }
     });
 }
+
+process.on('uncaughtException', (err) => {
+    if (TRACE_MODE) console.error('❌ Uncaught Exception:', err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+    if (TRACE_MODE) console.error('❌ Unhandled Rejection:', reason);
+});
 
 startProxy();

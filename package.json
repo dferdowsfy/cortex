@@ -18,7 +18,8 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "diagnose": "npm run diagnose -w web"
+    "diagnose": "npm run diagnose -w web",
+    "proxy": "npm run proxy -w web"
   },
   "engines": {
     "node": ">=18"

@@ -19,26 +19,26 @@
  *  TELEMETRY_REMOTE_BATCH – entries per remote POST      (default 50)
  */
 
-const fs   = require('fs');
-const os   = require('os');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const LOG_DIR        = path.join(__dirname, '..', 'logs');
-const LOG_BASENAME   = 'proxy-telemetry';
-const MAX_FILE_BYTES = parseInt(process.env.TELEMETRY_MAX_FILE_MB  || '10', 10) * 1024 * 1024;
-const MAX_FILES      = parseInt(process.env.TELEMETRY_MAX_FILES    || '5',  10);
-const FLUSH_INTERVAL = parseInt(process.env.TELEMETRY_FLUSH_MS     || '30000', 10);
-const REMOTE_URL     = process.env.TELEMETRY_REMOTE_URL  || null;
-const REMOTE_BATCH   = parseInt(process.env.TELEMETRY_REMOTE_BATCH || '50', 10);
+const LOG_DIR = path.join(__dirname, '..', 'logs');
+const LOG_BASENAME = 'proxy-telemetry';
+const MAX_FILE_BYTES = parseInt(process.env.TELEMETRY_MAX_FILE_MB || '10', 10) * 1024 * 1024;
+const MAX_FILES = parseInt(process.env.TELEMETRY_MAX_FILES || '5', 10);
+const FLUSH_INTERVAL = parseInt(process.env.TELEMETRY_FLUSH_MS || '30000', 10);
+const REMOTE_URL = process.env.TELEMETRY_REMOTE_URL || null;
+const REMOTE_BATCH = parseInt(process.env.TELEMETRY_REMOTE_BATCH || '50', 10);
 const REMOTE_ENABLED = !!REMOTE_URL;
 
 // ─── Rolling file writer ──────────────────────────────────────────────────────
 
-let _logPath   = null;
+let _logPath = null;
 let _logStream = null;
-let _logBytes  = 0;
+let _logBytes = 0;
 
 function _currentLogPath() {
     return path.join(LOG_DIR, `${LOG_BASENAME}.jsonl`);
@@ -48,7 +48,7 @@ function _openStream() {
     try {
         fs.mkdirSync(LOG_DIR, { recursive: true });
     } catch { /* directory already exists */ }
-    _logPath  = _currentLogPath();
+    _logPath = _currentLogPath();
     _logBytes = fs.existsSync(_logPath) ? (fs.statSync(_logPath).size || 0) : 0;
     _logStream = fs.createWriteStream(_logPath, { flags: 'a' });
     _logStream.on('error', (err) => {
@@ -68,7 +68,7 @@ function _rotateIfNeeded() {
     // Shift existing rotated files: .4 → .5, .3 → .4, …, .1 → .2
     for (let i = MAX_FILES - 2; i >= 1; i--) {
         const from = path.join(LOG_DIR, `${LOG_BASENAME}.${i}.jsonl`);
-        const to   = path.join(LOG_DIR, `${LOG_BASENAME}.${i + 1}.jsonl`);
+        const to = path.join(LOG_DIR, `${LOG_BASENAME}.${i + 1}.jsonl`);
         if (fs.existsSync(from)) {
             try { fs.renameSync(from, to); } catch { }
         }
@@ -109,10 +109,10 @@ async function _flushRemote() {
     const batch = _remoteBuf.splice(0, REMOTE_BATCH);
     try {
         await fetch(REMOTE_URL, {
-            method:  'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ events: batch }),
-            signal:  AbortSignal.timeout(5000),
+            body: JSON.stringify({ events: batch }),
+            signal: AbortSignal.timeout(5000),
         });
     } catch {
         // Remote logging is fire-and-forget; silently discard failures
@@ -131,14 +131,14 @@ function log(event, data = {}) {
     _writeEntry(entry);
     if (REMOTE_ENABLED) {
         _remoteBuf.push(entry);
-        if (_remoteBuf.length >= REMOTE_BATCH) _flushRemote().catch(() => {});
+        if (_remoteBuf.length >= REMOTE_BATCH) _flushRemote().catch(() => { });
     }
 }
 
 // ─── System info ──────────────────────────────────────────────────────────────
 
 function _networkIfaceInfo() {
-    const ifaces  = os.networkInterfaces();
+    const ifaces = os.networkInterfaces();
     const primary = Object.entries(ifaces)
         .flatMap(([name, addrs]) => addrs.map(a => ({ name, ...a })))
         .find(a => !a.internal && a.family === 'IPv4');
@@ -146,23 +146,23 @@ function _networkIfaceInfo() {
     if (!primary) return { network_iface: 'none', iface_type: 'unknown' };
 
     let ifaceType = 'other';
-    if (/wlan|wlp|wifi/i.test(primary.name))      ifaceType = 'wifi';
+    if (/wlan|wlp|wifi/i.test(primary.name)) ifaceType = 'wifi';
     else if (/eth|enp|ens|em\d/i.test(primary.name)) ifaceType = 'ethernet';
-    else if (/tun|vpn|utun/i.test(primary.name))   ifaceType = 'vpn';
+    else if (/tun|vpn|utun/i.test(primary.name)) ifaceType = 'vpn';
 
     return { network_iface: primary.name, iface_type: ifaceType };
 }
 
 function _systemInfo() {
     return {
-        os_platform:     os.platform(),
-        os_release:      os.release(),
-        os_type:         os.type(),
-        os_arch:         os.arch(),
-        node_version:    process.version,
-        cpu_count:       os.cpus().length,
+        os_platform: os.platform(),
+        os_release: os.release(),
+        os_type: os.type(),
+        os_arch: os.arch(),
+        node_version: process.version,
+        cpu_count: os.cpus().length,
         total_memory_mb: Math.round(os.totalmem() / (1024 * 1024)),
-        hostname:        os.hostname(),
+        hostname: os.hostname(),
         ..._networkIfaceInfo(),
     };
 }
@@ -170,10 +170,13 @@ function _systemInfo() {
 // ─── Metrics accumulator ──────────────────────────────────────────────────────
 
 const _metrics = {
-    text:       { count: 0, total_ms: 0, min_ms: Infinity, max_ms: 0 },
+    text: { count: 0, total_ms: 0, min_ms: Infinity, max_ms: 0 },
     attachment: { count: 0, total_ms: 0, min_ms: Infinity, max_ms: 0 },
-    _prevCpu:      process.cpuUsage(),
+    request: { count: 0, total_ms: 0, min_ms: Infinity, max_ms: 0 },
+    _prevCpu: process.cpuUsage(),
     _prevCpuWallMs: Date.now(),
+    rollingIntervalMs: 60000,
+    history: []
 };
 
 /**
@@ -187,12 +190,48 @@ function recordInspectionTime(ms, type) {
     bucket.total_ms += ms;
     if (ms < bucket.min_ms) bucket.min_ms = ms;
     if (ms > bucket.max_ms) bucket.max_ms = ms;
+
+    if (ms > 300) {
+        console.warn(`[PERF_WARNING] Inspection (${type}) took ${ms}ms, exceeding 300ms threshold.`);
+        log('performance_warning', { type, ms, threshold: 300 });
+    }
+}
+
+/**
+ * Record total request latency (intercept -> forward).
+ * @param {number} ms
+ */
+function recordRequestLatency(ms) {
+    const bucket = _metrics.request;
+    bucket.count++;
+    bucket.total_ms += ms;
+    if (ms < bucket.min_ms) bucket.min_ms = ms;
+    if (ms > bucket.max_ms) bucket.max_ms = ms;
+
+    // Track for rolling average
+    _metrics.history.push({ ts: Date.now(), ms });
+    _pruneHistory();
+}
+
+function _pruneHistory() {
+    const now = Date.now();
+    const cutoff = now - _metrics.rollingIntervalMs;
+    while (_metrics.history.length > 0 && _metrics.history[0].ts < cutoff) {
+        _metrics.history.shift();
+    }
+}
+
+function _getRollingAvg() {
+    _pruneHistory();
+    if (_metrics.history.length === 0) return 0;
+    const sum = _metrics.history.reduce((a, b) => a + b.ms, 0);
+    return +(sum / _metrics.history.length).toFixed(1);
 }
 
 function _cpuPercent() {
-    const wallMs  = Date.now() - _metrics._prevCpuWallMs;
-    const usage   = process.cpuUsage(_metrics._prevCpu);      // microseconds delta
-    _metrics._prevCpu      = process.cpuUsage();
+    const wallMs = Date.now() - _metrics._prevCpuWallMs;
+    const usage = process.cpuUsage(_metrics._prevCpu);      // microseconds delta
+    _metrics._prevCpu = process.cpuUsage();
     _metrics._prevCpuWallMs = Date.now();
     if (wallMs <= 0) return 0;
     const cpuMs = (usage.user + usage.system) / 1000;         // μs → ms
@@ -202,25 +241,26 @@ function _cpuPercent() {
 function _memStats() {
     const m = process.memoryUsage();
     return {
-        heap_used_mb:  +(m.heapUsed  / (1024 * 1024)).toFixed(1),
+        heap_used_mb: +(m.heapUsed / (1024 * 1024)).toFixed(1),
         heap_total_mb: +(m.heapTotal / (1024 * 1024)).toFixed(1),
-        rss_mb:        +(m.rss       / (1024 * 1024)).toFixed(1),
-        external_mb:   +(m.external  / (1024 * 1024)).toFixed(1),
+        rss_mb: +(m.rss / (1024 * 1024)).toFixed(1),
+        external_mb: +(m.external / (1024 * 1024)).toFixed(1),
     };
 }
 
 function _bucketSummary(b) {
     return {
-        count:  b.count,
+        count: b.count,
         avg_ms: b.count > 0 ? +(b.total_ms / b.count).toFixed(1) : null,
-        min_ms: b.count > 0 ? b.min_ms : null,
+        min_ms: b.count > 0 && b.min_ms !== Infinity ? b.min_ms : null,
         max_ms: b.count > 0 ? b.max_ms : null,
     };
 }
 
 function _resetBuckets() {
-    _metrics.text       = { count: 0, total_ms: 0, min_ms: Infinity, max_ms: 0 };
+    _metrics.text = { count: 0, total_ms: 0, min_ms: Infinity, max_ms: 0 };
     _metrics.attachment = { count: 0, total_ms: 0, min_ms: Infinity, max_ms: 0 };
+    _metrics.request = { count: 0, total_ms: 0, min_ms: Infinity, max_ms: 0 };
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -232,11 +272,11 @@ function _resetBuckets() {
 function logStartup(proxyPort, monitorMode) {
     log('proxy_start', {
         ..._systemInfo(),
-        proxy_port:      proxyPort,
-        monitor_mode:    monitorMode,
-        fail_open:       process.env.FAIL_OPEN !== 'false',
-        remote_logging:  REMOTE_ENABLED,
-        log_file:        _currentLogPath(),
+        proxy_port: proxyPort,
+        monitor_mode: monitorMode,
+        fail_open: process.env.FAIL_OPEN !== 'false',
+        remote_logging: REMOTE_ENABLED,
+        log_file: _currentLogPath(),
     });
 }
 
@@ -247,14 +287,33 @@ function logStartup(proxyPort, monitorMode) {
  */
 function flushMetrics(proxyPort, monitorMode) {
     log('metrics_snapshot', {
-        proxy_port:            proxyPort,
-        monitor_mode:          monitorMode,
-        cpu_percent:           _cpuPercent(),
+        proxy_port: proxyPort,
+        monitor_mode: monitorMode,
+        cpu_percent: _cpuPercent(),
         ..._memStats(),
-        text_inspection:       _bucketSummary(_metrics.text),
+        text_inspection: _bucketSummary(_metrics.text),
         attachment_inspection: _bucketSummary(_metrics.attachment),
+        request_latency: _bucketSummary(_metrics.request),
+        rolling_avg_ms: _getRollingAvg(),
     });
     _resetBuckets();
+}
+
+/**
+ * Get current metrics for API exposure.
+ */
+function getMetricsSnapshot(monitorMode) {
+    return {
+        ts: new Date().toISOString(),
+        monitor_mode: monitorMode,
+        uptime_s: Math.floor(process.uptime()),
+        cpu_percent: _cpuPercent(),
+        memory: _memStats(),
+        text_inspection: _bucketSummary(_metrics.text),
+        attachment_inspection: _bucketSummary(_metrics.attachment),
+        request_latency: _bucketSummary(_metrics.request),
+        rolling_avg_ms: _getRollingAvg(),
+    };
 }
 
 /**
@@ -264,10 +323,19 @@ function flushMetrics(proxyPort, monitorMode) {
  */
 function startMetricsFlush(proxyPort, getModeStr) {
     const timer = setInterval(() => {
-        _flushRemote().catch(() => {});
+        _flushRemote().catch(() => { });
         flushMetrics(proxyPort, getModeStr());
     }, FLUSH_INTERVAL);
     timer.unref(); // don't prevent clean process exit
 }
 
-module.exports = { log, logStartup, recordInspectionTime, flushMetrics, startMetricsFlush };
+module.exports = {
+    log,
+    logStartup,
+    recordInspectionTime,
+    recordRequestLatency,
+    flushMetrics,
+    startMetricsFlush,
+    getMetricsSnapshot
+};
+

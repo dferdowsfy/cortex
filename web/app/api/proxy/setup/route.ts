@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
+import { getProxyState, enableProxy, disableProxy } from "@/lib/system-proxy-manager";
 
 // Detect if running on Vercel (serverless)
 const IS_VERCEL = !!process.env.VERCEL;
@@ -117,20 +118,20 @@ export async function POST(req: NextRequest) {
 
         switch (action) {
             case "check-status": {
-                const proxy = getProxyStatus(iface);
+                const proxy = await getProxyState();
                 const caTrusted = isCATrusted();
                 const proxyRunning = isProxyServerRunning();
                 const certsExist = existsSync(join(process.cwd(), "certs", "ca-cert.pem"));
 
                 // Sync: Use the same logic as the agent
-                const isConfigured = proxy.enabled && proxy.server === "127.0.0.1";
+                const isConfigured = proxy.enabled;
 
                 return NextResponse.json({
                     interface: iface,
                     proxy_configured: isConfigured,
                     proxy_enabled: proxy.enabled,
-                    proxy_server: proxy.server,
-                    proxy_port: proxy.port,
+                    proxy_server: "127.0.0.1",
+                    proxy_port: "8080",
                     ca_trusted: caTrusted,
                     ca_exists: certsExist,
                     proxy_server_running: proxyRunning,
@@ -138,19 +139,11 @@ export async function POST(req: NextRequest) {
             }
 
             case "enable-proxy": {
-                const pacUrl = "http://127.0.0.1:8080/proxy.pac";
                 try {
-                    // NUCLEAR CLEANUP: Disable global proxies first
-                    execSync(`networksetup -setwebproxystate "${iface}" off && networksetup -setsecurewebproxystate "${iface}" off`, { timeout: 3000 });
-
-                    // Enable PAC
-                    execSync(
-                        `networksetup -setautoproxyurl "${iface}" "${pacUrl}" && networksetup -setautoproxystate "${iface}" on`,
-                        { encoding: "utf8", timeout: 5000 }
-                    );
+                    await enableProxy(8080);
                     return NextResponse.json({
                         success: true,
-                        message: `PAC-based proxy enabled on ${iface} → ${pacUrl}`,
+                        message: `Direct proxy enabled on ${iface} → 127.0.0.1:8080`,
                     });
                 } catch (e: unknown) {
                     const msg = e instanceof Error ? e.message : "Unknown error";
@@ -159,7 +152,7 @@ export async function POST(req: NextRequest) {
                             success: false,
                             needs_sudo: true,
                             message: "macOS requires admin authorization to modify network settings.",
-                            command: `sudo networksetup -setautoproxyurl "${iface}" "${pacUrl}" && sudo networksetup -setautoproxystate "${iface}" on`,
+                            command: `sudo networksetup -setwebproxy "${iface}" 127.0.0.1 8080 && sudo networksetup -setsecurewebproxy "${iface}" 127.0.0.1 8080 && sudo networksetup -setwebproxystate "${iface}" on && sudo networksetup -setsecurewebproxystate "${iface}" on`,
                         }, { status: 403 });
                     }
                     throw e;
@@ -198,13 +191,7 @@ export async function POST(req: NextRequest) {
 
             case "disable-proxy": {
                 try {
-                    // Turn everything off for a clean state
-                    execSync(
-                        `networksetup -setautoproxystate "${iface}" off && ` +
-                        `networksetup -setwebproxystate "${iface}" off && ` +
-                        `networksetup -setsecurewebproxystate "${iface}" off`,
-                        { encoding: "utf8", timeout: 5000 }
-                    );
+                    await disableProxy();
                     return NextResponse.json({
                         success: true,
                         message: `All proxies disabled on ${iface}`,
@@ -216,7 +203,7 @@ export async function POST(req: NextRequest) {
                             success: false,
                             needs_sudo: true,
                             message: "macOS requires admin authorization. Run this in terminal:",
-                            command: `sudo networksetup -setautoproxystate "${iface}" off && sudo networksetup -setwebproxystate "${iface}" off && sudo networksetup -setsecurewebproxystate "${iface}" off`,
+                            command: `sudo networksetup -setwebproxystate "${iface}" off && sudo networksetup -setsecurewebproxystate "${iface}" off`,
                         }, { status: 403 });
                     }
                     throw e;

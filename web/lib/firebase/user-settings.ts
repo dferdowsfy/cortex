@@ -28,6 +28,7 @@ export interface UserSettings {
     riskThreshold: number;
     retentionDays: number;
     userAttributionEnabled: boolean;
+    inspectAttachments: boolean;      // NEW: Deep scan file uploads
     updatedAt?: number; // epoch ms
 }
 
@@ -43,6 +44,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     riskThreshold: 60,
     retentionDays: 90,
     userAttributionEnabled: true,
+    inspectAttachments: false,
 };
 
 // ── Ref helper ───────────────────────────────────────────────────

@@ -64,5 +64,5 @@ export function useUserSettings() {
         [user?.uid]
     );
 
-    return { settings, loading, error, saveSettings };
+    return { settings, loading, error, saveSettings, user };
 }

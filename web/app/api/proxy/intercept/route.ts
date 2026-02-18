@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
             policy_violation_flag: classification.policy_violation_flag,
             risk_category: classification.risk_category,
             timestamp: new Date().toISOString(),
+            attachment_inspection_enabled: settings.inspect_attachments,
         };
 
         // ── 4. Store full prompt only in Full Audit Mode ──

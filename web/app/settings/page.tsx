@@ -101,7 +101,7 @@ function isCloudDeployment(): boolean {
 
 export default function SettingsPage() {
     // ── Firestore-backed user settings (realtime sync) ──────────
-    const { settings, loading, error: settingsError, saveSettings } = useUserSettings();
+    const { settings, loading, error: settingsError, saveSettings, user } = useUserSettings();
 
     const [saved, setSaved] = useState(false);
     const [error, setError] = useState("");
@@ -110,10 +110,23 @@ export default function SettingsPage() {
     const [setupMessage, setSetupMessage] = useState<{ type: "success" | "error" | "info"; text: string; command?: string } | null>(null);
     const [isCloud, setIsCloud] = useState(false);
     const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
+    const [mounted, setMounted] = useState(false);
+    const [timedOut, setTimedOut] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         setIsCloud(isCloudDeployment());
     }, []);
+
+    useEffect(() => {
+        if (loading && mounted) {
+            const timer = setTimeout(() => {
+                setTimedOut(true);
+                setError("Settings fetch timed out. Proxy may be blocking the connection.");
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, mounted]);
 
     useEffect(() => {
         if (settingsError) setError(settingsError);
@@ -173,21 +186,34 @@ export default function SettingsPage() {
             if ("alertOnViolations" in partial) proxyMap.alert_on_violations = partial.alertOnViolations;
             if ("desktopBypass" in partial) proxyMap.desktop_bypass = partial.desktopBypass;
             if ("retentionDays" in partial) proxyMap.retention_days = partial.retentionDays;
+            if ("inspectAttachments" in partial) proxyMap.inspect_attachments = partial.inspectAttachments;
 
             // 3. Push to Local Agent API (The "Sync Bridge")
             if (Object.keys(proxyMap).length > 0) {
-                await fetch("/api/proxy/settings", {
+                const res = await fetch("/api/proxy/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(proxyMap),
+                    body: JSON.stringify({ ...proxyMap, workspaceId: user?.uid || "default" }),
                 });
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    if (data.code === "SYSTEM_PROXY_FAILURE") {
+                        throw new Error(data.error || "Failed to update system proxy. Check permissions.");
+                    }
+                    throw new Error(data.error || "Failed to sync to local agent.");
+                }
             }
 
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
-        } catch (err) {
+        } catch (err: any) {
             console.error("[settings] Sync failure:", err);
-            setError("Settings saved to cloud, but failed to sync to local agent.");
+            if (err.message && err.message.includes("permissions")) {
+                setError("Failed to update system proxy. Check permissions.");
+            } else {
+                setError(err.message || "Settings saved to cloud, but failed to sync to local agent.");
+            }
         }
     }
 
@@ -216,7 +242,7 @@ export default function SettingsPage() {
         }
     }
 
-    if (loading) {
+    if ((loading && !timedOut) || !mounted) {
         return (
             <div className="flex items-center justify-center py-20">
                 <div className="text-center">
@@ -434,7 +460,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-500 mb-4">Automated enforcement actions applied to monitored traffic.</p>
 
                 <Toggle
-                    enabled={settings.proxyEnabled}
+                    enabled={(!isCloud && setupStatus) ? setupStatus.proxy_enabled : settings.proxyEnabled}
                     onChange={(val) => handleSave({ proxyEnabled: val })}
                     label="Enable Global AI Monitoring"
                     description="When enabled, all traffic through the Complyze Agents will be classified and logged."
@@ -452,6 +478,13 @@ export default function SettingsPage() {
                     onChange={(val) => handleSave({ redactSensitive: val })}
                     label="Redact Sensitive Content"
                     description="Automatically replace detected PII, credentials, and financial data with [REDACTED]."
+                />
+
+                <Toggle
+                    enabled={settings.inspectAttachments}
+                    onChange={(val) => handleSave({ inspectAttachments: val })}
+                    label="Inspect Attachment Uploads"
+                    description="When enabled, Complyze will inspect uploaded files sent to AI services for sensitive content."
                 />
                 <Toggle
                     enabled={settings.alertOnViolations}

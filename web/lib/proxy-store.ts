@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS: ProxySettings = {
     desktop_bypass: false,
     retention_days: 90,
     proxy_endpoint: "127.0.0.1:8080",
+    inspect_attachments: false,
     updated_at: new Date().toISOString(),
 };
 

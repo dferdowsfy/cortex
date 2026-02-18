@@ -17,11 +17,15 @@ export default function ExecutiveDashboard({
     riskTrend,
     lastUpdated,
 }: ExecutiveDashboardProps) {
-    const today = new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    });
+    const [today, setToday] = useState("");
+
+    useEffect(() => {
+        setToday(new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        }));
+    }, []);
 
     const delta = riskTrend.length >= 2
         ? riskTrend[0].score - riskTrend[riskTrend.length - 1].score

@@ -8,11 +8,21 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import store from "@/lib/proxy-store";
+import { enableProxy, disableProxy, getProxyState } from "@/lib/system-proxy-manager";
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get("workspaceId") || "default";
     const settings = await store.getSettings(workspaceId);
+
+    // Sync with real macOS system state (Source of Truth)
+    const osState = await getProxyState();
+    if (osState.enabled !== settings.proxy_enabled && osState.service !== "n/a") {
+        // Silently sync OS truth back to persistence
+        await store.updateSettings({ proxy_enabled: osState.enabled }, workspaceId);
+        settings.proxy_enabled = osState.enabled;
+    }
+
     return NextResponse.json(settings);
 }
 
@@ -20,6 +30,25 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const workspaceId = body.workspaceId || "default";
+
+        // ── System Proxy Control ──
+        if ("proxy_enabled" in body) {
+            try {
+                if (body.proxy_enabled) {
+                    await enableProxy(8080);
+                } else {
+                    await disableProxy();
+                }
+            } catch (err: any) {
+                // Return structured error to frontend as requested
+                return NextResponse.json({
+                    error: err.message || "macOS Permission Error",
+                    details: "Failed to update system proxy. Check if Complyze has necessary permissions.",
+                    code: "SYSTEM_PROXY_FAILURE"
+                }, { status: 500 });
+            }
+        }
+
         const updated = await store.updateSettings(body, workspaceId);
         return NextResponse.json(updated);
     } catch (error: unknown) {
