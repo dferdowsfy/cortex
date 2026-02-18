@@ -805,6 +805,20 @@ function startProxy() {
         console.log('╚════════════════════════════════════════════════════════════════╝');
         console.log('');
         console.log('Waiting for AI traffic... (press Ctrl+C to stop)\n');
+
+        // Non-blocking startup diagnostics
+        try {
+            const { runAllChecks, writeReport } = require('./diagnose');
+            runAllChecks().then(report => {
+                writeReport(report);
+                const failed = report.checks.filter(c => c.result.status === 'fail');
+                if (failed.length > 0) {
+                    console.warn(`[DIAGNOSE] ⚠️  ${failed.length} check(s) failed: ${failed.map(c => c.name).join(', ')} — see ${report.ca_cert_path.replace('ca-cert.pem', 'diagnostics-report.json')}`);
+                } else {
+                    console.log('[DIAGNOSE] ✅ All compatibility checks passed.');
+                }
+            }).catch(() => {});
+        } catch { }
     });
 }
 

@@ -662,7 +662,22 @@ function startProxy() {
     registerHeartbeat();
     setInterval(syncSettings, 10000);
     setInterval(registerHeartbeat, 15000);
-    server.listen(PROXY_PORT, '127.0.0.1', () => console.log(`🚀 Proxy active on ${PROXY_PORT} | Mode: ${MONITOR_MODE}`));
+    server.listen(PROXY_PORT, '127.0.0.1', () => {
+        console.log(`🚀 Proxy active on ${PROXY_PORT} | Mode: ${MONITOR_MODE}`);
+        // Non-blocking startup diagnostics
+        try {
+            const { runAllChecks, writeReport } = require('./diagnose');
+            runAllChecks().then(report => {
+                writeReport(report);
+                const failed = report.checks.filter(c => c.result.status === 'fail');
+                if (failed.length > 0) {
+                    console.warn(`[DIAGNOSE] ⚠️  ${failed.length} check(s) failed: ${failed.map(c => c.name).join(', ')} — see ${report.ca_cert_path.replace('ca-cert.pem', 'diagnostics-report.json')}`);
+                } else {
+                    console.log('[DIAGNOSE] ✅ All compatibility checks passed.');
+                }
+            }).catch(() => {});
+        } catch { }
+    });
 }
 
 startProxy();
