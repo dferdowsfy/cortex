@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import store from "@/lib/proxy-store";
 import { enableProxy, disableProxy, getProxyState } from "@/lib/system-proxy-manager";
+import { startProxy, stopProxy } from "@/lib/proxy-manager";
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -35,9 +36,18 @@ export async function POST(req: NextRequest) {
         if ("proxy_enabled" in body) {
             try {
                 if (body.proxy_enabled) {
+                    const proxyStart = await startProxy();
+                    if (!proxyStart.ok) {
+                        return NextResponse.json({
+                            error: proxyStart.message,
+                            details: "Proxy server failed to start. System proxy was not enabled.",
+                            code: "PROXY_START_FAILURE"
+                        }, { status: 500 });
+                    }
                     await enableProxy(8080);
                 } else {
                     await disableProxy();
+                    await stopProxy();
                 }
             } catch (err: any) {
                 // Return structured error to frontend as requested

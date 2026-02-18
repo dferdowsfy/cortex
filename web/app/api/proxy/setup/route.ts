@@ -14,6 +14,7 @@ import { execSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
 import { getProxyState, enableProxy, disableProxy } from "@/lib/system-proxy-manager";
+import { isProxyRunning, startProxy, stopProxy } from "@/lib/proxy-manager";
 
 // Detect if running on Vercel (serverless)
 const IS_VERCEL = !!process.env.VERCEL;
@@ -41,27 +42,6 @@ function getActiveInterface(): string {
     }
 }
 
-function getProxyStatus(iface: string): { enabled: boolean; server: string; port: string } {
-    try {
-        // Check PAC status instead of global proxy
-        const out = execSync(`networksetup -getautoproxyurl "${iface}"`, {
-            encoding: "utf8",
-            timeout: 5000,
-        });
-        const enabled = out.includes("Enabled: Yes");
-        const urlMatch = out.match(/URL:\s*(.+)/);
-        const url = urlMatch?.[1]?.trim() || "";
-
-        return {
-            enabled,
-            server: url.includes("127.0.0.1") ? "127.0.0.1" : "",
-            port: url.match(/:(\d+)\//)?.[1] || "8080",
-        };
-    } catch {
-        return { enabled: false, server: "", port: "" };
-    }
-}
-
 function isCATrusted(): boolean {
     try {
         const certsDir = join(process.cwd(), "certs");
@@ -74,15 +54,6 @@ function isCATrusted(): boolean {
             { encoding: "utf8", timeout: 5000 }
         );
         return result.includes("Complyze AI Proxy CA");
-    } catch {
-        return false;
-    }
-}
-
-function isProxyServerRunning(): boolean {
-    try {
-        execSync("lsof -ti:8080", { encoding: "utf8", timeout: 3000 });
-        return true;
     } catch {
         return false;
     }
@@ -120,7 +91,7 @@ export async function POST(req: NextRequest) {
             case "check-status": {
                 const proxy = await getProxyState();
                 const caTrusted = isCATrusted();
-                const proxyRunning = isProxyServerRunning();
+                const proxyRunning = await isProxyRunning();
                 const certsExist = existsSync(join(process.cwd(), "certs", "ca-cert.pem"));
 
                 // Sync: Use the same logic as the agent
@@ -140,10 +111,18 @@ export async function POST(req: NextRequest) {
 
             case "enable-proxy": {
                 try {
+                    const proxyStart = await startProxy();
+                    if (!proxyStart.ok) {
+                        return NextResponse.json({
+                            success: false,
+                            message: proxyStart.message,
+                        }, { status: 500 });
+                    }
+
                     await enableProxy(8080);
                     return NextResponse.json({
                         success: true,
-                        message: `Direct proxy enabled on ${iface} → 127.0.0.1:8080`,
+                        message: `Manual proxy enabled on ${iface} → 127.0.0.1:8080`,
                     });
                 } catch (e: unknown) {
                     const msg = e instanceof Error ? e.message : "Unknown error";
@@ -192,6 +171,7 @@ export async function POST(req: NextRequest) {
             case "disable-proxy": {
                 try {
                     await disableProxy();
+                    await stopProxy();
                     return NextResponse.json({
                         success: true,
                         message: `All proxies disabled on ${iface}`,

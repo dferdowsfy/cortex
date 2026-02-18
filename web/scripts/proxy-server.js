@@ -164,6 +164,12 @@ function isAIDomain(hostname) {
 }
 
 function handleTunnel(hostname, port, clientSocket, head) {
+    if (!hostname || Number.isNaN(port)) {
+        if (TRACE_MODE) console.warn(`[TUNNEL] Invalid target '${hostname}:${port}' — closing socket fail-open.`);
+        clientSocket.destroy();
+        return;
+    }
+
     if (TRACE_MODE) console.log(`[TUNNEL] Passing through: ${hostname}:${port}`);
 
     const serverSocket = net.connect(port, hostname, () => {
@@ -173,6 +179,9 @@ function handleTunnel(hostname, port, clientSocket, head) {
         serverSocket.pipe(clientSocket);
         clientSocket.pipe(serverSocket);
     });
+
+    serverSocket.setTimeout(30000, () => serverSocket.destroy());
+    clientSocket.setTimeout(30000, () => clientSocket.destroy());
 
     serverSocket.on('error', (err) => {
         if (TRACE_MODE) console.error(`[TUNNEL] Upstream error (${hostname}): ${err.message}`);
@@ -185,6 +194,26 @@ function handleTunnel(hostname, port, clientSocket, head) {
 
     clientSocket.on('close', () => serverSocket.destroy());
     serverSocket.on('close', () => clientSocket.destroy());
+}
+
+function parseConnectTarget(rawUrl = '') {
+    if (!rawUrl || typeof rawUrl !== 'string') return null;
+
+    const trimmed = rawUrl.trim();
+    const withoutBrackets = trimmed.startsWith('[') ? trimmed.slice(1) : trimmed;
+    const clean = withoutBrackets.endsWith(']') ? withoutBrackets.slice(0, -1) : withoutBrackets;
+    const idx = clean.lastIndexOf(':');
+
+    if (idx === -1) {
+        return { hostname: clean.toLowerCase(), port: 443 };
+    }
+
+    const hostname = clean.slice(0, idx).toLowerCase();
+    const parsedPort = parseInt(clean.slice(idx + 1), 10);
+    const port = Number.isFinite(parsedPort) ? parsedPort : 443;
+
+    if (!hostname) return null;
+    return { hostname, port };
 }
 
 function isPassthroughDomain(hostname) {
@@ -543,21 +572,6 @@ class HTTPRequestParser {
 function startProxy() {
     const ca = ensureCA();
     const server = http.createServer((req, res) => {
-        if (req.url === '/proxy.pac') {
-            const domains = [...AI_DOMAINS];
-            const pacScript = `function FindProxyForURL(url, host) {
-                if (isPlainHostName(host) || host === "127.0.0.1" || host === "localhost" || shExpMatch(host, "*.local")) return "DIRECT";
-                var aiDomains = ${JSON.stringify(domains)};
-                for (var i = 0; i < aiDomains.length; i++) {
-                    if (host === aiDomains[i] || shExpMatch(host, "*." + aiDomains[i])) return "PROXY 127.0.0.1:8080";
-                }
-                return "DIRECT";
-            }`;
-            res.writeHead(200, { 'Content-Type': 'application/x-ns-proxy-autoconfig' });
-            res.end(pacScript);
-            return;
-        }
-
         if (req.url === '/proxy/metrics') {
             const metrics = telemetry.getMetricsSnapshot(MONITOR_MODE);
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -669,31 +683,45 @@ function startProxy() {
     });
 
     server.on('connect', (req, clientSocket, head) => {
-        let hostname, port;
+        let hostname;
+        let port;
         try {
-            const parts = req.url.split(':');
-            hostname = parts[0];
-            port = parseInt(parts[1]) || 443;
+            const target = parseConnectTarget(req.url);
+            if (!target) {
+                if (TRACE_MODE) console.warn(`[CONNECT] Failed to parse '${req.url}', defaulting to passthrough.`);
+                const fallbackHost = (req.url || '').trim();
+                if (fallbackHost) {
+                    handleTunnel(fallbackHost, 443, clientSocket, head);
+                } else {
+                    clientSocket.destroy();
+                }
+                return;
+            }
+
+            hostname = target.hostname;
+            port = target.port;
 
             if (shouldDeepInspect(hostname)) {
                 console.log(JSON.stringify({ hostname, mode: "inspection", timestamp: new Date().toISOString() }));
                 clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
                 const domainCert = getCertForDomain(hostname, ca);
                 const tlsSocket = new tls.TLSSocket(clientSocket, { isServer: true, key: domainCert.key, cert: domainCert.cert });
+                tlsSocket.setTimeout(30000, () => tlsSocket.destroy());
 
                 // Use internal MITM server to handle the decrypted traffic
                 mitmServer.emit('connection', tlsSocket);
 
                 tlsSocket.on('error', (err) => {
                     if (TRACE_MODE) console.error(`[TLS] Error: ${err.message}`);
-                    clientSocket.destroy();
+                    handleTunnel(hostname, port, clientSocket, head);
                 });
             } else {
                 handleTunnel(hostname, port, clientSocket, head);
             }
         } catch (err) {
             console.error(`[CONNECT] Proxy error for ${hostname || req.url}:`, err.message);
-            handleTunnel(hostname || (req.url ? req.url.split(':')[0] : 'unknown'), port || 443, clientSocket, head);
+            const fallback = parseConnectTarget(req.url);
+            handleTunnel(fallback?.hostname || hostname, fallback?.port || port || 443, clientSocket, head);
         }
     });
 

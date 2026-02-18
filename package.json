@@ -19,7 +19,8 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "diagnose": "npm run diagnose -w web",
-    "proxy": "npm run proxy -w web"
+    "proxy": "npm run proxy -w web",
+    "proxy:test": "npm run proxy:test -w web"
   },
   "engines": {
     "node": ">=18"
