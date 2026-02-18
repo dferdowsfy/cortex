@@ -14,6 +14,7 @@ const net = require('net');
 const tls = require('tls');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 let forge;
 try {
@@ -85,6 +86,13 @@ const PASSTHROUGH_DOMAINS = [
 
 let MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
 let desktopBypassEnabled = false;
+
+// ─── Fail-Open Configuration ─────────────────────────────────────────────────
+// When FAIL_OPEN=true (default), any inspection error causes the proxy to
+// bypass the scan and forward the original request unchanged. This guarantees
+// traffic is never blocked due to internal errors.
+// Set FAIL_OPEN=false to block traffic on inspection failure instead.
+const FAIL_OPEN = process.env.FAIL_OPEN !== 'false'; // default: true
 
 async function syncSettings() {
     try {
@@ -245,6 +253,36 @@ function sanitizeHeaders(headers) {
     return safe;
 }
 
+// ─── Inspection Error Logger ─────────────────────────────────────────────────
+
+/**
+ * Emits a structured, machine-parseable error record for any inspection
+ * failure. All fields are always present so downstream log aggregators can
+ * index without schema mismatches.
+ *
+ * @param {object} opts
+ * @param {string}        opts.request_id   - UUID for the in-flight request
+ * @param {string}        opts.hostname     - Target hostname
+ * @param {number|null}   opts.file_size    - Body/file size in bytes (null when N/A)
+ * @param {Error}         opts.error        - The caught error
+ * @param {number}        opts.inspection_ms - Elapsed time before the throw
+ */
+function logInspectionError({ request_id, hostname, file_size, error, inspection_ms }) {
+    const entry = {
+        event: 'inspection_error',
+        timestamp: new Date().toISOString(),
+        request_id,
+        hostname,
+        file_size: file_size != null ? file_size : null,
+        error_message: error.message,
+        error_stack: error.stack,
+        inspection_ms,
+        fail_open: FAIL_OPEN,
+        action: FAIL_OPEN ? 'bypass' : 'block',
+    };
+    console.error(`[INSPECTION_ERROR] ${JSON.stringify(entry)}`);
+}
+
 // ─── HTTP Request Parser ───
 
 class HTTPRequestParser {
@@ -332,10 +370,57 @@ function startProxy() {
             const tlsSocket = new tls.TLSSocket(clientSocket, { isServer: true, key: domainCert.key, cert: domainCert.cert });
             const { processOutgoingPrompt } = require('./dlp/textInterceptor');
             const parser = new HTTPRequestParser(async (method, reqPath, headers, body) => {
+                const bodyLen = body ? body.length : 0;
+                const request_id = crypto.randomUUID();
+                const contentType = (headers['content-type'] || '').toLowerCase();
+                const isMultipart = contentType.includes('multipart/form-data');
+
                 let dlpResult = null;
-                if (method === 'POST' && body.length > 0) {
-                    dlpResult = await processOutgoingPrompt(body, { appName: 'Desktop/Web', destinationType: 'public_ai' });
+
+                if (method === 'POST' && bodyLen > 0 && !isMultipart) {
+                    // ── Text Inspection ──
+                    const inspectionStart = Date.now();
+                    try {
+                        dlpResult = await processOutgoingPrompt(body, { appName: 'Desktop/Web', destinationType: 'public_ai' });
+                        const inspectionMs = Date.now() - inspectionStart;
+                        console.log(`   🛡️  TEXT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${inspectionMs}ms`);
+                    } catch (err) {
+                        const inspectionMs = Date.now() - inspectionStart;
+                        logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
+                        if (!FAIL_OPEN) {
+                            try {
+                                tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
+                                tlsSocket.end();
+                            } catch { }
+                            return;
+                        }
+                        // FAIL_OPEN=true: bypass inspection, forward original request unchanged
+                        dlpResult = null;
+                    }
                 }
+
+                if (method === 'POST' && bodyLen > 0 && isMultipart) {
+                    // ── Attachment Inspection ──
+                    const inspectionStart = Date.now();
+                    try {
+                        dlpResult = await processOutgoingPrompt(body, { appName: 'Desktop/Web', destinationType: 'public_ai' });
+                        const inspectionMs = Date.now() - inspectionStart;
+                        console.log(`   📎 ATTACHMENT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${bodyLen} bytes | ${inspectionMs}ms`);
+                    } catch (err) {
+                        const inspectionMs = Date.now() - inspectionStart;
+                        logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
+                        if (!FAIL_OPEN) {
+                            try {
+                                tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
+                                tlsSocket.end();
+                            } catch { }
+                            return;
+                        }
+                        // FAIL_OPEN=true: bypass inspection, forward original request unchanged
+                        dlpResult = null;
+                    }
+                }
+
                 logToComplyze(`https://${hostname}${reqPath}`, method, headers, body, dlpResult);
                 if (MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
                     tlsSocket.write('HTTP/1.1 403 Forbidden\r\n\r\nBlocked by Policy');

@@ -110,6 +110,13 @@ let blockHighRiskEnabled = false;
 let userAttributionEnabled = process.env.USER_ATTRIBUTION_ENABLED === 'true';
 let authenticatedUserId = process.env.FIREBASE_UID || null;
 
+// ─── Fail-Open Configuration ─────────────────────────────────────────────────
+// When FAIL_OPEN=true (default), any inspection error causes the proxy to
+// bypass the scan and forward the original request unchanged. This guarantees
+// traffic is never blocked due to internal errors.
+// Set FAIL_OPEN=false to block traffic on inspection failure instead.
+const FAIL_OPEN = process.env.FAIL_OPEN !== 'false'; // default: true
+
 // Handle settings updates from main process
 process.on('message', (msg) => {
     if (msg.type === 'settings-update') {
@@ -410,6 +417,36 @@ async function logMetadata(hostname) {
     }
 }
 
+// ─── Inspection Error Logger ─────────────────────────────────────────────────
+
+/**
+ * Emits a structured, machine-parseable error record for any inspection
+ * failure. All fields are always present so downstream log aggregators can
+ * index without schema mismatches.
+ *
+ * @param {object} opts
+ * @param {string}        opts.request_id   - UUID for the in-flight request
+ * @param {string}        opts.hostname     - Target hostname
+ * @param {number|null}   opts.file_size    - Body/file size in bytes (null when N/A)
+ * @param {Error}         opts.error        - The caught error
+ * @param {number}        opts.inspection_ms - Elapsed time before the throw
+ */
+function logInspectionError({ request_id, hostname, file_size, error, inspection_ms }) {
+    const entry = {
+        event: 'inspection_error',
+        timestamp: new Date().toISOString(),
+        request_id,
+        hostname,
+        file_size: file_size != null ? file_size : null,
+        error_message: error.message,
+        error_stack: error.stack,
+        inspection_ms,
+        fail_open: FAIL_OPEN,
+        action: FAIL_OPEN ? 'bypass' : 'block',
+    };
+    console.error(`[INSPECTION_ERROR] ${JSON.stringify(entry)}`);
+}
+
 // ─── HTTP Request Parser (from raw TLS stream) ──────────────────────────────
 
 class HTTPRequestParser {
@@ -649,22 +686,66 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
     const parser = new HTTPRequestParser(async (method, reqPath, headers, body) => {
         const targetUrl = `https://${hostname}${reqPath}`;
         const bodyLen = body ? body.length : 0;
+        const request_id = crypto.randomUUID();
+        const contentType = (headers['content-type'] || '').toLowerCase();
+        const isMultipart = contentType.includes('multipart/form-data');
 
         // ─── 🛡️ LOCAL AI-DLP SCANNING ──────────────────────────────────────────
         let dlpResult = null;
-        if (method === 'POST' && bodyLen > 0) {
+
+        if (method === 'POST' && bodyLen > 0 && !isMultipart) {
+            // ── Text Inspection ──
+            const inspectionStart = Date.now();
             try {
                 dlpResult = await processOutgoingPrompt(body, {
                     appName: 'Browser/Web',
                     destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown'
                 });
-                console.log(`   🛡️  DLP SCAN: REU=${dlpResult.finalReu} | ${dlpResult.explanation}`);
+                const inspectionMs = Date.now() - inspectionStart;
+                console.log(`   🛡️  TEXT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${dlpResult.explanation} | ${inspectionMs}ms`);
             } catch (err) {
-                console.error(`   ⚠️  DLP Scan failed: ${err.message}`);
+                const inspectionMs = Date.now() - inspectionStart;
+                logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
+                if (!FAIL_OPEN) {
+                    try {
+                        tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
+                        tlsSocket.end();
+                    } catch { }
+                    return;
+                }
+                // FAIL_OPEN=true: bypass inspection, forward original request unchanged
+                dlpResult = null;
             }
         }
 
-        console.log(`   📨 ${method} ${reqPath} (${bodyLen} bytes)`);
+        if (method === 'POST' && bodyLen > 0 && isMultipart) {
+            // ── Attachment Inspection ──
+            // Multipart bodies carry file uploads. We scan the raw body text
+            // for embedded sensitive patterns; file_size is logged for triage.
+            const inspectionStart = Date.now();
+            try {
+                dlpResult = await processOutgoingPrompt(body, {
+                    appName: 'Browser/Web',
+                    destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown'
+                });
+                const inspectionMs = Date.now() - inspectionStart;
+                console.log(`   📎 ATTACHMENT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${bodyLen} bytes | ${inspectionMs}ms`);
+            } catch (err) {
+                const inspectionMs = Date.now() - inspectionStart;
+                logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
+                if (!FAIL_OPEN) {
+                    try {
+                        tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
+                        tlsSocket.end();
+                    } catch { }
+                    return;
+                }
+                // FAIL_OPEN=true: bypass inspection, forward original request unchanged
+                dlpResult = null;
+            }
+        }
+
+        console.log(`   📨 [${request_id}] ${method} ${reqPath} (${bodyLen} bytes)`);
 
         // Log to Complyze asynchronously
         logToComplyze(targetUrl, method, headers, body || '', dlpResult);
