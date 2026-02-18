@@ -15,6 +15,7 @@ const tls = require('tls');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const telemetry = require('./telemetry');
 
 let forge;
 try {
@@ -583,6 +584,7 @@ function startProxy() {
                                 processOutgoingPrompt(body, { appName: 'Desktop/Web', destinationType: 'public_ai' })
                             );
                             const inspectionMs = Date.now() - inspectionStart;
+                            telemetry.recordInspectionTime(inspectionMs, 'text');
                             console.log(`   🛡️  TEXT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${inspectionMs}ms`);
                         } catch (err) {
                             const inspectionMs = Date.now() - inspectionStart;
@@ -606,6 +608,7 @@ function startProxy() {
                                 processOutgoingPrompt(body, { appName: 'Desktop/Web', destinationType: 'public_ai' })
                             );
                             const inspectionMs = Date.now() - inspectionStart;
+                            telemetry.recordInspectionTime(inspectionMs, 'attachment');
                             console.log(`   📎 ATTACHMENT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${bodyLen} bytes | ${inspectionMs}ms`);
                         } catch (err) {
                             const inspectionMs = Date.now() - inspectionStart;
@@ -663,6 +666,8 @@ function startProxy() {
     setInterval(syncSettings, 10000);
     setInterval(registerHeartbeat, 15000);
     server.listen(PROXY_PORT, '127.0.0.1', () => {
+        telemetry.logStartup(PROXY_PORT, MONITOR_MODE);
+        telemetry.startMetricsFlush(PROXY_PORT, () => MONITOR_MODE);
         console.log(`🚀 Proxy active on ${PROXY_PORT} | Mode: ${MONITOR_MODE}`);
         // Non-blocking startup diagnostics
         try {

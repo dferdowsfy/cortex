@@ -25,6 +25,7 @@ const tls = require('tls');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const telemetry = require('./telemetry');
 
 let forge;
 try {
@@ -786,6 +787,8 @@ function startProxy() {
     setInterval(syncSettings, 30000);
 
     server.listen(PROXY_PORT, '127.0.0.1', () => {
+        telemetry.logStartup(PROXY_PORT, blockHighRiskEnabled ? 'enforce' : 'observe');
+        telemetry.startMetricsFlush(PROXY_PORT, () => blockHighRiskEnabled ? 'enforce' : 'observe');
         console.log('');
         console.log('╔════════════════════════════════════════════════════════════════╗');
         console.log('║           🛡️  Complyze AI Traffic Interceptor                 ║');
@@ -947,6 +950,7 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
                         destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown',
                     }));
                     const inspectionMs = Date.now() - inspectionStart;
+                    telemetry.recordInspectionTime(inspectionMs, 'text');
                     console.log(`   🛡️  TEXT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${dlpResult.explanation} | ${inspectionMs}ms`);
                 } catch (err) {
                     const inspectionMs = Date.now() - inspectionStart;
@@ -973,6 +977,7 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
                         destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown',
                     }));
                     const inspectionMs = Date.now() - inspectionStart;
+                    telemetry.recordInspectionTime(inspectionMs, 'attachment');
                     console.log(`   📎 ATTACHMENT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${bodyLen} bytes | ${inspectionMs}ms`);
                 } catch (err) {
                     const inspectionMs = Date.now() - inspectionStart;
