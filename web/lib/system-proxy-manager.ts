@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import net from 'net';
 
 /**
  * Helper to run shell commands
@@ -9,6 +10,26 @@ function runCommand(cmd: string): Promise<string> {
             if (error) return reject(stderr || error.message);
             resolve(stdout.trim());
         });
+    });
+}
+
+export async function isPortReachable(host = '127.0.0.1', port = 8080, timeoutMs = 800): Promise<boolean> {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let settled = false;
+
+        const complete = (result: boolean) => {
+            if (settled) return;
+            settled = true;
+            socket.destroy();
+            resolve(result);
+        };
+
+        socket.setTimeout(timeoutMs);
+        socket.once('connect', () => complete(true));
+        socket.once('timeout', () => complete(false));
+        socket.once('error', () => complete(false));
+        socket.connect(port, host);
     });
 }
 
