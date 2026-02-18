@@ -25,6 +25,7 @@ const tls = require('tls');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const telemetry = require('./telemetry');
 
 let forge;
 try {
@@ -109,6 +110,27 @@ let desktopBypassEnabled = false;
 let blockHighRiskEnabled = false;
 let userAttributionEnabled = process.env.USER_ATTRIBUTION_ENABLED === 'true';
 let authenticatedUserId = process.env.FIREBASE_UID || null;
+
+// ─── Fail-Open Configuration ─────────────────────────────────────────────────
+// When FAIL_OPEN=true (default), any inspection error causes the proxy to
+// bypass the scan and forward the original request unchanged. This guarantees
+// traffic is never blocked due to internal errors.
+// Set FAIL_OPEN=false to block traffic on inspection failure instead.
+const FAIL_OPEN = process.env.FAIL_OPEN !== 'false'; // default: true
+
+// ─── Memory & Size Guards ─────────────────────────────────────────────────────
+// MAX_INSPECTION_SIZE_MB : attachments larger than this skip deep scanning.
+//   Metadata is still logged and the request is forwarded unchanged.
+// MAX_BODY_SIZE_MB       : requests whose Content-Length exceeds this are
+//   rejected with 413 before any body is buffered (OOM prevention).
+// INSPECTION_TIMEOUT_MS  : hard wall-clock limit for one inspection call.
+// MAX_MEMORY_MB          : heap threshold that triggers a warning log.
+const MAX_INSPECTION_SIZE_MB = parseFloat(process.env.MAX_INSPECTION_SIZE_MB || '15');
+const MAX_INSPECTION_BYTES   = MAX_INSPECTION_SIZE_MB * 1024 * 1024;
+const MAX_BODY_SIZE_MB       = parseFloat(process.env.MAX_BODY_SIZE_MB || '50');
+const MAX_BODY_BYTES         = MAX_BODY_SIZE_MB * 1024 * 1024;
+const INSPECTION_TIMEOUT_MS  = parseInt(process.env.INSPECTION_TIMEOUT_MS || '3000');
+const MAX_MEMORY_MB          = parseInt(process.env.MAX_MEMORY_MB || '512');
 
 // Handle settings updates from main process
 process.on('message', (msg) => {
@@ -410,20 +432,127 @@ async function logMetadata(hostname) {
     }
 }
 
+// ─── Inspection Error Logger ─────────────────────────────────────────────────
+
+/**
+ * Emits a structured, machine-parseable error record for any inspection
+ * failure. All fields are always present so downstream log aggregators can
+ * index without schema mismatches.
+ *
+ * @param {object} opts
+ * @param {string}        opts.request_id   - UUID for the in-flight request
+ * @param {string}        opts.hostname     - Target hostname
+ * @param {number|null}   opts.file_size    - Body/file size in bytes (null when N/A)
+ * @param {Error}         opts.error        - The caught error
+ * @param {number}        opts.inspection_ms - Elapsed time before the throw
+ */
+function logInspectionError({ request_id, hostname, file_size, error, inspection_ms }) {
+    const entry = {
+        event: 'inspection_error',
+        timestamp: new Date().toISOString(),
+        request_id,
+        hostname,
+        file_size: file_size != null ? file_size : null,
+        error_message: error.message,
+        error_stack: error.stack,
+        inspection_ms,
+        fail_open: FAIL_OPEN,
+        action: FAIL_OPEN ? 'bypass' : 'block',
+    };
+    console.error(`[INSPECTION_ERROR] ${JSON.stringify(entry)}`);
+}
+
+/**
+ * Races an inspection promise against INSPECTION_TIMEOUT_MS.
+ * Rejects with { code: 'INSPECTION_TIMEOUT' } if the scan does not finish
+ * in time, ensuring a hung DLP engine cannot stall a request indefinitely.
+ */
+function withInspectionTimeout(promise) {
+    const err = Object.assign(
+        new Error(`Inspection timed out after ${INSPECTION_TIMEOUT_MS}ms`),
+        { code: 'INSPECTION_TIMEOUT' }
+    );
+    let timer;
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => { timer = setTimeout(() => reject(err), INSPECTION_TIMEOUT_MS); }),
+    ]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Logs a structured record when a body exceeds a size limit.
+ *   reason 'body_too_large'        → Content-Length > MAX_BODY_BYTES   (→ 413)
+ *   reason 'attachment_size_limit' → Content-Length > MAX_INSPECTION_BYTES (→ skip)
+ */
+function logOversizedBody({ request_id, hostname, content_length, reason }) {
+    const limitBytes = reason === 'body_too_large' ? MAX_BODY_BYTES : MAX_INSPECTION_BYTES;
+    const entry = {
+        event: reason,
+        timestamp: new Date().toISOString(),
+        request_id,
+        hostname,
+        content_length,
+        limit_bytes: limitBytes,
+        limit_mb: (limitBytes / (1024 * 1024)).toFixed(1),
+        action: reason === 'body_too_large' ? 'reject_413' : 'skip_inspection',
+    };
+    console.warn(`[SIZE_LIMIT] ${JSON.stringify(entry)}`);
+}
+
+/**
+ * Polls heap usage every 5 s and emits a structured warning whenever it
+ * exceeds MAX_MEMORY_MB. The interval is unref'd so it never prevents a
+ * clean process exit.
+ */
+function startMemoryWatchdog() {
+    setInterval(() => {
+        const heapMB = process.memoryUsage().heapUsed / (1024 * 1024);
+        if (heapMB > MAX_MEMORY_MB) {
+            console.error(
+                `[MEMORY_LIMIT] Heap ${heapMB.toFixed(1)}MB exceeds ${MAX_MEMORY_MB}MB threshold — ` +
+                `inspect for buffered large bodies or restart the proxy process`
+            );
+        }
+    }, 5000).unref();
+}
+
 // ─── HTTP Request Parser (from raw TLS stream) ──────────────────────────────
+//
+// Three body-handling modes, chosen at header-parse time:
+//
+//   BODY      — content-length ≤ MAX_INSPECTION_BYTES (or non-multipart):
+//               full body is buffered, then onRequest(method,path,hdrs,body)
+//               is called once.
+//
+//   STREAMING — multipart body with content-length > MAX_INSPECTION_BYTES:
+//               onLargeBody(method,path,hdrs,contentLength) is called
+//               immediately; it must return a {write(buf), end()} sink.
+//               Arriving body bytes are forwarded to the sink as they come,
+//               so the full body is never held in memory.
+//
+//   DRAINING  — content-length > MAX_BODY_BYTES:
+//               onOversizedBody(method,path,hdrs,contentLength) fires once
+//               (caller sends 413); body bytes are discarded until the next
+//               request boundary so the connection stays usable.
 
 class HTTPRequestParser {
-    constructor(onRequest) {
-        this.onRequest = onRequest;
-        this.buffer = Buffer.alloc(0);
-        this.state = 'HEADERS';
-        this.headers = {};
-        this.rawHeaderStr = '';
-        this.method = '';
-        this.path = '';
-        this.httpVersion = '';
-        this.contentLength = 0;
-        this.bodyBuffer = Buffer.alloc(0);
+    constructor(onRequest, onLargeBody = null, onOversizedBody = null) {
+        this.onRequest       = onRequest;
+        this.onLargeBody     = onLargeBody;
+        this.onOversizedBody = onOversizedBody || (() => {});
+        this.buffer          = Buffer.alloc(0);
+        this.state           = 'HEADERS';
+        this.headers         = {};
+        this.rawHeaderStr    = '';
+        this.method          = '';
+        this.path            = '';
+        this.httpVersion     = '';
+        this.contentLength   = 0;
+        this.bodyBuffer      = Buffer.alloc(0);
+        // Streaming / draining bookkeeping
+        this.streamSink      = null;
+        this.bytesStreamed   = 0;
+        this.drainRemaining  = 0;
     }
 
     feed(chunk) {
@@ -441,8 +570,8 @@ class HTTPRequestParser {
 
             // Parse request line: "POST /v1/chat/completions HTTP/1.1"
             const parts = lines[0].split(' ');
-            this.method = parts[0];
-            this.path = parts[1];
+            this.method      = parts[0];
+            this.path        = parts[1];
             this.httpVersion = parts[2] || 'HTTP/1.1';
 
             // Parse headers
@@ -457,8 +586,34 @@ class HTTPRequestParser {
             }
 
             this.contentLength = parseInt(this.headers['content-length'] || '0');
-            this.buffer = this.buffer.slice(idx + 4);
-            this.bodyBuffer = Buffer.alloc(0);
+            this.buffer        = this.buffer.slice(idx + 4);
+            this.bodyBuffer    = Buffer.alloc(0);
+
+            // ── Size guards (evaluated once, at header-parse time) ───────────
+
+            if (this.contentLength > MAX_BODY_BYTES) {
+                // Body is too large to buffer — reject before reading any data.
+                this.state          = 'DRAINING';
+                this.drainRemaining = this.contentLength;
+                this.onOversizedBody(this.method, this.path, this.headers, this.contentLength);
+                this._advanceDrain();
+                return;
+            }
+
+            const ct          = (this.headers['content-type'] || '').toLowerCase();
+            const isMultipart = ct.includes('multipart/form-data');
+
+            if (this.contentLength > MAX_INSPECTION_BYTES && isMultipart && this.onLargeBody) {
+                // Large attachment — stream to upstream immediately, skip DLP.
+                this.state         = 'STREAMING';
+                this.bytesStreamed = 0;
+                this.streamSink    = this.onLargeBody(
+                    this.method, this.path, this.headers, this.contentLength
+                );
+                this._advanceStream();
+                return;
+            }
+
             this.state = 'BODY';
             this._parse();
         }
@@ -472,10 +627,10 @@ class HTTPRequestParser {
             }
 
             this.bodyBuffer = Buffer.concat([this.bodyBuffer, this.buffer]);
-            this.buffer = Buffer.alloc(0);
+            this.buffer     = Buffer.alloc(0);
 
             if (this.bodyBuffer.length >= this.contentLength) {
-                const body = this.bodyBuffer.slice(0, this.contentLength).toString();
+                const body      = this.bodyBuffer.slice(0, this.contentLength).toString();
                 const remaining = this.bodyBuffer.slice(this.contentLength);
                 this.onRequest(this.method, this.path, this.headers, body);
                 this._reset();
@@ -483,17 +638,57 @@ class HTTPRequestParser {
                 if (remaining.length > 0) this._parse();
             }
         }
+
+        if (this.state === 'STREAMING') { this._advanceStream(); }
+        if (this.state === 'DRAINING')  { this._advanceDrain();  }
+    }
+
+    // Forward buffered bytes to the stream sink; detect end-of-body.
+    _advanceStream() {
+        if (!this.buffer.length) return;
+        const needed = this.contentLength - this.bytesStreamed;
+        if (this.buffer.length >= needed) {
+            const bodyEnd  = this.buffer.slice(0, needed);
+            const overflow = this.buffer.slice(needed);
+            this.bytesStreamed += bodyEnd.length;
+            if (this.streamSink) { this.streamSink.write(bodyEnd); this.streamSink.end(); }
+            this.streamSink = null;
+            this._reset();
+            this.buffer = overflow;
+            if (overflow.length > 0) this._parse();
+        } else {
+            this.bytesStreamed += this.buffer.length;
+            if (this.streamSink) this.streamSink.write(this.buffer);
+            this.buffer = Buffer.alloc(0);
+        }
+    }
+
+    // Discard buffered bytes for a rejected body; detect end-of-body.
+    _advanceDrain() {
+        if (!this.buffer.length) return;
+        if (this.buffer.length >= this.drainRemaining) {
+            const overflow = this.buffer.slice(this.drainRemaining);
+            this._reset();
+            this.buffer = overflow;
+            if (overflow.length > 0) this._parse();
+        } else {
+            this.drainRemaining -= this.buffer.length;
+            this.buffer = Buffer.alloc(0);
+        }
     }
 
     _reset() {
-        this.state = 'HEADERS';
-        this.headers = {};
-        this.rawHeaderStr = '';
-        this.method = '';
-        this.path = '';
-        this.httpVersion = '';
-        this.contentLength = 0;
-        this.bodyBuffer = Buffer.alloc(0);
+        this.state          = 'HEADERS';
+        this.headers        = {};
+        this.rawHeaderStr   = '';
+        this.method         = '';
+        this.path           = '';
+        this.httpVersion    = '';
+        this.contentLength  = 0;
+        this.bodyBuffer     = Buffer.alloc(0);
+        this.streamSink     = null;
+        this.bytesStreamed  = 0;
+        this.drainRemaining = 0;
     }
 }
 
@@ -585,11 +780,15 @@ function startProxy() {
         console.error('Server error:', err.message);
     });
 
+    startMemoryWatchdog();
+
     // Sync desktop bypass setting on startup and every 30 seconds
     syncSettings();
     setInterval(syncSettings, 30000);
 
     server.listen(PROXY_PORT, '127.0.0.1', () => {
+        telemetry.logStartup(PROXY_PORT, blockHighRiskEnabled ? 'enforce' : 'observe');
+        telemetry.startMetricsFlush(PROXY_PORT, () => blockHighRiskEnabled ? 'enforce' : 'observe');
         console.log('');
         console.log('╔════════════════════════════════════════════════════════════════╗');
         console.log('║           🛡️  Complyze AI Traffic Interceptor                 ║');
@@ -609,6 +808,20 @@ function startProxy() {
         console.log('╚════════════════════════════════════════════════════════════════╝');
         console.log('');
         console.log('Waiting for AI traffic... (press Ctrl+C to stop)\n');
+
+        // Non-blocking startup diagnostics
+        try {
+            const { runAllChecks, writeReport } = require('./diagnose');
+            runAllChecks().then(report => {
+                writeReport(report);
+                const failed = report.checks.filter(c => c.result.status === 'fail');
+                if (failed.length > 0) {
+                    console.warn(`[DIAGNOSE] ⚠️  ${failed.length} check(s) failed: ${failed.map(c => c.name).join(', ')} — see ${report.ca_cert_path.replace('ca-cert.pem', 'diagnostics-report.json')}`);
+                } else {
+                    console.log('[DIAGNOSE] ✅ All compatibility checks passed.');
+                }
+            }).catch(() => {});
+        } catch { }
     });
 }
 
@@ -627,114 +840,192 @@ function handleTunnel(hostname, port, clientSocket, head) {
     serverSocket.on('close', () => clientSocket.destroy());
 }
 
-// MITM handler: decrypt, log, and forward AI traffic
+// MITM handler: decrypt, inspect, and forward AI traffic
 function handleMITM(hostname, port, clientSocket, head, ca, connId) {
     // Tell the client the tunnel is ready
     clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
 
-    // Generate a domain-specific certificate signed by our CA
     const domainCert = getCertForDomain(hostname, ca);
-
-    // Wrap the client connection in TLS (we act as the HTTPS "server")
-    const tlsSocket = new tls.TLSSocket(clientSocket, {
+    const tlsSocket  = new tls.TLSSocket(clientSocket, {
         isServer: true,
-        key: domainCert.key,
+        key:  domainCert.key,
         cert: domainCert.cert,
     });
 
-    // Link to local AI-DLP engine
     const { processOutgoingPrompt } = require('./dlp/textInterceptor');
 
-    // Parse decrypted HTTP requests from the TLS stream
-    const parser = new HTTPRequestParser(async (method, reqPath, headers, body) => {
-        const targetUrl = `https://${hostname}${reqPath}`;
-        const bodyLen = body ? body.length : 0;
+    // ── Helper: forward response from upstream back through the TLS socket ──
+    function pipeResponse(proxyRes, tag) {
+        let respHead = `HTTP/1.1 ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}\r\n`;
+        const rh = proxyRes.rawHeaders;
+        for (let i = 0; i < rh.length; i += 2) respHead += `${rh[i]}: ${rh[i + 1]}\r\n`;
+        respHead += '\r\n';
+        const isChunked = proxyRes.headers['transfer-encoding'] === 'chunked';
+        try {
+            tlsSocket.write(respHead);
+            proxyRes.on('data', (chunk) => {
+                if (!chunk || !chunk.length) return;
+                try {
+                    if (isChunked) {
+                        tlsSocket.write(chunk.length.toString(16) + '\r\n');
+                        tlsSocket.write(chunk);
+                        tlsSocket.write('\r\n');
+                    } else {
+                        tlsSocket.write(chunk);
+                    }
+                } catch { }
+            });
+            proxyRes.on('end', () => {
+                if (isChunked) { try { tlsSocket.write('0\r\n\r\n'); } catch { } }
+                console.log(`   📬 ← ${proxyRes.statusCode} ${tag || ''}`);
+            });
+        } catch { }
+    }
 
-        // ─── 🛡️ LOCAL AI-DLP SCANNING ──────────────────────────────────────────
-        let dlpResult = null;
-        if (method === 'POST' && bodyLen > 0) {
-            try {
-                dlpResult = await processOutgoingPrompt(body, {
-                    appName: 'Browser/Web',
-                    destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown'
-                });
-                console.log(`   🛡️  DLP SCAN: REU=${dlpResult.finalReu} | ${dlpResult.explanation}`);
-            } catch (err) {
-                console.error(`   ⚠️  DLP Scan failed: ${err.message}`);
-            }
-        }
+    // ── Large-attachment streaming handler ──────────────────────────────────
+    // Called by the parser when content-length > MAX_INSPECTION_BYTES on a
+    // multipart body. We set up the upstream request immediately and return a
+    // {write, end} sink so the parser can pipe bytes without buffering them.
+    const onLargeBody = (method, reqPath, headers, contentLength) => {
+        const request_id = crypto.randomUUID();
+        const sizeMB     = (contentLength / (1024 * 1024)).toFixed(1);
+        console.log(
+            `   📎 LARGE ATTACHMENT [${request_id}]: ${sizeMB}MB > ` +
+            `${MAX_INSPECTION_SIZE_MB}MB limit — streaming without inspection`
+        );
+        logOversizedBody({ request_id, hostname, content_length: contentLength, reason: 'attachment_size_limit' });
+        logToComplyze(
+            `https://${hostname}${reqPath}`, method, headers,
+            `[attachment: ${contentLength} bytes — size limit, inspection skipped]`, null
+        );
 
-        console.log(`   📨 ${method} ${reqPath} (${bodyLen} bytes)`);
-
-        // Log to Complyze asynchronously
-        logToComplyze(targetUrl, method, headers, body || '', dlpResult);
-
-        // ─── Policy Enforcement Layer ──────────────────────────────────────────
-        const shouldBlock = dlpResult && dlpResult.action === 'BLOCK';
-
-        // Only block if "block_high_risk" is toggled on in the dashboard
-        if (blockHighRiskEnabled && shouldBlock) {
-            console.log(`   🚫 Blocked by Local DLP Policy: ${targetUrl} (REU: ${dlpResult.finalReu})`);
-            try {
-                tlsSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 48\r\n\r\nAccess blocked by local Complyze Security Policy.');
-                tlsSocket.end();
-            } catch { }
-            return;
-        }
-
-        // Forward to the real AI server
         const fwdHeaders = { ...headers, host: hostname };
         delete fwdHeaders['proxy-connection'];
 
         const proxyReq = https.request(
             { hostname, port, path: reqPath, method, headers: fwdHeaders },
-            (proxyRes) => {
-                // Build raw HTTP response to send back through the TLS socket
-                let head = `HTTP/1.1 ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}\r\n`;
-                const rh = proxyRes.rawHeaders;
-                for (let i = 0; i < rh.length; i += 2) {
-                    head += `${rh[i]}: ${rh[i + 1]}\r\n`;
-                }
-                head += '\r\n';
-
-                const isChunked = proxyRes.headers['transfer-encoding'] === 'chunked';
-                try {
-                    tlsSocket.write(head);
-                    proxyRes.on('data', (chunk) => {
-                        if (!chunk || chunk.length === 0) return;
-                        try {
-                            if (isChunked) {
-                                tlsSocket.write(chunk.length.toString(16) + '\r\n');
-                                tlsSocket.write(chunk);
-                                tlsSocket.write('\r\n');
-                            } else {
-                                tlsSocket.write(chunk);
-                            }
-                        } catch { }
-                    });
-                    proxyRes.on('end', () => {
-                        if (isChunked) {
-                            try { tlsSocket.write('0\r\n\r\n'); } catch { }
-                        }
-                        console.log(`   📬 ← ${proxyRes.statusCode} ${proxyRes.statusMessage || ''}`);
-                    });
-                } catch { }
-            }
+            (proxyRes) => pipeResponse(proxyRes, `(streamed ${sizeMB}MB)`)
+        );
+        proxyReq.on('error', (err) =>
+            console.error(`   ❌ Stream error [${request_id}]: ${err.message}`)
         );
 
-        proxyReq.on('error', (err) => {
-            console.error(`   ❌ Forward error: ${err.message}`);
-            try {
-                tlsSocket.write('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n');
-            } catch { }
-        });
+        return {
+            write: (chunk) => { try { proxyReq.write(chunk); } catch { } },
+            end:   ()      => { try { proxyReq.end();         } catch { } },
+        };
+    };
 
-        if (body) proxyReq.write(body);
-        proxyReq.end();
-    });
+    // ── Oversized-body rejection handler ────────────────────────────────────
+    const onOversizedBody = (method, reqPath, headers, contentLength) => {
+        const request_id = crypto.randomUUID();
+        logOversizedBody({ request_id, hostname, content_length: contentLength, reason: 'body_too_large' });
+        const msg = `Request body (${(contentLength / (1024 * 1024)).toFixed(1)}MB) exceeds the proxy size limit of ${MAX_BODY_SIZE_MB}MB.`;
+        try {
+            tlsSocket.write(
+                `HTTP/1.1 413 Content Too Large\r\nContent-Type: text/plain\r\n` +
+                `Content-Length: ${msg.length}\r\n\r\n${msg}`
+            );
+        } catch { }
+    };
+
+    // ── Normal (buffered) request handler ───────────────────────────────────
+    const parser = new HTTPRequestParser(
+        async (method, reqPath, headers, body) => {
+            const targetUrl  = `https://${hostname}${reqPath}`;
+            const bodyLen    = body ? body.length : 0;
+            const request_id = crypto.randomUUID();
+            const ct         = (headers['content-type'] || '').toLowerCase();
+            const isMultipart = ct.includes('multipart/form-data');
+
+            // ─── 🛡️  LOCAL AI-DLP SCANNING ─────────────────────────────────
+            let dlpResult = null;
+
+            if (method === 'POST' && bodyLen > 0 && !isMultipart) {
+                // ── Text Inspection ──
+                const inspectionStart = Date.now();
+                try {
+                    dlpResult = await withInspectionTimeout(processOutgoingPrompt(body, {
+                        appName: 'Browser/Web',
+                        destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown',
+                    }));
+                    const inspectionMs = Date.now() - inspectionStart;
+                    telemetry.recordInspectionTime(inspectionMs, 'text');
+                    console.log(`   🛡️  TEXT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${dlpResult.explanation} | ${inspectionMs}ms`);
+                } catch (err) {
+                    const inspectionMs = Date.now() - inspectionStart;
+                    logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
+                    if (!FAIL_OPEN) {
+                        try {
+                            tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
+                            tlsSocket.end();
+                        } catch { }
+                        return;
+                    }
+                    dlpResult = null; // FAIL_OPEN: bypass, forward unchanged
+                }
+            }
+
+            if (method === 'POST' && bodyLen > 0 && isMultipart) {
+                // ── Attachment Inspection (body within size limit) ──
+                // Multipart bodies carry file uploads. We scan the raw body text
+                // for embedded sensitive patterns; file_size is logged for triage.
+                const inspectionStart = Date.now();
+                try {
+                    dlpResult = await withInspectionTimeout(processOutgoingPrompt(body, {
+                        appName: 'Browser/Web',
+                        destinationType: isAIDomain(hostname) ? 'public_ai' : 'unknown',
+                    }));
+                    const inspectionMs = Date.now() - inspectionStart;
+                    telemetry.recordInspectionTime(inspectionMs, 'attachment');
+                    console.log(`   📎 ATTACHMENT SCAN [${request_id}]: REU=${dlpResult.finalReu} | ${bodyLen} bytes | ${inspectionMs}ms`);
+                } catch (err) {
+                    const inspectionMs = Date.now() - inspectionStart;
+                    logInspectionError({ request_id, hostname, file_size: bodyLen, error: err, inspection_ms: inspectionMs });
+                    if (!FAIL_OPEN) {
+                        try {
+                            tlsSocket.write('HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nRequest blocked: inspection service unavailable.');
+                            tlsSocket.end();
+                        } catch { }
+                        return;
+                    }
+                    dlpResult = null; // FAIL_OPEN: bypass, forward unchanged
+                }
+            }
+
+            console.log(`   📨 [${request_id}] ${method} ${reqPath} (${bodyLen} bytes)`);
+            logToComplyze(targetUrl, method, headers, body || '', dlpResult);
+
+            // ─── Policy Enforcement Layer ────────────────────────────────────
+            if (blockHighRiskEnabled && dlpResult && dlpResult.action === 'BLOCK') {
+                console.log(`   🚫 Blocked [${request_id}]: ${targetUrl} (REU: ${dlpResult.finalReu})`);
+                try {
+                    tlsSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 48\r\n\r\nAccess blocked by local Complyze Security Policy.');
+                    tlsSocket.end();
+                } catch { }
+                return;
+            }
+
+            // Forward to the real AI server
+            const fwdHeaders = { ...headers, host: hostname };
+            delete fwdHeaders['proxy-connection'];
+
+            const proxyReq = https.request(
+                { hostname, port, path: reqPath, method, headers: fwdHeaders },
+                (proxyRes) => pipeResponse(proxyRes, proxyRes.statusMessage || '')
+            );
+            proxyReq.on('error', (err) => {
+                console.error(`   ❌ Forward error: ${err.message}`);
+                try { tlsSocket.write('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n'); } catch { }
+            });
+            if (body) proxyReq.write(body);
+            proxyReq.end();
+        },
+        onLargeBody,
+        onOversizedBody
+    );
 
     tlsSocket.on('data', (chunk) => parser.feed(chunk));
-
     tlsSocket.on('error', (err) => {
         if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') {
             console.error(`   ⚠️  [#${connId}] TLS: ${err.message}`);
