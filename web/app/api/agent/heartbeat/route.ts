@@ -4,13 +4,14 @@ import { agentStore } from "@/lib/agent-store";
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { device_id, ...updates } = body;
+        const { device_id, workspace_id, ...updates } = body;
 
         if (!device_id) {
             return NextResponse.json({ error: "device_id is required" }, { status: 400 });
         }
 
-        await agentStore.updateHeartbeat(device_id, updates);
+        const wsId = workspace_id || "default";
+        await agentStore.updateHeartbeat(device_id, updates, wsId);
 
         return NextResponse.json({
             status: "ok",
@@ -21,9 +22,12 @@ export async function POST(req: NextRequest) {
     }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+    const { searchParams } = new URL(req.url);
+    const workspaceId = searchParams.get("workspaceId") || "default";
+
     try {
-        const agents = await agentStore.listAgents();
+        const agents = await agentStore.listAgents(workspaceId);
         const primaryAgent = agents.find(a => a.status === "Healthy") || agents[0] || null;
 
         return NextResponse.json({

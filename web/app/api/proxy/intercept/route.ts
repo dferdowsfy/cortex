@@ -20,10 +20,14 @@ import type { ActivityEvent } from "@/lib/proxy-types";
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
-    const settings = await store.getSettings();
+    const { searchParams } = new URL(req.url);
+    const queryWorkspaceId = searchParams.get("workspaceId");
 
     try {
         const body = await req.json();
+        const workspaceId = body.workspace_id || queryWorkspaceId || "default";
+        const settings = await store.getSettings(workspaceId);
+
         const {
             target_url,
             method,
@@ -99,7 +103,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Log the event
-        await store.addEvent(event);
+        await store.addEvent(event, workspaceId);
 
         const processingTime = Date.now() - startTime;
 

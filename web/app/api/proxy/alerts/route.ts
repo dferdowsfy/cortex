@@ -5,19 +5,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import store from "@/lib/proxy-store";
 
-export async function GET() {
-    const alerts = await store.getAlerts(50);
-    const unacknowledged = await store.getUnacknowledgedCount();
+export async function GET(req: NextRequest) {
+    const { searchParams } = new URL(req.url);
+    const workspaceId = searchParams.get("workspaceId") || "default";
+    const alerts = await store.getAlerts(workspaceId, 50);
+    const unacknowledged = await store.getUnacknowledgedCount(workspaceId);
     return NextResponse.json({ alerts, unacknowledged_count: unacknowledged });
 }
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { alert_id, action } = body;
+        const { alert_id, action, workspaceId } = body;
 
         if (action === "acknowledge" && alert_id) {
-            await store.acknowledgeAlert(alert_id);
+            await store.acknowledgeAlert(alert_id, workspaceId || "default");
             return NextResponse.json({ success: true });
         }
 

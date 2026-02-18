@@ -70,17 +70,18 @@ const ALERTS_PATH = "proxy_alerts";
 
 class ProxyStore {
     // ── Settings ─────────────────────────────────────────────
-    async getSettings(): Promise<ProxySettings> {
+    async getSettings(workspaceId: string = "default"): Promise<ProxySettings> {
         const db = getDb();
         if (!db) return globalStore._memSettings;
 
+        const path = `workspaces/${workspaceId}/${SETTINGS_PATH}`;
         try {
-            const snap = await db.ref(SETTINGS_PATH).get();
+            const snap = await db.ref(path).get();
             if (snap.exists()) {
                 return snap.val() as ProxySettings;
             }
             // No settings yet — create with defaults
-            await db.ref(SETTINGS_PATH).set(DEFAULT_SETTINGS);
+            await db.ref(path).set(DEFAULT_SETTINGS);
             return { ...DEFAULT_SETTINGS };
         } catch (err) {
             console.warn("[proxy-store] getSettings RTDB error, using memory:", err);
@@ -88,8 +89,8 @@ class ProxyStore {
         }
     }
 
-    async updateSettings(newSettings: Partial<ProxySettings>): Promise<ProxySettings> {
-        const current = await this.getSettings();
+    async updateSettings(newSettings: Partial<ProxySettings>, workspaceId: string = "default"): Promise<ProxySettings> {
+        const current = await this.getSettings(workspaceId);
         const updated: ProxySettings = {
             ...current,
             ...newSettings,
@@ -99,7 +100,8 @@ class ProxyStore {
         const db = getDb();
         if (db) {
             try {
-                await db.ref(SETTINGS_PATH).set(updated);
+                const path = `workspaces/${workspaceId}/${SETTINGS_PATH}`;
+                await db.ref(path).set(updated);
             } catch (err) {
                 console.warn("[proxy-store] updateSettings RTDB error:", err);
             }
@@ -110,12 +112,14 @@ class ProxyStore {
     }
 
     // ── Events ───────────────────────────────────────────────
-    async addEvent(event: ActivityEvent): Promise<void> {
+    async addEvent(event: ActivityEvent, workspaceId: string = "default"): Promise<void> {
         const db = getDb();
         if (db) {
             try {
-                await db.ref(`${EVENTS_PATH}/${event.id}`).set({
+                const path = `workspaces/${workspaceId}/${EVENTS_PATH}/${event.id}`;
+                await db.ref(path).set({
                     ...event,
+                    workspace_id: workspaceId,
                     _created_at: new Date().toISOString(),
                 });
             } catch (err) {
@@ -138,15 +142,16 @@ class ProxyStore {
             }).catch(() => { });
         } catch { }
 
-        await this.checkThresholds(event);
+        await this.checkThresholds(event, workspaceId);
     }
 
-    async getEvents(limitCount = 50): Promise<ActivityEvent[]> {
+    async getEvents(workspaceId: string = "default", limitCount = 50): Promise<ActivityEvent[]> {
         const db = getDb();
         if (db) {
             try {
+                const path = `workspaces/${workspaceId}/${EVENTS_PATH}`;
                 const snap = await db
-                    .ref(EVENTS_PATH)
+                    .ref(path)
                     .orderByChild("_created_at")
                     .limitToLast(limitCount)
                     .get();
@@ -162,23 +167,24 @@ class ProxyStore {
     }
 
     // ── Summary & Risks ──────────────────────────────────────
-    async getSummary(period: "7d" | "30d" = "7d"): Promise<ActivitySummary> {
-        const events = await this.getEvents(200);
+    async getSummary(workspaceId: string = "default", period: "7d" | "30d" = "7d"): Promise<ActivitySummary> {
+        const events = await this.getEvents(workspaceId, 200);
         return this.calculateSummaryFromEvents(events, period);
     }
 
-    async getToolRisks(): Promise<DynamicToolRisk[]> {
-        const events = await this.getEvents(200);
+    async getToolRisks(workspaceId: string = "default"): Promise<DynamicToolRisk[]> {
+        const events = await this.getEvents(workspaceId, 200);
         return this.calculateToolRisksFromEvents(events);
     }
 
     // ── Alerts ────────────────────────────────────────────────
-    async getAlerts(limitCount = 20): Promise<ProxyAlert[]> {
+    async getAlerts(workspaceId: string = "default", limitCount = 20): Promise<ProxyAlert[]> {
         const db = getDb();
         if (db) {
             try {
+                const path = `workspaces/${workspaceId}/${ALERTS_PATH}`;
                 const snap = await db
-                    .ref(ALERTS_PATH)
+                    .ref(path)
                     .orderByChild("timestamp")
                     .limitToLast(limitCount)
                     .get();
@@ -193,11 +199,12 @@ class ProxyStore {
         return globalStore._memAlerts.slice(0, limitCount);
     }
 
-    async addAlert(alert: ProxyAlert): Promise<void> {
+    async addAlert(alert: ProxyAlert, workspaceId: string = "default"): Promise<void> {
         const db = getDb();
         if (db) {
             try {
-                await db.ref(`${ALERTS_PATH}/${alert.id}`).set(alert);
+                const path = `workspaces/${workspaceId}/${ALERTS_PATH}/${alert.id}`;
+                await db.ref(path).set(alert);
             } catch (err) {
                 console.warn("[proxy-store] addAlert RTDB error:", err);
             }
@@ -205,11 +212,12 @@ class ProxyStore {
         globalStore._memAlerts.unshift(alert);
     }
 
-    async acknowledgeAlert(alertId: string): Promise<void> {
+    async acknowledgeAlert(alertId: string, workspaceId: string = "default"): Promise<void> {
         const db = getDb();
         if (db) {
             try {
-                await db.ref(`${ALERTS_PATH}/${alertId}/acknowledged`).set(true);
+                const path = `workspaces/${workspaceId}/${ALERTS_PATH}/${alertId}/acknowledged`;
+                await db.ref(path).set(true);
             } catch (err) {
                 console.warn("[proxy-store] acknowledgeAlert RTDB error:", err);
             }
@@ -219,15 +227,15 @@ class ProxyStore {
         if (alert) alert.acknowledged = true;
     }
 
-    async getUnacknowledgedCount(): Promise<number> {
-        const alerts = await this.getAlerts(100);
+    async getUnacknowledgedCount(workspaceId: string = "default"): Promise<number> {
+        const alerts = await this.getAlerts(workspaceId, 100);
         return alerts.filter((a) => !a.acknowledged).length;
     }
 
-    async getReportData(): Promise<ProxyReportData> {
-        const summary = await this.getSummary("30d");
-        const toolRisks = await this.getToolRisks();
-        const settings = await this.getSettings();
+    async getReportData(workspaceId: string = "default"): Promise<ProxyReportData> {
+        const summary = await this.getSummary(workspaceId, "30d");
+        const toolRisks = await this.getToolRisks(workspaceId);
+        const settings = await this.getSettings(workspaceId);
 
         return {
             proxy_enabled: settings.proxy_enabled,
@@ -362,7 +370,7 @@ class ProxyStore {
         };
     }
 
-    private async checkThresholds(event: ActivityEvent) {
+    private async checkThresholds(event: ActivityEvent, workspaceId: string) {
         if (event.risk_category === "critical") {
             const alert: ProxyAlert = {
                 id: `alert_${Date.now()}`,
@@ -374,7 +382,7 @@ class ProxyStore {
                 acknowledged: false,
                 event_ref: event.id,
             };
-            await this.addAlert(alert);
+            await this.addAlert(alert, workspaceId);
         }
     }
 }

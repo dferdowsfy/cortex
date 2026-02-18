@@ -7,14 +7,15 @@ import store from "@/lib/proxy-store";
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
+    const workspaceId = searchParams.get("workspaceId") || "default";
     const period = (searchParams.get("period") as "7d" | "30d") || "7d";
     const eventsLimit = parseInt(searchParams.get("events") || "50", 10);
 
-    const summary = await store.getSummary(period);
-    const events = await store.getEvents(eventsLimit);
-    const toolRisks = await store.getToolRisks();
-    const alerts = await store.getAlerts(20);
-    const unacknowledgedAlerts = await store.getUnacknowledgedCount();
+    const summary = await store.getSummary(workspaceId, period);
+    const events = await store.getEvents(workspaceId, eventsLimit);
+    const toolRisks = await store.getToolRisks(workspaceId);
+    const alerts = await store.getAlerts(workspaceId, 20);
+    const unacknowledgedAlerts = await store.getUnacknowledgedCount(workspaceId);
 
     return NextResponse.json({
         summary,

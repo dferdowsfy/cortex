@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -291,6 +292,7 @@ function TrendSparkline({
    ═══════════════════════════════════════════════════════════════ */
 
 export default function MonitoringPage() {
+    const { user } = useAuth();
     const [summary, setSummary] = useState<ActivitySummary | null>(null);
     const [events, setEvents] = useState<ActivityEvent[]>([]);
     const [toolRisks, setToolRisks] = useState<DynamicToolRisk[]>([]);
@@ -304,10 +306,11 @@ export default function MonitoringPage() {
 
     const fetchData = useCallback(async () => {
         try {
+            const wsId = user?.uid || "default";
             const [activityRes, settingsRes, agentRes] = await Promise.all([
-                fetch(`/api/proxy/activity?period=${period}&events=50`),
-                fetch("/api/proxy/settings"),
-                fetch("/api/agent/heartbeat"),
+                fetch(`/api/proxy/activity?period=${period}&events=50&workspaceId=${wsId}`),
+                fetch(`/api/proxy/settings?workspaceId=${wsId}`),
+                fetch(`/api/agent/heartbeat?workspaceId=${wsId}`),
             ]);
             const activityData = await activityRes.json();
             const settingsData = await settingsRes.json();
@@ -337,7 +340,11 @@ export default function MonitoringPage() {
         await fetch("/api/proxy/alerts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ alert_id: alertId, action: "acknowledge" }),
+            body: JSON.stringify({
+                alert_id: alertId,
+                action: "acknowledge",
+                workspaceId: user?.uid || "default"
+            }),
         });
         fetchData();
     }

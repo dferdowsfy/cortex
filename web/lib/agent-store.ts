@@ -8,9 +8,10 @@ const memAgents = new Map<string, AgentRegistration>();
 
 class AgentStore {
     async registerAgent(agent: AgentRegistration): Promise<void> {
+        const workspaceId = agent.workspace_id || "default";
         try {
             if (!adminDb) throw new Error("Database not initialized");
-            await adminDb.ref(`${AGENTS_PATH}/${agent.device_id}`).set({
+            await adminDb.ref(`${AGENTS_PATH}/${workspaceId}/${agent.device_id}`).set({
                 ...agent,
                 updated_at: new Date().toISOString(),
             });
@@ -20,10 +21,10 @@ class AgentStore {
         }
     }
 
-    async updateHeartbeat(deviceId: string, data: Partial<AgentRegistration>): Promise<void> {
+    async updateHeartbeat(deviceId: string, data: Partial<AgentRegistration>, workspaceId: string = "default"): Promise<void> {
         try {
             if (!adminDb || !adminDb.app.options.databaseURL) throw new Error("DB Unavailable");
-            await adminDb.ref(`${AGENTS_PATH}/${deviceId}`).update({
+            await adminDb.ref(`${AGENTS_PATH}/${workspaceId}/${deviceId}`).update({
                 ...data,
                 last_sync: new Date().toISOString(),
                 status: "Healthy",
@@ -37,21 +38,21 @@ class AgentStore {
         }
     }
 
-    async getAgent(deviceId: string): Promise<AgentRegistration | null> {
+    async getAgent(deviceId: string, workspaceId: string = "default"): Promise<AgentRegistration | null> {
         try {
             if (!adminDb || !adminDb.app.options.databaseURL) throw new Error("DB Unavailable");
-            const snap = await adminDb.ref(`${AGENTS_PATH}/${deviceId}`).get();
+            const snap = await adminDb.ref(`${AGENTS_PATH}/${workspaceId}/${deviceId}`).get();
             return snap.exists() ? (snap.val() as AgentRegistration) : memAgents.get(deviceId) || null;
         } catch (err) {
             return memAgents.get(deviceId) || null;
         }
     }
 
-    async listAgents(): Promise<AgentRegistration[]> {
+    async listAgents(workspaceId: string = "default"): Promise<AgentRegistration[]> {
         let agents: AgentRegistration[] = [];
         try {
             if (!adminDb || !adminDb.app.options.databaseURL) throw new Error("DB Unavailable");
-            const snap = await adminDb.ref(AGENTS_PATH).get();
+            const snap = await adminDb.ref(`${AGENTS_PATH}/${workspaceId}`).get();
             if (snap.exists()) {
                 const data = snap.val() as Record<string, AgentRegistration>;
                 agents = Object.values(data);

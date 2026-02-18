@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/lib/auth-context";
 import ExecutiveDashboard from "../components/ExecutiveDashboard";
 
 /* ── Types ── */
@@ -11,18 +12,21 @@ interface ActivitySummary {
     total_blocked: number;
     avg_sensitivity_score: number;
     risk_trend: { date: string; score: number }[];
+    total_tools: number;
 }
 
 export default function Dashboard() {
+    const { user } = useAuth();
     const [stats, setStats] = useState({ total: 0 });
     const [proxySummary, setProxySummary] = useState<ActivitySummary | null>(null);
     const [lastUpdated, setLastUpdated] = useState("");
 
     const fetchData = useCallback(async () => {
         try {
+            const wsId = user?.uid || "default";
             const [toolRes, proxyRes] = await Promise.all([
-                fetch("/api/tools/stats"),
-                fetch("/api/proxy/activity?period=30d"),
+                fetch(`/api/tools/stats?workspaceId=${wsId}`),
+                fetch(`/api/proxy/activity?period=30d&workspaceId=${wsId}`),
             ]);
 
             if (toolRes.ok) {

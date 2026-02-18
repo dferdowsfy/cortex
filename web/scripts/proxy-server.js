@@ -31,6 +31,7 @@ const PROXY_PORT = parseInt(
 );
 const COMPLYZE_API =
     process.env.COMPLYZE_API || 'http://localhost:3737/api/proxy/intercept';
+const WORKSPACE_ID = process.env.COMPLYZE_WORKSPACE || 'local-dev';
 const CERTS_DIR = path.join(__dirname, '..', 'certs');
 
 // ─── Domain Configuration ────────────────────────────────────────────────────
@@ -87,7 +88,7 @@ let desktopBypassEnabled = false;
 
 async function syncSettings() {
     try {
-        const res = await fetch('http://localhost:3737/api/proxy/settings');
+        const res = await fetch(`http://localhost:3737/api/proxy/settings?workspaceId=${WORKSPACE_ID}`);
         if (res.ok) {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
@@ -107,7 +108,7 @@ async function registerHeartbeat() {
                 os: 'macOS',
                 version: '1.0.0-proxy',
                 status: 'Healthy',
-                workspace_id: 'local-dev',
+                workspace_id: WORKSPACE_ID,
                 service_connectivity: true,
                 traffic_routing: true,
                 os_integration: true
@@ -226,7 +227,10 @@ async function logToComplyze(targetUrl, method, headers, body, dlpResult = null)
         await fetch(COMPLYZE_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                ...payload,
+                workspace_id: WORKSPACE_ID
+            }),
         });
     } catch (e) {
         console.error(`❌ Log error: ${e.message}`);
