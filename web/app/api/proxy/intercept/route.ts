@@ -6,6 +6,7 @@
  * Latency target: < 250ms added overhead (classification is regex-based, not LLM-based).
  */
 import { NextRequest, NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
 import store from "@/lib/proxy-store";
 import {
     classifyContent,

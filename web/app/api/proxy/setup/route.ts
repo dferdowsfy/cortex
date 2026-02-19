@@ -10,6 +10,7 @@
  * On Vercel (cloud), returns a "cloud mode" response.
  */
 import { NextRequest, NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
 import { execSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";

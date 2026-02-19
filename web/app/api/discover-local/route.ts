@@ -9,6 +9,7 @@ import { join, basename } from "path";
  * for AI tools (installed apps, processes, IDE extensions, browser extensions).
  */
 
+export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 /* ── Known AI Tool Signatures ── */
