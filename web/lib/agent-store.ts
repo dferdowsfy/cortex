@@ -82,6 +82,7 @@ class AgentStore {
     }
 
     async logInstallation(log: any): Promise<void> {
+        if (!adminDb) return;
         const id = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
         await adminDb.ref(`installation_logs/${id}`).set({
             ...log,

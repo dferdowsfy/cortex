@@ -106,11 +106,13 @@ const PASSTHROUGH_DOMAINS = [
 ];
 
 const MONITOR_MODE_DEFAULT = 'observe';
+let proxyEnabled = process.env.PROXY_ENABLED !== 'false'; // Current toggle state
 let desktopBypassEnabled = false;
 let blockHighRiskEnabled = false;
+let redactSensitiveEnabled = false;
 let userAttributionEnabled = process.env.USER_ATTRIBUTION_ENABLED === 'true';
 let authenticatedUserId = process.env.FIREBASE_UID || null;
-let inspectAttachmentsEnabled = false; // NEW: Attachment Toggle
+let inspectAttachmentsEnabled = false;
 const TRACE_MODE = process.env.TRACE_MODE === 'true';
 
 // ─── Fail-Open Configuration ─────────────────────────────────────────────────
@@ -138,7 +140,9 @@ const MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '512');
 process.on('message', (msg) => {
     if (msg.type === 'settings-update') {
         const { settings } = msg;
+        proxyEnabled = settings.proxyEnabled !== false;
         blockHighRiskEnabled = !!settings.blockHighRisk;
+        redactSensitiveEnabled = !!settings.redactSensitive;
         desktopBypassEnabled = !!settings.desktopBypass;
         userAttributionEnabled = !!settings.userAttributionEnabled;
         inspectAttachmentsEnabled = !!settings.inspectAttachments;
@@ -146,11 +150,11 @@ process.on('message', (msg) => {
 
         // Sync with local DLP policy engine
         updatePolicy({
-            blockingEnabled: blockHighRiskEnabled,
+            blockingEnabled: proxyEnabled && blockHighRiskEnabled,
             reuThreshold: settings.riskThreshold || 60
         });
 
-        console.log(`[proxy-msg] Settings Updated: attribution=${userAttributionEnabled ? 'ON' : 'OFF'}, user=${authenticatedUserId ? 'auth' : 'none'}`);
+        console.log(`[proxy-msg] Settings Updated: proxy=${proxyEnabled ? 'ACTIVE' : 'PASSIVE'}, attribution=${userAttributionEnabled ? 'ON' : 'OFF'}`);
         process.send({ type: 'settings-ack' });
     }
 });
@@ -182,6 +186,7 @@ async function syncSettings() {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
             blockHighRiskEnabled = !!data.block_high_risk;
+            redactSensitiveEnabled = !!data.redact_sensitive;
             userAttributionEnabled = !!data.user_attribution_enabled;
             inspectAttachmentsEnabled = !!data.inspect_attachments;
 
@@ -191,7 +196,7 @@ async function syncSettings() {
                 reuThreshold: data.risk_threshold || 60
             });
 
-            console.log(`[sync] Settings: bypass=${desktopBypassEnabled}, block=${blockHighRiskEnabled}, attribution=${userAttributionEnabled}`);
+            console.log(`[sync] Settings: bypass=${desktopBypassEnabled}, block=${blockHighRiskEnabled}, redact=${redactSensitiveEnabled}, attribution=${userAttributionEnabled}`);
         }
     } catch { }
 }
@@ -201,22 +206,8 @@ async function syncSettings() {
  */
 function isAIDomain(hostname) {
     if (!hostname) return false;
-    const aiList = [
-        "api.openai.com",
-        "chat.openai.com",
-        "claude.ai",
-        "api.anthropic.com",
-        "perplexity.ai",
-        "openrouter.ai",
-        "api.cohere.com",
-        "api.mistral.ai",
-        "api.together.ai",
-        "api.groq.com",
-        "api.fireworks.ai",
-        "api.replicate.com",
-        "generativelanguage.googleapis.com"
-    ];
-    return aiList.some(domain => hostname === domain || hostname.endsWith('.' + domain));
+    // Use the comprehensive list defined at the top
+    return AI_DOMAINS.some(domain => hostname === domain || hostname.endsWith('.' + domain));
 }
 
 function isPassthroughDomain(hostname) {
@@ -231,6 +222,7 @@ function isDesktopAppDomain(hostname) {
 
 function shouldDeepInspect(hostname) {
     if (!hostname) return false;
+    if (!proxyEnabled) return false; // Inactive mode: no deep inspection
     if (isPassthroughDomain(hostname)) return false;
     if (!isAIDomain(hostname)) return false;
     if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return false;
@@ -239,6 +231,8 @@ function shouldDeepInspect(hostname) {
 
 function shouldLogMetadata(hostname) {
     if (!hostname) return false;
+    // Log metadata for AI domains even if deep inspection is disabled (Passive Mode)
+    if (!proxyEnabled && isAIDomain(hostname)) return true;
     if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return true;
     return false;
 }
@@ -356,6 +350,7 @@ async function logToComplyze(targetUrl, method, headers, body, dlpResult = null)
 
         // Output Schema (Deterministic JSON)
         const payload = {
+            workspace_id: authenticatedUserId || 'default',
             incident_id: crypto.randomUUID(),
             timestamp: new Date().toISOString(),
             application: extractAppName(headers, targetUrl),
@@ -429,6 +424,7 @@ async function logMetadata(hostname) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                workspace_id: authenticatedUserId || 'default',
                 incident_id: crypto.randomUUID(),
                 timestamp: new Date().toISOString(),
                 application: hostname,
@@ -724,7 +720,7 @@ function startProxy() {
         // Handle basic status check or local dashboard hits
         if (req.url === '/' || req.url === '/dashboard') {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
-            res.end('Complyze AI Proxy is running. Deployment Mode: ' + (blockHighRiskEnabled ? 'ENFORCE' : 'OBSERVE'));
+            res.end(`Complyze AI Proxy is running.\nMode: ${proxyEnabled ? 'ACTIVE (Enforcement)' : 'INACTIVE (Passive Monitoring)'}\nBlocking: ${blockHighRiskEnabled ? 'ENABLED' : 'DISABLED'}`);
             return;
         }
 
@@ -866,7 +862,7 @@ function handleTunnel(hostname, port, clientSocket, head) {
         clientSocket.pipe(serverSocket);
     });
 
-    serverSocket.setTimeout(5000);
+    serverSocket.setTimeout(30000); // Increased timeout for AI services which can be slow
     serverSocket.on('timeout', () => {
         console.warn(`[TUNNEL] Timeout connecting to ${hostname}`);
         serverSocket.destroy();
@@ -1098,6 +1094,20 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
             const fwdHeaders = { ...headers, host: hostname };
             delete fwdHeaders['proxy-connection'];
 
+            // ─── Local Auto-Redaction ───
+            let finalBody = body;
+            if (redactSensitiveEnabled && dlpResult && dlpResult.action !== 'BLOCK') {
+                const { redactText } = require('./dlp/deterministicScanner');
+                const redacted = redactText(body);
+                if (redacted !== body) {
+                    finalBody = redacted;
+                    console.log(`   ✂️  REDACTED [${request_id}]: Modified body for ${hostname}`);
+                    if (fwdHeaders['content-length']) {
+                        fwdHeaders['content-length'] = Buffer.byteLength(finalBody).toString();
+                    }
+                }
+            }
+
             const proxyReq = https.request(
                 { hostname, port, path: reqPath, method, headers: fwdHeaders },
                 (proxyRes) => pipeResponse(proxyRes, proxyRes.statusMessage || '')
@@ -1106,7 +1116,7 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
                 console.error(`   ❌ Forward error: ${err.message}`);
                 try { tlsSocket.write('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n'); } catch { }
             });
-            if (body) proxyReq.write(body);
+            if (finalBody) proxyReq.write(finalBody);
             proxyReq.end();
 
             const totalLatency = Date.now() - requestStart;

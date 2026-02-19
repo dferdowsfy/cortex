@@ -339,16 +339,24 @@ export default function MonitoringPage() {
     }, [fetchData]);
 
     async function acknowledgeAlert(alertId: string) {
-        await fetch("/api/proxy/alerts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                alert_id: alertId,
-                action: "acknowledge",
-                workspaceId: user?.uid || "default"
-            }),
-        });
-        fetchData();
+        // Optimistic update
+        setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, acknowledged: true } : a));
+        try {
+            await fetch("/api/proxy/alerts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    alert_id: alertId,
+                    action: "acknowledge",
+                    workspaceId: user?.uid || "default"
+                }),
+            });
+            fetchData();
+        } catch (error) {
+            console.error("Failed to acknowledge alert:", error);
+            // Revert on failure
+            fetchData();
+        }
     }
 
     if (loading) {
@@ -405,7 +413,7 @@ export default function MonitoringPage() {
             <div className="flex items-start justify-between flex-wrap gap-4">
                 <div>
                     <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-gray-900">
+                        <h1 className="text-2xl font-bold text-white/90">
                             AI Proxy Monitoring
                         </h1>
                         {agentStatus?.connected ? (
@@ -428,7 +436,7 @@ export default function MonitoringPage() {
                             </span>
                         )}
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-white/60">
                         Real-time AI usage intelligence. Activity-informed risk scoring.
                     </p>
                 </div>
@@ -788,20 +796,32 @@ export default function MonitoringPage() {
                                         </div>
                                         <p className="mt-1.5 text-sm text-gray-800">{a.message}</p>
                                     </div>
-                                    {!a.acknowledged && (
-                                        <button
-                                            onClick={() => acknowledgeAlert(a.id)}
-                                            className="shrink-0 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                                        >
-                                            Acknowledge
-                                        </button>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {!a.acknowledged ? (
+                                            <button
+                                                onClick={() => acknowledgeAlert(a.id)}
+                                                className="shrink-0 rounded-lg bg-white border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-1.5 active:scale-95"
+                                            >
+                                                <svg className="h-3.5 w-3.5 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                                </svg>
+                                                Acknowledge
+                                            </button>
+                                        ) : (
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Resolved
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             ))
                         )}
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 }

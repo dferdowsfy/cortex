@@ -13,12 +13,12 @@ export default function MarketingFooter() {
                             Complyze
                         </span>
                     </div>
-                    <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                    <div className="text-sm text-neutral-500 dark:text-white/60">
                         © {new Date().getFullYear()} Complyze. All rights reserved.
                     </div>
-                    <div className="flex gap-6 text-sm text-neutral-500 dark:text-neutral-400">
-                        <a href="#" className="hover:text-primary transition-colors">Privacy</a>
-                        <a href="#" className="hover:text-primary transition-colors">Terms</a>
+                    <div className="flex gap-6 text-sm text-neutral-500 dark:text-white/60 font-medium">
+                        <a href="#" className="hover:text-white transition-colors">Privacy</a>
+                        <a href="#" className="hover:text-white transition-colors">Terms</a>
                     </div>
                 </div>
             </div>

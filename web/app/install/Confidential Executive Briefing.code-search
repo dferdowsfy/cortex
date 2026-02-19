@@ -1,0 +1,9 @@
+# Query: Confidential Executive Briefing
+# ContextLines: 1
+
+1 result - 1 file
+
+web/app/components/ExecutiveDashboard.tsx:
+  46                          <span className="text-xs font-medium text-[#6C7CFF] bg-[#3B36DB]/15 px-3 py-1.5 rounded">
+  47:                             Confidential Executive Briefing
+  48                          </span>

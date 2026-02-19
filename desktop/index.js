@@ -9,6 +9,7 @@ const crypto = require('crypto');
 // ── Firebase ──────────────────────────────────────────────────────────────────
 const { initFirebase, onAuthStateChanged, signInWithCustomToken } = require('./lib/firebase-config');
 const { FirebaseSettingsSync } = require('./lib/firebase-settings');
+const { ProxyController } = require('./lib/proxy-controller');
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 const AGENT_VERSION = '1.2.0';
@@ -23,7 +24,7 @@ const sudoOptions = {
 // ─── State ──────────────────────────────────────────────────────────────────
 let tray = null;
 let mainWindow = null;
-let proxyProcess = null;
+let proxyController = null;
 let isMonitoringEnabled = true;
 let heartbeatInterval = null;
 let deviceId = null;
@@ -33,7 +34,7 @@ let lastSyncTime = 'Never';
 let firebaseUid = null;
 const settingsSync = new FirebaseSettingsSync();
 
-// Current settings from Firestore (cached for offline fallback)
+// Current settings from RTDB (cached for offline fallback)
 let currentSettings = {
     blockEnabled: true,
     interceptEnabled: true,
@@ -45,6 +46,7 @@ let currentSettings = {
     desktopBypass: false,
     riskThreshold: 60,
     retentionDays: 90,
+    userAttributionEnabled: true,
 };
 
 // ─── Initialize Device ID ────────────────────────────────────────────────────
@@ -116,47 +118,27 @@ function initializeFirebaseAuth() {
     }
 }
 
-// ─── Apply Settings from Firestore (realtime) ───────────────────────────────
+// ─── Apply Settings from RTDB (realtime) ───────────────────────────────
 function applyInterceptorSettings(settings) {
-    const prev = { ...currentSettings };
     currentSettings = { ...currentSettings, ...settings };
+    console.log('[settings] Processing:', JSON.stringify(currentSettings));
 
-    console.log('[settings] Applying:', JSON.stringify(currentSettings));
+    isMonitoringEnabled = currentSettings.proxyEnabled !== false;
+    const wsId = firebaseUid || 'default';
 
-    // Update monitoring state based on proxyEnabled
-    const shouldMonitor = currentSettings.proxyEnabled && currentSettings.interceptEnabled;
-
-    if (shouldMonitor !== isMonitoringEnabled) {
-        isMonitoringEnabled = shouldMonitor;
-
-        if (isMonitoringEnabled) {
-            startProxy();
-        } else {
-            stopProxy();
-        }
-
-        new Notification({
-            title: 'Complyze Agent',
-            body: isMonitoringEnabled
-                ? 'Monitoring enabled (synced from dashboard)'
-                : 'Monitoring disabled (synced from dashboard)',
-        }).show();
-    }
-
-    // Update proxy environment with current risk threshold & blocking settings
-    if (proxyProcess) {
-        proxyProcess.send({
-            type: 'settings-update',
-            settings: {
-                blockEnabled: currentSettings.blockEnabled,
-                blockHighRisk: currentSettings.blockHighRisk,
-                redactSensitive: currentSettings.redactSensitive,
-                riskThreshold: currentSettings.riskThreshold,
-                desktopBypass: currentSettings.desktopBypass,
-                fullAuditMode: currentSettings.fullAuditMode,
-            },
+    // Initialize proxyController if not exists
+    if (!proxyController) {
+        proxyController = new ProxyController(app, PROXY_SCRIPT_PATH, () => {
+            updateTray();
+            syncStatusToWindow();
         });
     }
+
+    // Sync state: The first argument controls if the system proxy is enabled/disabled.
+    proxyController.syncState(isMonitoringEnabled, {
+        ...currentSettings,
+        uid: firebaseUid
+    });
 
     lastSyncTime = new Date().toLocaleTimeString();
     updateTray();
@@ -165,7 +147,9 @@ function applyInterceptorSettings(settings) {
 
 // ─── Heartbeat (registration only — settings come from Firestore) ───────────
 async function sendHeartbeat() {
-    const status = isMonitoringEnabled ? (proxyProcess ? 'Healthy' : 'Connecting') : 'Offline';
+    const proxyRunning = proxyController ? !!proxyController.proxyProcess : false;
+    const status = isMonitoringEnabled ? (proxyRunning ? 'Healthy' : 'Connecting') : 'Offline';
+    const wsId = firebaseUid || 'default';
 
     try {
         const res = await fetch(`${DASHBOARD_URL}/api/agent/heartbeat`, {
@@ -178,9 +162,9 @@ async function sendHeartbeat() {
                 os: process.platform === 'darwin' ? 'macOS' : 'Windows',
                 status: status,
                 service_connectivity: true,
-                traffic_routing: isMonitoringEnabled && !!proxyProcess,
+                traffic_routing: isMonitoringEnabled && proxyRunning,
                 os_integration: true,
-                workspace_id: 'default_workspace',
+                workspace_id: wsId,
                 firebase_synced: !!firebaseUid,
             }),
         });
@@ -197,8 +181,9 @@ async function sendHeartbeat() {
 
 function syncStatusToWindow() {
     if (mainWindow && !mainWindow.isDestroyed()) {
+        const proxyRunning = proxyController ? !!proxyController.proxyProcess : false;
         mainWindow.webContents.send('status-update', {
-            status: isMonitoringEnabled ? (proxyProcess ? 'Healthy' : 'Connecting') : 'Offline',
+            status: isMonitoringEnabled ? (proxyRunning ? 'Healthy' : 'Connecting') : 'Offline',
             deviceId: getDeviceId(),
             lastSync: lastSyncTime,
             isMonitoringEnabled: isMonitoringEnabled,
@@ -249,11 +234,21 @@ async function syncGlobalSettingsLegacy() {
             if (data.proxy_enabled !== isMonitoringEnabled) {
                 console.log(`[sync-legacy] Updating monitoring state to ${data.proxy_enabled} from dashboard`);
                 isMonitoringEnabled = data.proxy_enabled;
-                if (isMonitoringEnabled) {
-                    startProxy();
-                } else {
-                    stopProxy();
+
+                // Initialize proxyController if needed
+                if (!proxyController) {
+                    proxyController = new ProxyController(app, PROXY_SCRIPT_PATH, () => {
+                        updateTray();
+                        syncStatusToWindow();
+                    });
                 }
+
+                // Sync the state
+                proxyController.syncState(isMonitoringEnabled, {
+                    ...currentSettings,
+                    proxyEnabled: isMonitoringEnabled
+                });
+
                 updateTray();
                 syncStatusToWindow();
             }
@@ -263,119 +258,13 @@ async function syncGlobalSettingsLegacy() {
     }
 }
 
-// ─── Proxy Management ─────────────────────────────────────────────────────────
-function startProxy() {
-    if (proxyProcess || !isMonitoringEnabled) return;
-
-    console.log(`[proxy] Starting from: ${PROXY_SCRIPT_PATH}`);
-    try {
-        proxyProcess = fork(PROXY_SCRIPT_PATH, ['--port', PROXY_PORT.toString()], {
-            stdio: 'inherit',
-            env: {
-                ...process.env,
-                COMPLYZE_API: `${DASHBOARD_URL}/api/proxy/intercept`,
-                MONITOR_MODE: 'observe',
-                CERTS_DIR: path.join(app.getPath('userData'), 'certs'),
-                // Pass current settings as env vars for initial proxy config
-                BLOCK_ENABLED: String(currentSettings.blockEnabled),
-                BLOCK_HIGH_RISK: String(currentSettings.blockHighRisk),
-                REDACT_SENSITIVE: String(currentSettings.redactSensitive),
-                RISK_THRESHOLD: String(currentSettings.riskThreshold),
-                DESKTOP_BYPASS: String(currentSettings.desktopBypass),
-                USER_ATTRIBUTION_ENABLED: String(currentSettings.userAttributionEnabled),
-                FIREBASE_UID: firebaseUid || '',
-            }
-        });
-
-        proxyProcess.on('exit', (code) => {
-            console.log(`Proxy exited with code ${code}`);
-            proxyProcess = null;
-            updateTray();
-        });
-
-        proxyProcess.on('message', (msg) => {
-            if (msg.type === 'settings-ack') {
-                console.log('[proxy] Settings acknowledged');
-            }
-        });
-
-        // Enable system proxy
-        setSystemProxy(true);
-        updateTray();
-    } catch (e) {
-        console.error('Failed to start proxy:', e);
-    }
-}
-
-function stopProxy() {
-    if (proxyProcess) {
-        proxyProcess.kill();
-        proxyProcess = null;
-    }
-    setSystemProxy(false);
-    updateTray();
-}
-
-// ─── Network Utilities ───────────────────────────────────────────────────────
-
-/**
- * Finds the currently active network interface (e.g., Wi-Fi, Ethernet)
- */
-function getActiveInterface() {
-    try {
-        // Get primary interface via route
-        const activeIf = execSync("route get default | grep interface | awk '{print $2}'", { encoding: 'utf8' }).trim();
-
-        // Map interface ID (en0) to user-friendly name (Wi-Fi)
-        const interfaces = execSync("networksetup -listallnetworkservices", { encoding: 'utf8' }).split('\n');
-
-        for (const service of interfaces) {
-            if (!service || service.includes('*')) continue;
-            try {
-                const device = execSync(`networksetup -gethwportvar "${service}" | grep Device | awk '{print $2}'`, { encoding: 'utf8' }).trim();
-                if (device === activeIf) return service;
-            } catch (e) { }
-        }
-        return "Wi-Fi"; // Fallback
-    } catch (e) {
-        return "Wi-Fi";
-    }
-}
-
-function setSystemProxy(enable) {
-    if (process.platform !== 'darwin') return;
-
-    const interfaceName = getActiveInterface();
-    let cmd = '';
-
-    if (enable) {
-        const pacUrl = `http://127.0.0.1:${PROXY_PORT}/proxy.pac`;
-
-        // 🚨 NUCLEAR CLEANUP: Turn off ALL global proxies before enabling PAC
-        // We turn off webproxy, securewebproxy, socksfirewallproxy, and gopherproxy.
-        cmd = `networksetup -setwebproxystate "${interfaceName}" off && ` +
-            `networksetup -setsecurewebproxystate "${interfaceName}" off && ` +
-            `networksetup -setsocksfirewallproxystate "${interfaceName}" off && ` +
-            `networksetup -setgopherproxystate "${interfaceName}" off && ` +
-            `networksetup -setautoproxyurl "${interfaceName}" "${pacUrl}" && ` +
-            `networksetup -setautoproxystate "${interfaceName}" on`;
-    } else {
-        cmd = `networksetup -setautoproxystate "${interfaceName}" off && ` +
-            `networksetup -setwebproxystate "${interfaceName}" off && ` +
-            `networksetup -setsecurewebproxystate "${interfaceName}" off && ` +
-            `networksetup -setsocksfirewallproxystate "${interfaceName}" off`;
-    }
-
-    sudo.exec(cmd, sudoOptions, (error) => {
-        if (error) console.error('Proxy config error:', error);
-        else console.log(`Proxy ${enable ? 'enabled' : 'disabled'} on interface "${interfaceName}" (Global proxies purged)`);
-    });
-}
+// Proxy management moved to ProxyController
 
 // ─── UI / Tray ───────────────────────────────────────────────────────────────
 function getStatusLabel() {
     if (!isMonitoringEnabled) return 'Monitoring Disabled';
-    if (proxyProcess) return 'Monitoring Active';
+    const proxyRunning = proxyController ? !!proxyController.proxyProcess : false;
+    if (proxyRunning) return 'Monitoring Active';
     return 'Initializing...';
 }
 
@@ -424,17 +313,18 @@ function updateTray() {
 function toggleMonitoring() {
     isMonitoringEnabled = !isMonitoringEnabled;
 
-    if (isMonitoringEnabled) {
-        startProxy();
-    } else {
-        stopProxy();
+    if (proxyController) {
+        proxyController.syncState(isMonitoringEnabled, {
+            ...currentSettings,
+            proxyEnabled: isMonitoringEnabled,
+            uid: firebaseUid
+        });
     }
 
-    // Write toggle state back to Firestore so dashboard reflects change
+    // Write toggle state back to RTDB so dashboard reflects change
     if (firebaseUid) {
         settingsSync.updateSettings({
             proxyEnabled: isMonitoringEnabled,
-            interceptEnabled: isMonitoringEnabled,
         });
     }
 
@@ -587,7 +477,7 @@ if (!gotTheLock) {
         setTimeout(() => {
             createWindow();
             initializeFirebaseAuth();
-            startProxy();
+            // syncState will be called inside applyInterceptorSettings via initializeFirebaseAuth subscription
         }, 100);
     });
 

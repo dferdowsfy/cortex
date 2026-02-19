@@ -89,7 +89,7 @@ export default function PricingPage() {
                     <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 text-white">
                         Simple AI Risk Monitoring for Mid-Market Teams
                     </h1>
-                    <p className="text-xl text-white/70 leading-relaxed">
+                    <p className="text-xl text-white/85 leading-relaxed">
                         Complyze monitors AI usage across desktop and browser apps, scores exposure risk, and optionally blocks sensitive activity — without slowing teams down.
                     </p>
                 </div>
@@ -112,7 +112,7 @@ export default function PricingPage() {
                                 )}
 
                                 <div className="mb-5 text-center sm:text-left">
-                                    <h3 className="text-sm font-bold tracking-widest uppercase text-white/50 mb-2">
+                                    <h3 className="text-sm font-bold tracking-widest uppercase text-white/75 mb-2">
                                         {tier.name}
                                     </h3>
                                     <p className="text-lg font-medium text-white mb-6">
@@ -121,13 +121,13 @@ export default function PricingPage() {
                                     <div className="flex flex-col">
                                         <div className="flex items-baseline gap-2 justify-center sm:justify-start">
                                             <span className="text-5xl font-bold tracking-tight">{tier.displayPrice}</span>
-                                            {tier.displayPrice !== "Custom" && <span className="text-white/50 text-sm">/ month</span>}
+                                            {tier.displayPrice !== "Custom" && <span className="text-white/75 text-sm">/ month</span>}
                                         </div>
-                                        <p className="text-[13px] text-white/40 mt-1 leading-relaxed">
+                                        <p className="text-[13px] text-white/60 mt-1 leading-relaxed font-medium">
                                             {tier.priceDetails}
                                         </p>
                                     </div>
-                                    <p className="text-sm text-white/70 mt-4 font-medium">
+                                    <p className="text-sm text-white/85 mt-4 font-medium">
                                         {tier.description}
                                     </p>
                                 </div>
@@ -163,7 +163,7 @@ export default function PricingPage() {
                                 <h4 className="text-lg font-bold text-white mb-2">
                                     {index + 1}. {faq.question}
                                 </h4>
-                                <p className="text-white/70 leading-relaxed">
+                                <p className="text-white/85 leading-relaxed">
                                     {faq.answer}
                                 </p>
                             </div>

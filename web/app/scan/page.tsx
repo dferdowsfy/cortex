@@ -79,10 +79,10 @@ function StepIndicator({ current }: { current: Step }) {
         <div key={label} className="flex items-center gap-2">
           <div
             className={`step-dot ${i < idx
-                ? "step-dot-done"
-                : i === idx
-                  ? "step-dot-active"
-                  : "step-dot-pending"
+              ? "step-dot-done"
+              : i === idx
+                ? "step-dot-active"
+                : "step-dot-pending"
               }`}
           >
             {i < idx ? (
@@ -94,7 +94,7 @@ function StepIndicator({ current }: { current: Step }) {
             )}
           </div>
           <span
-            className={`hidden text-xs font-medium sm:block ${i <= idx ? "text-gray-900" : "text-gray-400"
+            className={`hidden text-xs font-medium sm:block ${i <= idx ? "text-white/90" : "text-white/40"
               }`}
           >
             {label}
@@ -165,8 +165,8 @@ function EnrichmentForm({
                     <label
                       key={opt}
                       className={`cursor-pointer rounded-lg border px-3 py-2 text-sm transition-colors ${selected
-                          ? "border-brand-500 bg-brand-50 text-brand-700 font-medium"
-                          : "border-gray-200 hover:border-gray-300 text-gray-600"
+                        ? "border-brand-500 bg-brand-50 text-brand-700 font-medium"
+                        : "border-gray-200 hover:border-gray-300 text-gray-600"
                         }`}
                     >
                       <input
@@ -194,8 +194,8 @@ function EnrichmentForm({
                     key={opt}
                     type="button"
                     className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${answers[q.question_id] === opt
-                        ? "border-brand-500 bg-brand-50 text-brand-700"
-                        : "border-gray-200 text-gray-600 hover:border-gray-300"
+                      ? "border-brand-500 bg-brand-50 text-brand-700"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300"
                       }`}
                     onClick={() => onChange(q.question_id, opt)}
                   >
@@ -211,8 +211,8 @@ function EnrichmentForm({
                     key={opt}
                     type="button"
                     className={`rounded-lg border px-3 py-2 text-sm transition-colors ${answers[q.question_id] === opt
-                        ? "border-brand-500 bg-brand-50 text-brand-700 font-medium"
-                        : "border-gray-200 text-gray-600 hover:border-gray-300"
+                      ? "border-brand-500 bg-brand-50 text-brand-700 font-medium"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300"
                       }`}
                     onClick={() => onChange(q.question_id, opt)}
                   >
@@ -653,8 +653,8 @@ export default function ScanPage() {
                     key={t}
                     type="button"
                     className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${tier === t
-                        ? "border-brand-500 bg-brand-50 text-brand-700"
-                        : "border-gray-200 text-gray-600 hover:border-gray-300"
+                      ? "border-brand-500 bg-brand-50 text-brand-700"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300"
                       }`}
                     onClick={() => setTier(t)}
                   >

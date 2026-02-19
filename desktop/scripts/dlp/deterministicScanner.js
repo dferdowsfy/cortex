@@ -106,4 +106,35 @@ function scanText(text) {
     };
 }
 
-module.exports = { scanText };
+/**
+ * Redacts sensitive patterns and high-entropy secrets from text.
+ */
+function redactText(text) {
+    if (!text) return text;
+    let redacted = text;
+
+    // 1. Redact Regex Patterns
+    for (const tier in PATTERNS) {
+        for (const config of PATTERNS[tier]) {
+            redacted = redacted.replace(config.regex, `[REDACTED ${config.name}]`);
+        }
+    }
+
+    // 2. Redact High Entropy Secrets (simple word-based replacement for detected secrets)
+    const words = redacted.split(/\s+/);
+    const uniqueWords = [...new Set(words)];
+    for (const word of uniqueWords) {
+        if (word.length > 32) {
+            const entropy = calculateEntropy(word);
+            if (entropy > 3.8) {
+                // Escape regex special chars in the word before replacing
+                const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                redacted = redacted.replace(new RegExp(escapedWord, 'g'), '[REDACTED API Key]');
+            }
+        }
+    }
+
+    return redacted;
+}
+
+module.exports = { scanText, redactText };

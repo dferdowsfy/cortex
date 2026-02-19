@@ -23,10 +23,10 @@
 
 'use strict';
 
-const fs   = require('fs');
-const net  = require('net');
-const tls  = require('tls');
-const os   = require('os');
+const fs = require('fs');
+const net = require('net');
+const tls = require('tls');
+const os = require('os');
 const path = require('path');
 const { exec } = require('child_process');
 const { promisify } = require('util');
@@ -35,15 +35,15 @@ const execAsync = promisify(exec);
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const PROXY_PORT       = parseInt(process.env.PROXY_PORT || '8080', 10);
-const CERTS_DIR        = path.join(__dirname, '..', 'certs');
-const CA_CERT_PATH     = path.join(CERTS_DIR, 'ca-cert.pem');
-const REPORT_FILE      = path.join(CERTS_DIR, 'diagnostics-report.json');
+const PROXY_PORT = parseInt(process.env.PROXY_PORT || '8080', 10);
+const CERTS_DIR = path.join(__dirname, '..', 'certs');
+const CA_CERT_PATH = path.join(CERTS_DIR, 'ca-cert.pem');
+const REPORT_FILE = path.join(CERTS_DIR, 'diagnostics-report.json');
 const CHECK_TIMEOUT_MS = parseInt(process.env.CHECK_TIMEOUT_MS || '5000', 10);
-const JSON_MODE        = process.argv.includes('--json');
+const JSON_MODE = process.argv.includes('--json');
 
 const PASSTHROUGH_HOSTS = ['google.com', 'slack.com', 'github.com'];
-const INTERCEPT_HOSTS   = ['api.openai.com'];
+const INTERCEPT_HOSTS = ['api.openai.com'];
 
 // Common competing-proxy ports to probe
 const COMPETING_PORTS = [1080, 3128, 7890, 8888, 9090, 1087];
@@ -72,7 +72,7 @@ function tcpConnect(host, port, ms) {
         const sock = net.createConnection({ host, port });
         const timer = setTimeout(() => { sock.destroy(); resolve(false); }, ms);
         sock.once('connect', () => { clearTimeout(timer); sock.destroy(); resolve(true); });
-        sock.once('error',   () => { clearTimeout(timer); resolve(false); });
+        sock.once('error', () => { clearTimeout(timer); resolve(false); });
     });
 }
 
@@ -161,7 +161,7 @@ async function checkCACert() {
         const match = stdout.match(/notAfter=(.+)/);
         if (match) {
             const expiry = new Date(match[1].trim());
-            const now    = new Date();
+            const now = new Date();
             if (expiry < now) {
                 return fail(`CA cert expired on ${expiry.toISOString()}.`, {
                     path: CA_CERT_PATH,
@@ -296,13 +296,13 @@ async function checkProxyRunning() {
 // ─── Check 4: System proxy settings ──────────────────────────────────────────
 
 async function checkProxySettings() {
-    const issues  = [];
+    const issues = [];
     const details = {};
 
     // Check environment variables first
     const envProxy =
         process.env.HTTPS_PROXY || process.env.https_proxy ||
-        process.env.HTTP_PROXY  || process.env.http_proxy  || '';
+        process.env.HTTP_PROXY || process.env.http_proxy || '';
 
     if (envProxy) {
         details.env_proxy = envProxy;
@@ -315,27 +315,40 @@ async function checkProxySettings() {
 
     if (platform === 'darwin') {
         try {
-            // Try the active network service
-            const { stdout: services } = await execAsync(
-                `networksetup -listallnetworkservices 2>/dev/null | tail -n +2 | head -4`,
-                { timeout: 3000 }
-            ).catch(() => ({ stdout: '' }));
+            // 1. Get the current default device (e.g. en0)
+            const { stdout: activeIfRaw } = await execAsync("route get default | grep interface | awk '{print $2}'", { timeout: 3000 }).catch(() => ({ stdout: '' }));
+            const activeIf = activeIfRaw.trim();
 
-            const service = services.split('\n').find(s => s && !s.startsWith('*')) || 'Wi-Fi';
+            let service = 'Wi-Fi';
+            if (activeIf) {
+                // 2. Map device to service name using service order list
+                const { stdout: serviceOrder } = await execAsync("networksetup -listnetworkserviceorder", { timeout: 3000 }).catch(() => ({ stdout: '' }));
+                const lines = serviceOrder.split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].includes(`Device: ${activeIf}`)) {
+                        const prevLine = lines[i - 1] || "";
+                        const match = prevLine.match(/^\(\d+\)\s+(.*)$/);
+                        if (match) {
+                            service = match[1].trim();
+                            break;
+                        }
+                    }
+                }
+            }
 
             const { stdout: secureProxy } = await execAsync(
-                `networksetup -getsecurewebproxy "${service.trim()}" 2>/dev/null`,
+                `networksetup -getsecurewebproxy "${service}" 2>/dev/null`,
                 { timeout: 3000 }
             );
 
-            const serverMatch  = secureProxy.match(/Server:\s*(\S+)/);
-            const portMatch    = secureProxy.match(/Port:\s*(\d+)/);
+            const serverMatch = secureProxy.match(/Server:\s*(\S+)/);
+            const portMatch = secureProxy.match(/Port:\s*(\d+)/);
             const enabledMatch = secureProxy.match(/Enabled:\s*(\w+)/);
 
             if (serverMatch && portMatch) {
-                details.macos_https_proxy         = `${serverMatch[1]}:${portMatch[1]}`;
+                details.macos_https_proxy = `${serverMatch[1]}:${portMatch[1]}`;
                 details.macos_https_proxy_enabled = enabledMatch ? enabledMatch[1] : 'unknown';
-                details.macos_network_service     = service.trim();
+                details.macos_network_service = service.trim();
 
                 if (enabledMatch && enabledMatch[1].toLowerCase() !== 'yes') {
                     issues.push(`macOS HTTPS proxy (${details.macos_https_proxy}) is configured but not enabled`);
@@ -367,7 +380,7 @@ async function detectVPNAndProxy() {
     const findings = [];
 
     // Network interfaces with VPN-like names
-    const ifaces    = os.networkInterfaces();
+    const ifaces = os.networkInterfaces();
     const vpnIfaces = Object.keys(ifaces).filter(name =>
         /^(utun|tun\d|ppp\d|tap\d|vpn|wg\d|wireguard|ipsec)/i.test(name)
     );
@@ -405,8 +418,8 @@ async function detectVPNAndProxy() {
     }
 
     const summary = findings.map(f => {
-        if (f.type === 'vpn_interface')         return `VPN interface(s): ${f.interfaces.join(', ')}`;
-        if (f.type === 'env_proxy')             return `Env proxy: ${f.proxies.map(e => `${e.var}=${e.value}`).join(', ')}`;
+        if (f.type === 'vpn_interface') return `VPN interface(s): ${f.interfaces.join(', ')}`;
+        if (f.type === 'env_proxy') return `Env proxy: ${f.proxies.map(e => `${e.var}=${e.value}`).join(', ')}`;
         if (f.type === 'competing_proxy_ports') return `Listening proxy ports: ${f.ports.join(', ')}`;
         return JSON.stringify(f);
     }).join('; ');
@@ -434,7 +447,7 @@ async function testPassthrough(hostname) {
         }
 
         const issuerCN = (cert.issuer && cert.issuer.CN) || '';
-        const issuerO  = (cert.issuer && cert.issuer.O)  || '';
+        const issuerO = (cert.issuer && cert.issuer.O) || '';
 
         // Our MITM CA would have "Complyze" in the issuer
         if (/complyze/i.test(issuerCN) || /complyze/i.test(issuerO)) {
@@ -476,7 +489,7 @@ async function testInterception(hostname) {
         }
 
         const issuerCN = (cert.issuer && cert.issuer.CN) || '';
-        const issuerO  = (cert.issuer && cert.issuer.O)  || '';
+        const issuerO = (cert.issuer && cert.issuer.O) || '';
 
         if (/complyze/i.test(issuerCN) || /complyze/i.test(issuerO)) {
             return pass(
@@ -505,7 +518,7 @@ async function testInterception(hostname) {
 
 async function runAllChecks() {
     const started = new Date().toISOString();
-    const checks  = [];
+    const checks = [];
 
     async function run(name, fn) {
         const t0 = Date.now();
@@ -518,11 +531,11 @@ async function runAllChecks() {
         checks.push({ name, result, duration_ms: Date.now() - t0 });
     }
 
-    await run('ca_cert_file',   checkCACert);
-    await run('ca_cert_trust',  checkCATrust);
-    await run('proxy_running',  checkProxyRunning);
+    await run('ca_cert_file', checkCACert);
+    await run('ca_cert_trust', checkCATrust);
+    await run('proxy_running', checkProxyRunning);
     await run('proxy_settings', checkProxySettings);
-    await run('vpn_detection',  detectVPNAndProxy);
+    await run('vpn_detection', detectVPNAndProxy);
 
     for (const host of PASSTHROUGH_HOSTS) {
         await run(`passthrough_${host.replace(/\./g, '_')}`, () => testPassthrough(host));
@@ -532,16 +545,16 @@ async function runAllChecks() {
     }
 
     const statuses = checks.map(c => c.result.status);
-    const overall  = statuses.includes('fail') ? 'fail'
-                   : statuses.includes('warn') ? 'warn'
-                   : 'pass';
+    const overall = statuses.includes('fail') ? 'fail'
+        : statuses.includes('warn') ? 'warn'
+            : 'pass';
 
     return {
         generated_at: started,
-        proxy_port:   PROXY_PORT,
+        proxy_port: PROXY_PORT,
         ca_cert_path: CA_CERT_PATH,
-        platform:     os.platform(),
-        hostname:     os.hostname(),
+        platform: os.platform(),
+        hostname: os.hostname(),
         overall,
         checks,
     };
@@ -573,7 +586,7 @@ function printReport(report) {
     console.log(`  Overall   : ${STATUS_ICON[report.overall] || '?'} ${report.overall.toUpperCase()}\n`);
 
     for (const { name, result, duration_ms } of report.checks) {
-        const icon  = STATUS_ICON[result.status] || '?';
+        const icon = STATUS_ICON[result.status] || '?';
         const label = name.padEnd(42);
         console.log(`  ${icon} ${label} (${duration_ms}ms)`);
         console.log(`       ${result.message}`);

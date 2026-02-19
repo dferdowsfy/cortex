@@ -258,23 +258,22 @@ export default function SettingsPage() {
     const allReady = setupStatus?.proxy_server_running && setupStatus?.ca_trusted && setupStatus?.proxy_configured;
 
     return (
-        <div className="mx-auto max-w-2xl space-y-6">
-            {/* Header */}
+        <div className="mx-auto max-w-2xl space-y-8">
+            {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">Admin Settings</h1>
-                <p className="mt-1 text-sm text-gray-500">
-                    Configure AI Proxy Monitoring, data retention, and policy enforcement.
-                    <span className="ml-1 text-brand-600 font-medium">Synced in realtime.</span>
+                <h1 className="text-2xl font-bold text-white/90">Governance Settings</h1>
+                <p className="mt-1 text-sm text-white/60">
+                    Control how AI traffic is monitored, classified, and enforced across your organization.
                 </p>
             </div>
 
-            {/* Status Banner */}
+            {/* Notification Banners */}
             {saved && (
-                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 flex items-center gap-2">
+                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
-                    Settings saved and synced to all connected devices.
+                    Settings updated successfully.
                 </div>
             )}
             {error && (
@@ -283,341 +282,285 @@ export default function SettingsPage() {
                 </div>
             )}
 
-            {/* ── AI Proxy Monitoring ── */}
+            {/* 1. AI Monitoring Controls (Primary Section) */}
             <div className="card">
-                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-200">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100">
-                        <svg className="h-5 w-5 text-brand-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.981 0 13.79M12 12h.008v.007H12V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 className="text-base font-bold text-gray-900">AI Proxy Monitoring</h2>
-                        <p className="text-xs text-gray-500">
-                            Route AI tool traffic through Complyze for classification and risk analysis
-                        </p>
-                    </div>
-                </div>
-
-                <div className="mt-4 space-y-4">
-                    {/* Agent Status Card */}
-                    <div className={`rounded-xl border p-5 transition-all duration-300 ${agentStatus?.connected ? "border-green-200 bg-green-50/50" : "border-red-100 bg-red-50/30"}`}>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className={`relative flex h-12 w-12 items-center justify-center rounded-xl shadow-sm ${agentStatus?.connected ? "bg-green-600" : "bg-red-500"}`}>
-                                    {agentStatus?.connected ? (
-                                        <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.3} stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303" />
-                                        </svg>
-                                    ) : (
-                                        <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.3} stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                                        </svg>
-                                    )}
-                                    {agentStatus?.connected && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" /><span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" /></span>}
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-900">
-                                        {agentStatus?.connected ? "Management Agent Connected" : "Agent Offline"}
-                                    </h3>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        {agentStatus?.connected ? (
-                                            <>Live monitoring active on <strong>{agentStatus.hostname}</strong></>
-                                        ) : (
-                                            "No active agents detected for this workspace"
-                                        )}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                {agentStatus?.connected ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[10px] font-bold text-green-700">
-                                        LIVE POD
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-bold text-red-700 uppercase">
-                                        Disconnected
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Deployment Actions */}
-                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-900">Deploy Monitoring Agent</h3>
-                                <p className="text-[10px] text-gray-500">Enable deep inspection on your local machine</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <p className="text-xs text-gray-600 leading-relaxed max-w-md">
-                                The lightweight management agent handles WiFi proxy configuration automatically.
-                                It intercepts, cleans, and analyzes AI traffic before it reaches providers.
-                            </p>
-
-                            <div className="flex items-center gap-4">
-                                <a
-                                    href="/api/agent/installer"
-                                    className="flex flex-1 items-center justify-center gap-3 rounded-2xl bg-brand-600 px-6 py-4 text-base font-bold text-white shadow-xl transition-all hover:bg-brand-700 hover:scale-[1.02] active:scale-[0.98]"
-                                >
-                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                    </svg>
-                                    Download & Run Complyze Agent (macOS)
-                                </a>
-                            </div>
-
-                            <div className="flex items-center gap-6 pt-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xl">🍏</span>
-                                    <div className="text-[10px] text-gray-400 font-medium">
-                                        <p>macOS 12+</p>
-                                        <p>Intel & Silicon</p>
-                                    </div>
-                                </div>
-                                <div className="h-8 w-px bg-gray-100" />
-                                <div className="text-[10px] text-gray-500 italic">
-                                    Once downloaded, double-click the <strong>.command</strong> file to start.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Monitored Domains Block */}
-                    <div className="rounded-lg border border-gray-200 bg-white p-4">
-                        <p className="text-xs font-semibold text-gray-800 mb-2">Monitored AI Providers</p>
-                        <p className="text-[10px] text-gray-500 mb-3">
-                            All AI domains are deep-inspected by default. Full prompt and response content is captured for risk analysis.
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                            {[
-                                "api.openai.com", "api.anthropic.com", "api.cohere.com",
-                                "api.mistral.ai", "api.together.ai", "openrouter.ai",
-                                "api.perplexity.ai", "api.groq.com", "api.fireworks.ai",
-                                "api.replicate.com", "generativelanguage.googleapis.com",
-                                "chatgpt.com", "chat.openai.com", "claude.ai"
-                            ].map((d) => (
-                                <span key={d} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${["chatgpt.com", "chat.openai.com", "claude.ai"].includes(d) && settings.desktopBypass
-                                    ? "bg-amber-50 border border-amber-200 text-amber-700"
-                                    : "bg-brand-50 border border-brand-200 text-brand-700"
-                                    }`}>
-                                    {d}
-                                    {["chatgpt.com", "chat.openai.com", "claude.ai"].includes(d) && settings.desktopBypass && (
-                                        <span className="ml-1 text-amber-500">📊</span>
-                                    )}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Local Setup Actions (Visible only in local dev) */}
-            {!isCloud && setupStatus && (
-                <div className="card">
-                    <h2 className="text-base font-bold text-gray-900 mb-4">Local Proxy Engine</h2>
-                    <div className={`rounded-xl border p-4 mb-4 ${allReady ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}`}>
-                        <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-bold text-gray-800">System Integration Status</p>
-                            <button onClick={checkSetupStatus} className="text-[10px] underline">Refresh</button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                            <StatusDot ok={!!setupStatus.proxy_server_running} label="Server" />
-                            <StatusDot ok={!!setupStatus.ca_trusted} label="CA Trust" />
-                            <StatusDot ok={!!setupStatus.proxy_configured} label="Network" />
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                            <div className="text-xs font-semibold">System Proxy Control</div>
-                            <div className="flex gap-2">
-                                {!setupStatus.proxy_configured ? (
-                                    <button onClick={() => runSetupAction("enable-proxy")} className="btn-primary py-1 px-3 text-[10px]">Enable</button>
-                                ) : (
-                                    <button onClick={() => runSetupAction("disable-proxy")} className="btn-secondary py-1 px-3 text-[10px] text-red-600">Disable</button>
-                                )}
-                            </div>
-                        </div>
-                        <div className="p-3 bg-gray-50 rounded text-[11px] font-mono break-all">
-                            {setupStatus.interface || "Searching for interface..."}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Policy Controls (Firestore-backed) ── */}
-            <div className="card">
-                <h2 className="text-base font-bold text-gray-900 mb-2">Policy Controls</h2>
-                <p className="text-xs text-gray-500 mb-4">Automated enforcement actions applied to monitored traffic.</p>
-
-                <Toggle
-                    enabled={(!isCloud && setupStatus) ? setupStatus.proxy_enabled : settings.proxyEnabled}
-                    onChange={(val) => handleSave({ proxyEnabled: val })}
-                    label="Enable Global AI Monitoring"
-                    description="When enabled, all traffic through the Complyze Agents will be classified and logged."
-                />
-
-                <Toggle
-                    enabled={settings.blockHighRisk}
-                    onChange={(val) => handleSave({ blockHighRisk: val })}
-                    label="Block Critical-Risk Prompts"
-                    description="Automatically block any prompt classified as critical sensitivity level."
-                    warning="Blocked prompts return an error to the user."
-                />
-                <Toggle
-                    enabled={settings.redactSensitive}
-                    onChange={(val) => handleSave({ redactSensitive: val })}
-                    label="Redact Sensitive Content"
-                    description="Automatically replace detected PII, credentials, and financial data with [REDACTED]."
-                />
-
-                <Toggle
-                    enabled={settings.inspectAttachments}
-                    onChange={(val) => handleSave({ inspectAttachments: val })}
-                    label="Inspect Attachment Uploads"
-                    description="When enabled, Complyze will inspect uploaded files sent to AI services for sensitive content."
-                />
-                <Toggle
-                    enabled={settings.alertOnViolations}
-                    onChange={(val) => handleSave({ alertOnViolations: val })}
-                    label="Alert on Policy Violations"
-                    description="Generate alerts when sensitive data or policy violations are detected."
-                />
-                <Toggle
-                    enabled={settings.desktopBypass}
-                    onChange={(val) => handleSave({ desktopBypass: val })}
-                    label="Desktop App Bypass"
-                    description="Allow certificate-pinned desktop apps (ChatGPT, Claude) to bypass deep inspection."
-                    warning="Enabling this creates a monitoring gap. Recommended: OFF."
-                />
-
-                <Toggle
-                    enabled={settings.interceptEnabled}
-                    onChange={(val) => handleSave({ interceptEnabled: val })}
-                    label="Intercept Mode"
-                    description="Enable active interception of AI traffic for deep content inspection."
-                />
-
-                <Toggle
-                    enabled={settings.blockEnabled}
-                    onChange={(val) => handleSave({ blockEnabled: val })}
-                    label="Block Mode"
-                    description="Enable blocking of requests that exceed the risk threshold."
-                />
-
-                {/* Risk Threshold Slider */}
-                <div className="py-4 border-b border-gray-100 last:border-0">
-                    <p className="text-sm font-semibold text-gray-800">Risk Threshold</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Requests scoring above this threshold are flagged or blocked.</p>
-                    <div className="mt-3 flex items-center gap-3">
-                        <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            value={settings.riskThreshold}
-                            onChange={(e) => handleSave({ riskThreshold: parseInt(e.target.value, 10) })}
-                            className="flex-1 accent-brand-600"
-                        />
-                        <span className="text-sm font-bold text-gray-800 w-10 text-right">{settings.riskThreshold}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Data & Privacy ── */}
-            <div className="card">
-                <h2 className="text-base font-bold text-gray-900 mb-2">Data &amp; Privacy</h2>
-                <p className="text-xs text-gray-500 mb-4">Controls for data collection, retention, and audit capabilities.</p>
-
-                <Toggle
-                    enabled={settings.fullAuditMode}
-                    onChange={(val) => handleSave({ fullAuditMode: val })}
-                    label="Full Audit Mode"
-                    description="Store full prompt text alongside classification metadata."
-                    warning="Increases data sensitivity. Ensure access controls are in place."
-                />
-
-                <Toggle
-                    enabled={settings.userAttributionEnabled}
-                    onChange={(val) => handleSave({ userAttributionEnabled: val })}
-                    label="Enable User Attribution"
-                    description="Link risk incidents to authenticated user IDs for trend analysis and repeat offender detection."
-                />
-
-                <div className="py-4 last:border-0">
-                    <p className="text-sm font-semibold text-gray-800">Data Retention Period</p>
-                    <div className="mt-3 flex items-center gap-3">
-                        <select
-                            value={settings.retentionDays}
-                            onChange={(e) => handleSave({ retentionDays: parseInt(e.target.value, 10) })}
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
-                        >
-                            {[30, 60, 90, 180, 365].map((d) => (
-                                <option key={d} value={d}>{d} days</option>
-                            ))}
-                        </select>
-                        <span className="text-xs text-gray-400">Activity older than this threshold is purged.</span>
-                    </div>
-                </div>
-
-                <div className="pt-4 space-y-2">
-                    {[
-                        { label: "Encrypted Logs", desc: "All activity events are encrypted at rest" },
-                        { label: "Salted Prompt Hashes", desc: "Prompts are hashed with unique salt" },
-                        { label: "No Model Training", desc: "Captured data is never used for training" },
-                    ].map((item) => (
-                        <div key={item.label} className="flex items-center gap-2 text-xs text-gray-600">
-                            <span className="text-green-500">✓</span>
-                            <span><strong>{item.label}</strong> — {item.desc}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Branding Card */}
-            <div className="card bg-gray-900 text-white">
-                <div className="flex items-center gap-3 mb-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500">
-                        <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                         </svg>
                     </div>
                     <div>
-                        <p className="text-sm font-bold">Usage-Aware Governance</p>
-                        <p className="text-[10px] text-gray-400">Not surveillance. Governance.</p>
+                        <h2 className="text-base font-bold text-gray-900">AI Monitoring Controls</h2>
+                        <p className="text-xs text-gray-500">Master controls for AI governance and visibility</p>
                     </div>
                 </div>
-                <p className="text-[11px] text-gray-300 leading-relaxed">
-                    Complyze helps your organization make informed decisions based on actual AI usage, protecting sensitive intellectual property while enabling innovation.
-                </p>
+
+                <div className="space-y-1">
+                    <Toggle
+                        enabled={settings.proxyEnabled}
+                        onChange={(val) => handleSave({ proxyEnabled: val })}
+                        label="Enable AI Monitoring"
+                        description="Route AI traffic through the Complyze engine for risk analysis."
+                    />
+                    <Toggle
+                        enabled={settings.blockHighRisk}
+                        onChange={(val) => handleSave({ blockHighRisk: val })}
+                        label="Block High Risk Prompts"
+                        description="Automatically prevent prompts with high risk scores from being sent to AI providers."
+                        warning="This may intercept and block valid user requests if threshold is too low."
+                    />
+                    <Toggle
+                        enabled={settings.inspectAttachments}
+                        onChange={(val) => handleSave({ inspectAttachments: val })}
+                        label="Scan Attachments"
+                        description="Deep scan file uploads and documents for sensitive data leakage."
+                    />
+                    <Toggle
+                        enabled={settings.userAttributionEnabled}
+                        onChange={(val) => handleSave({ userAttributionEnabled: val })}
+                        label="User Attribution"
+                        description="Link intercepted events to specific user identities for audit trails."
+                    />
+
+                    {/* Risk Posture Selector */}
+                    <div className="py-6 border-t border-gray-100 mt-2">
+                        <div className="flex justify-between items-end mb-4">
+                            <div>
+                                <p className="text-sm font-semibold text-gray-800">Risk Posture</p>
+                                <p className="text-xs text-gray-500 mt-0.5">Define your organization's tolerance for AI risk.</p>
+                            </div>
+                        </div>
+
+                        {/* Posture Segments */}
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                            {[
+                                { id: "minimal", label: "Minimal", val: 80 },
+                                { id: "balanced", label: "Balanced", val: 50 },
+                                { id: "strict", label: "Strict", val: 35 },
+                                { id: "maximum", label: "Maximum", val: 20 }
+                            ].map((option) => {
+                                // Determine active state based on proximity to threshold
+                                // We find the closest option to the current numeric setting
+                                const currentVal = settings.riskThreshold;
+                                const isActive =
+                                    (option.id === "minimal" && currentVal >= 65) ||
+                                    (option.id === "balanced" && currentVal >= 45 && currentVal < 65) ||
+                                    (option.id === "strict" && currentVal >= 25 && currentVal < 45) ||
+                                    (option.id === "maximum" && currentVal < 25);
+
+                                return (
+                                    <button
+                                        key={option.id}
+                                        onClick={() => handleSave({ riskThreshold: option.val })}
+                                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-150 border ${isActive
+                                                ? "bg-brand-50 border-brand-200 text-brand-700 shadow-sm ring-1 ring-brand-200"
+                                                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                                            }`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Dynamic Description */}
+                        <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 border border-gray-100 transition-all duration-200 min-h-[60px] flex flex-col justify-center">
+                            {(() => {
+                                const val = settings.riskThreshold;
+                                let title = "";
+                                let desc = "";
+
+                                if (val >= 65) {
+                                    title = "Minimal Posture";
+                                    desc = "Only blocks clearly malicious or critical violations. Prioritizes workflow continuity.";
+                                } else if (val >= 45) {
+                                    title = "Balanced Posture (Default)";
+                                    desc = "Blocks high-risk prompts involving sensitive data while minimizing false positives.";
+                                } else if (val >= 25) {
+                                    title = "Strict Posture";
+                                    desc = "Blocks moderate and high-risk prompts to reduce accidental data exposure.";
+                                } else {
+                                    title = "Maximum Posture";
+                                    desc = "Blocks all medium-to-high risk activity. Designed for high-security environments.";
+                                }
+
+                                return (
+                                    <>
+                                        <p className="font-semibold text-gray-900 mb-1">{title}</p>
+                                        <p className="text-gray-500 leading-relaxed">{desc}</p>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-end px-1">
+                            <p className="text-[10px] uppercase tracking-wider font-medium text-gray-400">
+                                Numeric Threshold: <span className="font-mono text-gray-600">{settings.riskThreshold}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Setup Messages */}
+            {/* 2. Divider */}
+            <hr className="border-gray-100" />
+
+            {/* 3. Monitoring Agent Deployment */}
+            <div className="card">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 className="text-base font-bold text-gray-900">Local Monitoring Agent</h2>
+                            <p className="text-xs text-gray-500">The lightweight agent that handles local traffic interception</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${agentStatus?.connected ? "bg-green-500" : "bg-gray-300"}`} />
+                        <span className="text-xs font-bold text-gray-600 uppercase tracking-tight">
+                            {agentStatus?.connected ? "INSTALLED" : "NOT INSTALLED"}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 mb-6">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                        To enable deep inspection on this device, the Complyze Agent must be running. It automatically configures system proxy settings to ensure all AI interactions are governed.
+                    </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <a
+                        href="/api/agent/installer"
+                        className="flex-1 btn-primary py-3 px-4 flex items-center justify-center gap-2"
+                    >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        {agentStatus?.connected ? "Reinstall Agent" : "Deploy Monitoring Agent"}
+                    </a>
+                    {!isCloud && (
+                        <button
+                            onClick={checkSetupStatus}
+                            disabled={setupLoading === "check-status"}
+                            className="btn-secondary py-3 px-4 flex items-center justify-center gap-2"
+                        >
+                            <svg className={`h-4 w-4 ${setupLoading === "check-status" ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            Check Connection
+                        </button>
+                    )}
+                </div>
+
+                {agentStatus?.connected && (
+                    <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                        <div className="flex items-center gap-4">
+                            <span>Host: <strong>{agentStatus.hostname}</strong></span>
+                            <span>Seen: <strong>{agentStatus.minutes_ago === 0 ? "Just now" : `${agentStatus.minutes_ago}m ago`}</strong></span>
+                        </div>
+                        <span className="text-gray-300">v1.2.0</span>
+                    </div>
+                )}
+            </div>
+
+            {/* 4. Divider */}
+            <hr className="border-gray-100" />
+
+            {/* 5. Advanced Settings */}
+            <div className="card">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 className="text-base font-bold text-gray-900">Advanced Governance</h2>
+                        <p className="text-xs text-gray-500">Fine-grained configuration and data policies</p>
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <Toggle
+                        enabled={settings.redactSensitive}
+                        onChange={(val) => handleSave({ redactSensitive: val })}
+                        label="Auto-Redaction"
+                        description="Sanitize PII and credentials before they leave the browser."
+                    />
+                    <Toggle
+                        enabled={settings.fullAuditMode}
+                        onChange={(val) => handleSave({ fullAuditMode: val })}
+                        label="Full Audit Mode"
+                        description="Store complete prompt and response bodies for regulatory compliance."
+                        warning="Significantly increases stored data volume and sensitivity."
+                    />
+                    <Toggle
+                        enabled={settings.desktopBypass}
+                        onChange={(val) => handleSave({ desktopBypass: val })}
+                        label="Desktop App Bypass"
+                        description="Allow native desktop apps with pinned certificates to skip deep inspection."
+                    />
+
+                    <div className="py-6 border-t border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-800">Retention Period</p>
+                            <p className="text-xs text-gray-500 mt-0.5">Duration for storing audit logs before auto-purging.</p>
+                        </div>
+                        <select
+                            value={settings.retentionDays}
+                            onChange={(e) => handleSave({ retentionDays: parseInt(e.target.value, 10) })}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-brand-500 outline-none"
+                        >
+                            {[30, 90, 180, 365].map((d) => (
+                                <option key={d} value={d}>{d} Days</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-center py-10 opacity-40">
+                <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 bg-gray-400 rounded flex items-center justify-center text-white">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                        </svg>
+                    </div>
+                    <span className="text-xs font-bold tracking-widest uppercase">Complyze Enterprise</span>
+                </div>
+            </div>
+
+            {/* Setup Messages Popup */}
             {setupMessage && (
-                <div className={`fixed bottom-6 right-6 z-50 rounded-xl border p-4 shadow-2xl max-w-sm ${setupMessage.type === "success" ? "border-green-200 bg-white" : "border-blue-200 bg-white"}`}>
-                    <p className="text-xs font-bold text-gray-900 mb-1">{setupMessage.type === "success" ? "Success" : "Notification"}</p>
-                    <p className="text-[11px] text-gray-600">{setupMessage.text}</p>
+                <div className={`fixed bottom-8 right-8 z-50 rounded-2xl border p-5 shadow-2xl max-w-sm animate-in slide-in-from-bottom-4 ${setupMessage.type === "success" ? "border-green-200 bg-white" : "border-blue-200 bg-white"}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-2 h-2 rounded-full ${setupMessage.type === "success" ? "bg-green-500" : "bg-blue-500"}`} />
+                        <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">{setupMessage.type === "success" ? "Action Complete" : "System Message"}</p>
+                    </div>
+                    <p className="text-[11px] text-gray-600 leading-relaxed font-medium">{setupMessage.text}</p>
                     {setupMessage.command && (
-                        <div className="mt-2 p-2 bg-gray-50 rounded text-[10px] font-mono break-all border border-gray-100">
+                        <div className="mt-3 p-2 bg-gray-50 rounded-lg text-[10px] font-mono break-all border border-gray-100 text-indigo-600">
                             {setupMessage.command}
                         </div>
                     )}
+                    <button
+                        onClick={() => setSetupMessage(null)}
+                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                    >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
             )}
-
-            {/* Footer Actions */}
-            <div className="flex gap-3">
-                <Link href="/monitoring" className="btn-primary flex-1 text-center py-3">View Monitoring Dashboard</Link>
-                <Link href="/" className="btn-secondary py-3 px-6">← Home</Link>
-            </div>
         </div>
     );
 }

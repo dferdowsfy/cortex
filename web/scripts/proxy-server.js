@@ -603,16 +603,27 @@ function startProxy() {
                 path: reqPath,
                 method,
                 headers: fwdHeaders,
-                rejectUnauthorized: true
+                rejectUnauthorized: true,
+                timeout: 30000 // Add timeout
             }, (proxyRes) => {
                 res.writeHead(proxyRes.statusCode, proxyRes.headers);
                 proxyRes.pipe(res);
             });
 
             proxyReq.on('error', (err) => {
+                console.error(`[PROXY_FWD] Upstream error to ${hostname}:`, err.message);
                 if (!res.headersSent) {
                     res.writeHead(502);
                     res.end('Bad Gateway');
+                }
+            });
+
+            proxyReq.on('timeout', () => {
+                console.warn(`[PROXY_FWD] Upstream timeout to ${hostname}`);
+                proxyReq.destroy();
+                if (!res.headersSent) {
+                    res.writeHead(504);
+                    res.end('Gateway Timeout');
                 }
             });
 
@@ -620,8 +631,6 @@ function startProxy() {
                 proxyReq.write(initialBody);
             }
             // If we haven't consumed the req stream yet, or have partial, we might need piping
-            // But if we already buffered, we don't pipe req.
-            // If we are here from "Large Body" check, we might want to pipe req.
             if (!initialBody && !req.readableEnded) {
                 req.pipe(proxyReq);
             } else {

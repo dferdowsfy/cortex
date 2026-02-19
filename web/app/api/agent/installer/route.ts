@@ -26,7 +26,13 @@ export async function GET(req: NextRequest) {
         const stream = createReadStream(distPath);
         const webStream = new ReadableStream({
             start(controller) {
-                stream.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)));
+                stream.on("data", (chunk: Buffer | string) => {
+                    if (Buffer.isBuffer(chunk)) {
+                        controller.enqueue(new Uint8Array(chunk));
+                    } else {
+                        controller.enqueue(new TextEncoder().encode(chunk));
+                    }
+                });
                 stream.on("end", () => controller.close());
                 stream.on("error", (err) => controller.error(err));
             },

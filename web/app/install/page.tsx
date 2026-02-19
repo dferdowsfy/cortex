@@ -35,7 +35,7 @@ export default function InstallPage() {
                     <h1 className="text-2xl font-semibold text-white mb-2">
                         Install Complyze Desktop Agent
                     </h1>
-                    <p className="text-white/50 text-sm max-w-md mx-auto">
+                    <p className="text-white/75 text-sm max-w-md mx-auto">
                         The desktop agent runs locally to discover and monitor AI tools across your environment.
                     </p>
                 </div>
@@ -50,7 +50,7 @@ export default function InstallPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-[15px] font-medium text-white mb-1">Download the installer</h3>
-                                <p className="text-sm text-white/40 mb-4">macOS (Apple Silicon) &middot; ~150 MB</p>
+                                <p className="text-sm text-white/75 mb-4">macOS (Apple Silicon) &middot; ~150 MB</p>
                                 <button
                                     onClick={handleDownload}
                                     disabled={downloading}
@@ -87,8 +87,8 @@ export default function InstallPage() {
                                 <h3 className="text-[15px] font-medium text-white mb-1">
                                     Remove macOS quarantine flag
                                 </h3>
-                                <p className="text-sm text-white/40 mb-3">
-                                    macOS blocks apps downloaded outside the App Store. Open <strong className="text-white/60">Terminal</strong> and run:
+                                <p className="text-sm text-white/75 mb-3">
+                                    macOS blocks apps downloaded outside the App Store. Open <strong className="text-white/90">Terminal</strong> and run:
                                 </p>
                                 <div className="relative group">
                                     <pre className="rounded-lg bg-black/40 border border-white/[0.06] px-4 py-3 text-[13px] font-mono text-emerald-400 overflow-x-auto">
@@ -96,12 +96,12 @@ export default function InstallPage() {
                                     </pre>
                                     <button
                                         onClick={copyCommand}
-                                        className="absolute top-2 right-2 rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/60 hover:text-white hover:bg-white/20 transition-colors opacity-0 group-hover:opacity-100"
+                                        className="absolute top-2 right-2 rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/75 hover:text-white hover:bg-white/20 transition-colors opacity-0 group-hover:opacity-100"
                                     >
                                         {copied ? "Copied!" : "Copy"}
                                     </button>
                                 </div>
-                                <p className="text-xs text-white/25 mt-2">
+                                <p className="text-xs text-white/60 mt-2 font-medium">
                                     This removes the quarantine extended attribute that macOS applies to downloaded files.
                                 </p>
                             </div>
@@ -118,8 +118,8 @@ export default function InstallPage() {
                                 <h3 className="text-[15px] font-medium text-white mb-1">
                                     Open the DMG and install
                                 </h3>
-                                <p className="text-sm text-white/40">
-                                    Double-click the <strong className="text-white/60">.dmg</strong> file, then drag <strong className="text-white/60">Complyze.app</strong> to your Applications folder.
+                                <p className="text-sm text-white/75">
+                                    Double-click the <strong className="text-white/90">.dmg</strong> file, then drag <strong className="text-white/90">Complyze.app</strong> to your Applications folder.
                                     Launch it from Applications — the agent will connect to your Complyze dashboard automatically.
                                 </p>
                             </div>
@@ -129,21 +129,21 @@ export default function InstallPage() {
 
                 {/* Troubleshooting */}
                 <div className="mt-8 rounded-xl bg-white/[0.02] border border-white/[0.06] p-5">
-                    <h4 className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Still seeing &ldquo;damaged&rdquo;?</h4>
-                    <div className="space-y-2 text-sm text-white/35">
+                    <h4 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">Still seeing &ldquo;damaged&rdquo;?</h4>
+                    <div className="space-y-2 text-[13px] text-white/60 font-medium leading-relaxed">
                         <p>If the error persists after Step 2, try clearing the attribute on the mounted app directly:</p>
                         <pre className="rounded-lg bg-black/30 px-3 py-2 text-[12px] font-mono text-emerald-400/80 overflow-x-auto">
                             sudo xattr -cr /Applications/Complyze.app
                         </pre>
                         <p className="text-xs">
-                            Or right-click the app → <strong className="text-white/50">Open</strong> to bypass Gatekeeper for a single launch.
+                            Or right-click the app → <strong className="text-white/75">Open</strong> to bypass Gatekeeper for a single launch.
                         </p>
                     </div>
                 </div>
 
                 {/* Back link */}
                 <div className="mt-8 text-center">
-                    <Link href="/dashboard" className="text-sm text-white/30 hover:text-white/60 transition-colors">
+                    <Link href="/dashboard" className="text-sm text-white/75 hover:text-white transition-colors">
                         ← Back to Dashboard
                     </Link>
                 </div>

@@ -37,18 +37,18 @@ export default function ExecutiveDashboard({
             <header className="mb-12">
                 <div className="flex justify-between items-start">
                     <div>
-                        <h1 className="text-sm font-bold tracking-[0.2em] text-white/70 uppercase mb-1">
+                        <h1 className="text-sm font-bold tracking-[0.2em] text-white/80 uppercase mb-1">
                             Executive Risk Summary
                         </h1>
                         <h2 className="text-4xl font-bold text-white mb-2">
                             {today}
                         </h2>
-                        <span className="text-xs font-medium text-[#3B36DB] bg-[#3B36DB]/15 px-3 py-1.5 rounded">
+                        <span className="text-[10px] font-bold tracking-wider text-white/90 bg-white/5 px-3.5 py-1.5 rounded-full border border-white/[0.12] shadow-[0_0_12px_rgba(255,255,255,0.06)] backdrop-blur-sm uppercase">
                             Confidential Executive Briefing
                         </span>
                     </div>
                     <div className="text-right">
-                        <div className="text-[11px] text-white/50 uppercase tracking-widest mb-1.5 font-bold">Monitoring Status</div>
+                        <div className="text-[11px] text-white/60 uppercase tracking-widest mb-1.5 font-bold">Monitoring Status</div>
                         <div className="flex items-center gap-2.5 justify-end">
                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
                             <span className="text-xs font-bold text-white/80">ACTIVE</span>
@@ -80,15 +80,15 @@ export default function ExecutiveDashboard({
             <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-10 shadow-2xl backdrop-blur-md">
                 <div className="flex justify-between items-end mb-12">
                     <div>
-                        <h3 className="text-sm font-bold tracking-widest text-white/60 uppercase mb-2.5">
+                        <h3 className="text-sm font-bold tracking-widest text-white/75 uppercase mb-2.5">
                             Monthly Risk Summary
                         </h3>
                         <p className="text-2xl font-bold text-white">
                             Risk Reduction Trend (Last 6 Months)
                         </p>
                     </div>
-                    <div className="text-right text-xs text-white/60 font-medium">
-                        Target Risk: <span className="text-white/80 font-bold font-mono">20%</span>
+                    <div className="text-right text-xs text-white/75 font-medium">
+                        Target Risk: <span className="text-white/90 font-bold font-mono">20%</span>
                     </div>
                 </div>
 
@@ -97,15 +97,15 @@ export default function ExecutiveDashboard({
                 </div>
 
                 <div className="mt-10 pt-8 border-t border-white/5">
-                    <p className="text-white/70 leading-relaxed max-w-3xl">
+                    <p className="text-white/80 leading-relaxed max-w-3xl">
                         AI risk has decreased by <span className="text-white font-bold">{Math.abs(delta)}%</span> over the last 6 months, driven by improved policy enforcement and proactive monitoring.
-                        The organization remains on track to reach the <span className="text-[#3B36DB] font-bold">20% target threshold</span> by Q3.
+                        The organization remains on track to reach the <span className="text-white font-bold underline decoration-[#3B36DB]/40">20% target threshold</span> by Q3.
                     </p>
                 </div>
             </section>
 
             {/* ── Footer ── */}
-            <footer className="mt-16 mb-8 flex justify-between items-center text-[11px] text-white/40 uppercase tracking-widest font-bold">
+            <footer className="mt-16 mb-8 flex justify-between items-center text-[11px] text-white/60 uppercase tracking-widest font-bold">
                 <div>Last Updated: {lastUpdated}</div>
                 <div>Complyze AI Risk Engine v2.4.0</div>
             </footer>
@@ -116,13 +116,13 @@ export default function ExecutiveDashboard({
 function MetricCard({ title, value, subtext }: { title: string; value: number | string; subtext: string }) {
     return (
         <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-10 shadow-xl hover:bg-white/[0.06] transition-all group duration-500">
-            <h3 className="text-sm font-bold tracking-widest text-white/60 uppercase mb-8 group-hover:text-white/80 transition-colors">
+            <h3 className="text-sm font-bold tracking-widest text-white/75 uppercase mb-8 group-hover:text-white/90 transition-colors">
                 {title}
             </h3>
             <div className="text-8xl font-black text-white mb-6 tracking-tighter">
                 {value}
             </div>
-            <p className="text-base text-white/50 leading-relaxed font-medium">
+            <p className="text-base text-white/75 leading-relaxed font-medium">
                 {subtext}
             </p>
         </div>
@@ -163,7 +163,7 @@ function ExecutiveRiskChart({ data }: { data: { month: string; score: number }[]
             ctx.stroke();
 
             // Y-axis labels
-            ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
             ctx.font = "bold 11px Inter, sans-serif";
             ctx.textAlign = "right";
             ctx.fillText(`${100 - i * 25}%`, padding.left - 10, y + 4);
@@ -188,8 +188,8 @@ function ExecutiveRiskChart({ data }: { data: { month: string; score: number }[]
 
         // Gradient for the line
         const gradient = ctx.createLinearGradient(0, 0, W, 0);
-        gradient.addColorStop(0, "#3B36DB");
-        gradient.addColorStop(1, "rgba(59, 54, 219, 0.6)");
+        gradient.addColorStop(0, "#fafafaff");
+        gradient.addColorStop(1, "rgba(250, 250, 250, 0.6)");
 
         // Draw line with glow
         ctx.shadowBlur = 15;
@@ -235,7 +235,7 @@ function ExecutiveRiskChart({ data }: { data: { month: string; score: number }[]
         // X-axis labels and points
         points.forEach((p, i) => {
             // Label
-            ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
             ctx.textAlign = "center";
             ctx.font = "bold 11px Inter, sans-serif";
             ctx.fillText(p.label, p.x, H - 10);
