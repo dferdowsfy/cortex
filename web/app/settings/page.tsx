@@ -36,12 +36,14 @@ function Toggle({
     label,
     description,
     warning,
+    disabled,
 }: {
     enabled: boolean;
     onChange: (val: boolean) => void;
     label: string;
     description: string;
     warning?: string;
+    disabled?: boolean;
 }) {
     return (
         <div className="flex items-start justify-between gap-4 py-4 border-b border-gray-100 last:border-0">
@@ -60,9 +62,13 @@ function Toggle({
             <button
                 role="switch"
                 aria-checked={enabled}
-                onClick={() => onChange(!enabled)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${enabled ? "bg-brand-600" : "bg-gray-200"
-                    }`}
+                disabled={disabled}
+                onClick={() => !disabled && onChange(!enabled)}
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${
+                    disabled
+                        ? "cursor-not-allowed opacity-50"
+                        : "cursor-pointer"
+                } ${enabled ? "bg-brand-600" : "bg-gray-200"}`}
             >
                 <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enabled ? "translate-x-5" : "translate-x-0"
@@ -104,6 +110,7 @@ export default function SettingsPage() {
     const { settings, loading, error: settingsError, saveSettings, user } = useUserSettings();
 
     const [saved, setSaved] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState("");
     const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
     const [setupLoading, setSetupLoading] = useState<string | null>(null);
@@ -172,6 +179,8 @@ export default function SettingsPage() {
 
     // ── Save handler: Bridge sync between User Settings & Proxy Agent ──
     async function handleSave(partial: Partial<typeof settings>) {
+        if (isSaving) return;
+        setIsSaving(true);
         setError("");
         try {
             // 1. Save to Firestore (Realtime UI logic)
@@ -214,6 +223,8 @@ export default function SettingsPage() {
             } else {
                 setError(err.message || "Settings saved to cloud, but failed to sync to local agent.");
             }
+        } finally {
+            setIsSaving(false);
         }
     }
 
@@ -302,6 +313,7 @@ export default function SettingsPage() {
                         onChange={(val) => handleSave({ proxyEnabled: val })}
                         label="Enable AI Monitoring"
                         description="Route AI traffic through the Complyze engine for risk analysis."
+                        disabled={isSaving}
                     />
                     <Toggle
                         enabled={settings.blockHighRisk}
@@ -309,18 +321,21 @@ export default function SettingsPage() {
                         label="Block High Risk Prompts"
                         description="Automatically prevent prompts with high risk scores from being sent to AI providers."
                         warning="This may intercept and block valid user requests if threshold is too low."
+                        disabled={isSaving}
                     />
                     <Toggle
                         enabled={settings.inspectAttachments}
                         onChange={(val) => handleSave({ inspectAttachments: val })}
                         label="Scan Attachments"
                         description="Deep scan file uploads and documents for sensitive data leakage."
+                        disabled={isSaving}
                     />
                     <Toggle
                         enabled={settings.userAttributionEnabled}
                         onChange={(val) => handleSave({ userAttributionEnabled: val })}
                         label="User Attribution"
                         description="Link intercepted events to specific user identities for audit trails."
+                        disabled={isSaving}
                     />
 
                     {/* Risk Posture Selector */}
@@ -493,6 +508,7 @@ export default function SettingsPage() {
                         onChange={(val) => handleSave({ redactSensitive: val })}
                         label="Auto-Redaction"
                         description="Sanitize PII and credentials before they leave the browser."
+                        disabled={isSaving}
                     />
                     <Toggle
                         enabled={settings.fullAuditMode}
@@ -500,12 +516,14 @@ export default function SettingsPage() {
                         label="Full Audit Mode"
                         description="Store complete prompt and response bodies for regulatory compliance."
                         warning="Significantly increases stored data volume and sensitivity."
+                        disabled={isSaving}
                     />
                     <Toggle
                         enabled={settings.desktopBypass}
                         onChange={(val) => handleSave({ desktopBypass: val })}
                         label="Desktop App Bypass"
                         description="Allow native desktop apps with pinned certificates to skip deep inspection."
+                        disabled={isSaving}
                     />
 
                     <div className="py-6 border-t border-gray-100 flex items-center justify-between">

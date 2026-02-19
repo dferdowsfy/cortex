@@ -18,12 +18,16 @@ class ProxyManager {
     private child: ChildProcess | null = null;
     private watchdogTimer: NodeJS.Timeout | null = null;
     private lastWatchdogAlertAt = 0;
+    private activeWorkspaceId: string = "default";
 
     constructor() {
         this.startWatchdog();
     }
 
-    async startProxy(): Promise<{ ok: boolean; message: string }> {
+    async startProxy(workspaceId?: string): Promise<{ ok: boolean; message: string }> {
+        const resolvedWorkspace = workspaceId || this.activeWorkspaceId || "default";
+        this.activeWorkspaceId = resolvedWorkspace;
+
         if (await this.isProxyRunning()) {
             return { ok: true, message: "Proxy server already running." };
         }
@@ -37,6 +41,11 @@ class ProxyManager {
         const child = spawn(process.execPath, [proxyScript, "--port", String(PROXY_PORT)], {
             cwd: process.cwd(),
             stdio: ["ignore", "pipe", "pipe"],
+            env: {
+                ...process.env,
+                COMPLYZE_WORKSPACE: resolvedWorkspace,
+                FIREBASE_UID: resolvedWorkspace,
+            },
         });
         this.child = child;
 
@@ -152,8 +161,8 @@ export function getProxyManager(): ProxyManager {
     return globalState.__complyzeProxyManager;
 }
 
-export async function startProxy() {
-    return getProxyManager().startProxy();
+export async function startProxy(workspaceId?: string) {
+    return getProxyManager().startProxy(workspaceId);
 }
 
 export async function stopProxy() {

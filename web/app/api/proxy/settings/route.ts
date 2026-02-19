@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         if ("proxy_enabled" in body) {
             try {
                 if (body.proxy_enabled) {
-                    const proxyStart = await startProxy();
+                    const proxyStart = await startProxy(workspaceId);
                     if (!proxyStart.ok) {
                         return NextResponse.json({
                             error: proxyStart.message,
