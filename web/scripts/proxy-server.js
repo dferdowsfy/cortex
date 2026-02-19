@@ -644,35 +644,56 @@ function startProxy() {
 
             // For small requests, buffer and inspect
             const chunks = [];
-            req.on('data', chunk => chunks.push(chunk));
-            req.on('end', async () => {
-                const bodyBuffer = Buffer.concat(chunks);
-                const bodyStr = bodyBuffer.toString(); // Naive utf8, but fine for JSON/Text prompts
+            let totalBytes = 0;
 
-                // DLP Inspection
-                let dlpResult = null;
-                if (method === 'POST' && bodyBuffer.length > 0 && bodyBuffer.length < MAX_INSPECTION_BYTES) {
-                    try {
-                        dlpResult = await withInspectionTimeout(processOutgoingPrompt(bodyStr, { appName: 'Web', destinationType: 'public_ai' }));
-                    } catch (e) {
-                        if (!FAIL_OPEN) {
-                            res.writeHead(503);
-                            res.end('Inspection Failed');
-                            return;
-                        }
-                    }
-                }
-
-                logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, bodyStr.substring(0, 2000), dlpResult);
-
-                if (MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
-                    res.writeHead(403);
-                    res.end('Blocked by Policy');
+            req.on('data', chunk => {
+                totalBytes += chunk.length;
+                if (totalBytes > MAX_BODY_BYTES) {
+                    // Safety break
+                    req.destroy(new Error('Payload too large'));
                     return;
                 }
+                chunks.push(chunk);
+            });
 
-                // Forward after inspection
-                pipeToUpstream(bodyBuffer);
+            req.on('end', async () => {
+                try {
+                    const bodyBuffer = Buffer.concat(chunks);
+                    const bodyStr = bodyBuffer.toString('utf8'); 
+
+                    // DLP Inspection
+                    let dlpResult = null;
+                    if (method === 'POST' && bodyBuffer.length > 0) {
+                        try {
+                            dlpResult = await withInspectionTimeout(processOutgoingPrompt(bodyStr, { appName: 'Web', destinationType: 'public_ai' }));
+                        } catch (e) {
+                            console.error(`[PROXY] Inspection failed (${e.code || 'ERROR'}): ${e.message}`);
+                            if (!FAIL_OPEN) {
+                                res.writeHead(503);
+                                res.end('Inspection Failed - Blocking traffic for security');
+                                return;
+                            }
+                            // Continue fail-open...
+                        }
+                    }
+
+                    logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, bodyStr.substring(0, 2000), dlpResult);
+
+                    if (MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
+                        res.writeHead(403);
+                        res.end('Blocked by Complyze Policy');
+                        return;
+                    }
+
+                    // Forward after inspection
+                    pipeToUpstream(bodyBuffer);
+                } catch (err) {
+                    console.error('[PROXY] Request processing error:', err.message);
+                    if (!res.headersSent) {
+                        res.writeHead(500);
+                        res.end('Internal Proxy Error');
+                    }
+                }
             });
 
         } catch (err) {
