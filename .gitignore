@@ -10,3 +10,5 @@ coverage/
 web/certs/
 *.bak
 desktop/certs/
+desktop/logs/
+proxy.log
