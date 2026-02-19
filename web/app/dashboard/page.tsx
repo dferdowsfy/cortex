@@ -47,28 +47,15 @@ export default function Dashboard() {
         return () => clearInterval(iv);
     }, [fetchData]);
 
-    // Format risk trend for the executive view (e.g., last 6 months or 30 days)
-    // Here we use the 30d trend but mock it to look like monthly for the "Executive" vibe if needed,
-    // though the requirement says "Risk Reduction Trend (Last 6 Months)".
-    // For now we'll use actual data points and label them by month if we have enough, 
-    // or just pass what we have.
-    const mockTrend = [
-        { month: "MAY", score: 85 },
-        { month: "JUN", score: 70 },
-        { month: "JUL", score: 62 },
-        { month: "AUG", score: 50 },
-        { month: "SEP", score: 42 },
-        { month: "OCT", score: 35 },
-    ];
-
-    // If real data exists, we prioritize it for the signal
+    // Map real proxy risk trend data — no mock fallback so the dashboard
+    // reflects actual traffic rather than hardcoded demo numbers.
     const activeTrend = proxySummary?.risk_trend && proxySummary.risk_trend.length > 0
         ? proxySummary.risk_trend.map(p => {
             const date = new Date(p.date + 'T12:00:00'); // Mid-day to avoid TZ shifts
             const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
             return { month, score: p.score };
         })
-        : mockTrend;
+        : [];   // Empty array — no data yet, chart will show "No data" state
 
     return (
         <ExecutiveDashboard

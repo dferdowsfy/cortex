@@ -100,7 +100,12 @@ export async function POST(req: NextRequest) {
         }
 
         // ── 4.1 Check and mark blocked status ──
-        if (settings.block_high_risk && classification.risk_category === "critical") {
+        // Use risk_threshold (numeric 0-100) from settings so the Risk Posture
+        // selector in the UI drives blocking — not just a hardcoded "critical" check.
+        const blockThreshold = settings.risk_threshold ?? 60;
+        const shouldBlock = settings.block_high_risk &&
+            classification.sensitivity_score >= blockThreshold;
+        if (shouldBlock) {
             event.blocked = true;
         }
 
@@ -123,10 +128,10 @@ export async function POST(req: NextRequest) {
         }
 
         // ── 6. Policy enforcement (forward mode) ──
-        if (settings.block_high_risk && classification.risk_category === "critical") {
+        if (shouldBlock) {
             return NextResponse.json({
                 blocked: true,
-                reason: "Prompt blocked by policy: critical sensitivity level detected",
+                reason: `Prompt blocked by policy: sensitivity score ${classification.sensitivity_score} meets or exceeds threshold ${blockThreshold}`,
                 classification: {
                     sensitivity_score: classification.sensitivity_score,
                     categories: classification.categories_detected,

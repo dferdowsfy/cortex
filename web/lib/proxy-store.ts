@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: ProxySettings = {
     proxy_enabled: true,
     full_audit_mode: false,
     block_high_risk: false,
+    risk_threshold: 60,
     redact_sensitive: false,
     alert_on_violations: false,
     desktop_bypass: false,

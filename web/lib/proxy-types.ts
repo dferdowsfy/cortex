@@ -11,6 +11,7 @@ export interface ProxySettings {
     proxy_enabled: boolean;
     full_audit_mode: boolean;         // store full prompts
     block_high_risk: boolean;         // block high-risk prompts
+    risk_threshold: number;           // sensitivity score (0-100) above which blocking triggers
     redact_sensitive: boolean;        // redact PII before forwarding
     alert_on_violations: boolean;     // alert admin on policy violations
     desktop_bypass: boolean;          // allow cert-pinned desktop apps (metadata only)
@@ -24,6 +25,7 @@ export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
     proxy_enabled: false,
     full_audit_mode: false,
     block_high_risk: false,
+    risk_threshold: 60,               // default: block at score >= 60 (balanced posture)
     redact_sensitive: false,
     alert_on_violations: true,
     desktop_bypass: false,            // default: deep inspect everything

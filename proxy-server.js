@@ -31,10 +31,6 @@ try {
 const PROXY_PORT = parseInt(
     process.argv.find((_, i, a) => a[i - 1] === '--port') || '8080'
 );
-const _COMPLYZE_API_BASE =
-    process.env.COMPLYZE_API || 'http://localhost:3737/api/proxy/intercept';
-// Append workspaceId so intercept endpoint stores events in the right user bucket
-const COMPLYZE_API = _COMPLYZE_API_BASE + "?workspaceId=" + encodeURIComponent(WORKSPACE_ID);
 // WORKSPACE_ID and USER_ID for per-user data isolation.
 // The desktop app injects FIREBASE_UID on launch.
 // COMPLYZE_WORKSPACE can be set manually for shared/team workspaces.
@@ -42,6 +38,11 @@ const COMPLYZE_API = _COMPLYZE_API_BASE + "?workspaceId=" + encodeURIComponent(W
 const FIREBASE_UID = process.env.FIREBASE_UID || '';
 const WORKSPACE_ID = process.env.COMPLYZE_WORKSPACE || FIREBASE_UID || 'default';
 const PROXY_USER_ID = process.env.COMPLYZE_USER_ID || FIREBASE_UID || null;
+
+const _COMPLYZE_API_BASE =
+    process.env.COMPLYZE_API || 'http://localhost:3737/api/proxy/intercept';
+// Append workspaceId so intercept endpoint stores events in the right user bucket
+const COMPLYZE_API = _COMPLYZE_API_BASE + "?workspaceId=" + encodeURIComponent(WORKSPACE_ID);
 const CERTS_DIR = path.join(__dirname, '..', 'certs');
 
 // ─── Domain Configuration ────────────────────────────────────────────────────

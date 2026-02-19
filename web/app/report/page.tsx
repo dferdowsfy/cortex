@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 /* ═══════════════════════════════════════════════════════════════
    Types
@@ -448,7 +449,9 @@ function ReportDisplay({ report }: { report: Record<string, unknown> }) {
    ═══════════════════════════════════════════════════════════════ */
 
 export default function ReportPage() {
+  const { user } = useAuth();
   const [tools, setTools] = useState<StoredTool[]>([]);
+  const [proxyData, setProxyData] = useState<Record<string, unknown> | null>(null);
   const [step, setStep] = useState<ReportStep>("form");
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
@@ -461,14 +464,33 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!initialLoadDone.current) {
-      setTools(loadTools());
+      // Load tools from API (user-scoped) with localStorage fallback
+      const wsId = user?.uid || "default";
+      fetch(`/api/tools/stats?workspaceId=${wsId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.tools?.length) {
+            setTools(data.tools);
+          } else {
+            // Fallback to localStorage for legacy data
+            setTools(loadTools());
+          }
+        })
+        .catch(() => setTools(loadTools()));
+
+      // Load proxy activity data (user-scoped)
+      fetch(`/api/proxy/report-data?workspaceId=${wsId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) setProxyData(data); })
+        .catch(() => {});
+
       /* Default report period */
       const now = new Date();
       const quarter = Math.ceil((now.getMonth() + 1) / 3);
       setReportPeriod(`Q${quarter} ${now.getFullYear()}`);
       initialLoadDone.current = true;
     }
-  }, []);
+  }, [user?.uid]);
 
   async function generateReport() {
     if (!companyName.trim()) return;
@@ -476,14 +498,25 @@ export default function ReportPage() {
     setError("");
 
     try {
-      /* Load full assessments for all tools */
-      const assessments = tools
-        .map((t) => loadAssessment(t.id))
-        .filter(Boolean);
+      const wsId = user?.uid || "default";
+
+      /* Load full assessments for all tools — API first, then localStorage */
+      let assessments: (Record<string, unknown> | null)[] = [];
+      try {
+        const toolsRes = await fetch(`/api/tools/stats?workspaceId=${wsId}`);
+        if (toolsRes.ok) {
+          const toolsData = await toolsRes.json();
+          assessments = (toolsData.tools || []).map((t: StoredTool) => loadAssessment(t.id)).filter(Boolean);
+        }
+      } catch { /* fallback to in-memory tools */ }
 
       if (assessments.length === 0) {
+        assessments = tools.map((t) => loadAssessment(t.id)).filter(Boolean);
+      }
+
+      if (assessments.length === 0 && !proxyData) {
         throw new Error(
-          "No assessment data found. Please scan at least one tool first."
+          "No assessment data found. Please scan at least one tool or enable the proxy first."
         );
       }
 
@@ -497,8 +530,10 @@ export default function ReportPage() {
             employee_count: parseInt(employeeCount, 10) || 100,
             report_period: reportPeriod,
             report_type: reportType,
+            workspace_id: wsId,
           },
           assessments,
+          proxy_data: proxyData,
         }),
       });
 

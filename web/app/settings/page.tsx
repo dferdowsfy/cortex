@@ -182,6 +182,7 @@ export default function SettingsPage() {
             if ("proxyEnabled" in partial) proxyMap.proxy_enabled = partial.proxyEnabled;
             if ("fullAuditMode" in partial) proxyMap.full_audit_mode = partial.fullAuditMode;
             if ("blockHighRisk" in partial) proxyMap.block_high_risk = partial.blockHighRisk;
+            if ("riskThreshold" in partial) proxyMap.risk_threshold = partial.riskThreshold;
             if ("redactSensitive" in partial) proxyMap.redact_sensitive = partial.redactSensitive;
             if ("alertOnViolations" in partial) proxyMap.alert_on_violations = partial.alertOnViolations;
             if ("desktopBypass" in partial) proxyMap.desktop_bypass = partial.desktopBypass;
