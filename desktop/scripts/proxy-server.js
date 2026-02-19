@@ -155,24 +155,6 @@ process.on('message', (msg) => {
     }
 });
 
-// PAC script content generator
-function generatePAC() {
-    const domains = [...AI_DOMAINS];
-    const domainList = domains.map(d => `"${d}"`).join(', ');
-    return `
-function FindProxyForURL(url, host) {
-    var aiDomains = [${domainList}];
-    for (var i = 0; i < aiDomains.length; i++) {
-        var d = aiDomains[i];
-        if (host === d || host.endsWith('.' + d)) {
-            return "PROXY 127.0.0.1:${PROXY_PORT}";
-        }
-    }
-    return "DIRECT";
-}
-`.trim();
-}
-
 const { updatePolicy } = require('../dlp/policyEngine');
 
 async function syncSettings() {
@@ -728,10 +710,10 @@ function startProxy() {
             return;
         }
 
-        // Serve PAC file for automatic proxy configuration
+        // Serve PAC file (legacy support)
         if (req.url === '/proxy.pac') {
-            res.writeHead(200, { 'Content-Type': 'application/x-ns-proxy-autoconfig' });
-            res.end(generatePAC());
+            res.writeHead(404);
+            res.end('PAC mode is deprecated in favor of Global Proxy.');
             return;
         }
 
@@ -824,7 +806,6 @@ function startProxy() {
         console.log('║           🛡️  Complyze AI Traffic Interceptor                 ║');
         console.log('╠════════════════════════════════════════════════════════════════╣');
         console.log(`║  Proxy:     127.0.0.1:${PROXY_PORT}                                    ║`);
-        console.log(`║  PAC URL:   http://127.0.0.1:${PROXY_PORT}/proxy.pac                   ║`);
         console.log(`║  Dashboard: http://localhost:3737/dashboard                    ║`);
         console.log(`║  Mode:      ${(blockHighRiskEnabled ? 'ENFORCE' : 'OBSERVE').padEnd(46)}║`);
         console.log('║  Deep Inspection (all AI domains):                             ║');
