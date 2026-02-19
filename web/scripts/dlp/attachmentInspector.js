@@ -17,10 +17,25 @@ const { scanText } = require('./deterministicScanner');
  * Inspects a file for sensitive patterns
  */
 async function inspectAttachment(filePath) {
+    if (!fs.existsSync(filePath)) {
+        throw new Error(`File not found: ${filePath}`);
+    }
+
     const fileName = path.basename(filePath);
     const fileExtension = path.extname(filePath).toLowerCase();
     const stats = fs.statSync(filePath);
     const fileSize = stats.size;
+
+    // Hard limit for deep inspection to prevent OOM
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    if (fileSize > MAX_FILE_SIZE) {
+        return {
+            fileName,
+            fileSize,
+            status: 'SKIPPED',
+            reason: 'File too large'
+        };
+    }
 
     // Generate SHA-256 hash
     const fileBuffer = fs.readFileSync(filePath);
@@ -44,10 +59,18 @@ async function inspectAttachment(filePath) {
         }
     } catch (err) {
         console.error(`[DLP] Failed to extract text from ${fileName}:`, err.message);
+        // Return baseline metadata even if extraction fails
+        return {
+            fileHash,
+            fileType: fileExtension,
+            fileSize,
+            status: 'ERROR',
+            error: err.message
+        };
     }
 
-    const { detectedCategories, sensitivityPoints } = scanText(extractedText);
-    const isBulk = extractedText.length > 5000;
+    const { detectedCategories, sensitivityPoints } = scanText(extractedText || "");
+    const isBulk = (extractedText || "").length > 5000;
 
     // Immediately clear extracted text from memory
     extractedText = null;
@@ -58,7 +81,8 @@ async function inspectAttachment(filePath) {
         fileSize,
         detectedCategories,
         sensitivityPoints,
-        isBulk
+        isBulk,
+        status: 'SUCCESS'
     };
 }
 
