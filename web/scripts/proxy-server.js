@@ -33,7 +33,7 @@ const PROXY_PORT = parseInt(
 );
 const COMPLYZE_API =
     process.env.COMPLYZE_API || 'http://localhost:3737/api/proxy/intercept';
-const WORKSPACE_ID = process.env.COMPLYZE_WORKSPACE || 'local-dev';
+const WORKSPACE_ID = process.env.COMPLYZE_WORKSPACE || process.env.FIREBASE_UID || 'default';
 const CERTS_DIR = path.join(__dirname, '..', 'certs');
 
 // ─── Domain Configuration ────────────────────────────────────────────────────
