@@ -13,9 +13,24 @@ import {
     estimateTokens,
     redactSensitiveContent,
 } from "../proxy-classifier";
-import type { ActivityEvent } from "../proxy-types";
+import type { ActivityEvent, EnforcementMode } from "../proxy-types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const VALID_ENFORCEMENT_MODES: EnforcementMode[] = ["monitor", "warn", "redact", "block"];
+
+function resolveEnforcementMode(settings: {
+    enforcement_mode?: EnforcementMode;
+    block_high_risk?: boolean;
+    redact_sensitive?: boolean;
+}): EnforcementMode {
+    if (settings.enforcement_mode && VALID_ENFORCEMENT_MODES.includes(settings.enforcement_mode)) {
+        return settings.enforcement_mode;
+    }
+    if (settings.block_high_risk) return "block";
+    if (settings.redact_sensitive) return "redact";
+    return "monitor";
+}
 
 function buildActivityEvent(
     targetUrl: string,
@@ -23,12 +38,14 @@ function buildActivityEvent(
     settings: {
         full_audit_mode?: boolean;
         block_high_risk?: boolean;
+        enforcement_mode?: EnforcementMode;
         inspect_attachments?: boolean;
     } = {}
 ): ActivityEvent {
     const domain = extractToolDomain(targetUrl);
     const tool = identifyTool(domain);
     const classification = classifyContent(promptBody);
+    const activeMode = resolveEnforcementMode(settings);
 
     const event: ActivityEvent = {
         id: `evt_test_${Date.now()}`,
@@ -51,8 +68,14 @@ function buildActivityEvent(
         event.full_prompt = promptBody;
     }
 
-    if (settings.block_high_risk && classification.risk_category === "critical") {
+    // Only block when enforcement mode is explicitly 'block' and risk is critical
+    if (activeMode === "block" && classification.risk_category === "critical") {
         event.blocked = true;
+    }
+
+    // Record enforcement action
+    if (classification.policy_violation_flag || classification.risk_category === "critical") {
+        event.enforcement_action = activeMode;
     }
 
     return event;
@@ -80,7 +103,16 @@ describe("Intercept: ChatGPT browser (chatgpt.com / api.openai.com)", () => {
         expect(event.sensitivity_score).toBeGreaterThan(0);
     });
 
-    it("blocks critical-risk prompt when block_high_risk=true", () => {
+    it("blocks critical-risk prompt when enforcement_mode=block", () => {
+        const prompt =
+            "Patient SSN 123-45-6789, diagnosis ICD-10 J45.20, prescription metformin";
+        const event = buildActivityEvent(OPENAI_URL, prompt, { enforcement_mode: "block" });
+        expect(event.risk_category).toBe("critical");
+        expect(event.blocked).toBe(true);
+        expect(event.policy_violation_flag).toBe(true);
+    });
+
+    it("blocks critical-risk prompt when block_high_risk=true (legacy)", () => {
         const prompt =
             "Patient SSN 123-45-6789, diagnosis ICD-10 J45.20, prescription metformin";
         const event = buildActivityEvent(OPENAI_URL, prompt, { block_high_risk: true });
@@ -89,7 +121,13 @@ describe("Intercept: ChatGPT browser (chatgpt.com / api.openai.com)", () => {
         expect(event.policy_violation_flag).toBe(true);
     });
 
-    it("does NOT block prompt when block_high_risk=false (observe mode)", () => {
+    it("does NOT block prompt when enforcement_mode=monitor", () => {
+        const prompt = "My SSN is 999-88-7777, please help with my application";
+        const event = buildActivityEvent(OPENAI_URL, prompt, { enforcement_mode: "monitor" });
+        expect(event.blocked).toBeUndefined();
+    });
+
+    it("does NOT block prompt when block_high_risk=false (legacy observe mode)", () => {
         const prompt = "My SSN is 999-88-7777, please help with my application";
         const event = buildActivityEvent(OPENAI_URL, prompt, { block_high_risk: false });
         expect(event.blocked).toBeUndefined();
@@ -235,29 +273,29 @@ describe("Redaction: sensitive content stripped before forwarding", () => {
 // ─── Risk Category Boundary Tests ────────────────────────────────────────────
 
 describe("Risk category boundaries and blocking logic", () => {
-    it("low-risk prompt is never blocked", () => {
+    it("low-risk prompt is never blocked even in block mode", () => {
         const prompt = "Tell me a joke";
         const event = buildActivityEvent(
             "https://api.openai.com/v1/chat/completions",
             prompt,
-            { block_high_risk: true }
+            { enforcement_mode: "block" }
         );
         expect(event.blocked).toBeUndefined();
         expect(event.risk_category).toBe("low");
     });
 
-    it("only critical-risk prompts get blocked (not high/moderate)", () => {
+    it("only critical-risk prompts get blocked in block mode (not high/moderate)", () => {
         // financial data alone should be high or moderate, not always critical
         const prompt = "Our quarterly revenue was $2M";
         const classification = classifyContent(prompt);
 
         // Should be flagged but not necessarily critical
         expect(classification.policy_violation_flag).toBe(true);
-        // blocking only happens at 'critical'
+        // blocking only happens at 'critical' in block mode
         const event = buildActivityEvent(
             "https://api.openai.com/v1/chat/completions",
             prompt,
-            { block_high_risk: true }
+            { enforcement_mode: "block" }
         );
         if (classification.risk_category !== "critical") {
             expect(event.blocked).toBeUndefined();

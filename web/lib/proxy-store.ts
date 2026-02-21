@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS: ProxySettings = {
     full_audit_mode: false,
     block_high_risk: false,
     redact_sensitive: false,
+    enforcement_mode: "monitor",
     alert_on_violations: false,
     desktop_bypass: false,
     retention_days: 90,

@@ -110,10 +110,12 @@ let proxyEnabled = process.env.PROXY_ENABLED !== 'false'; // Current toggle stat
 let desktopBypassEnabled = false;
 let blockHighRiskEnabled = false;
 let redactSensitiveEnabled = false;
+let enforcementMode = process.env.ENFORCEMENT_MODE || 'monitor'; // monitor | warn | redact | block
 let userAttributionEnabled = process.env.USER_ATTRIBUTION_ENABLED === 'true';
 let authenticatedUserId = process.env.FIREBASE_UID || null;
 let inspectAttachmentsEnabled = false;
 const TRACE_MODE = process.env.TRACE_MODE === 'true';
+const VALID_ENFORCEMENT_MODES = ['monitor', 'warn', 'redact', 'block'];
 
 // ─── Fail-Open Configuration ─────────────────────────────────────────────────
 // When FAIL_OPEN=true (default), any inspection error causes the proxy to
@@ -148,13 +150,28 @@ process.on('message', (msg) => {
         inspectAttachmentsEnabled = !!settings.inspectAttachments;
         authenticatedUserId = settings.uid || null;
 
+        // Read canonical enforcement mode (single source of truth)
+        if (settings.enforcementMode && VALID_ENFORCEMENT_MODES.includes(settings.enforcementMode)) {
+            enforcementMode = settings.enforcementMode;
+        } else {
+            // Legacy fallback: derive from boolean flags
+            if (blockHighRiskEnabled) {
+                enforcementMode = 'block';
+            } else if (redactSensitiveEnabled) {
+                enforcementMode = 'redact';
+            } else {
+                enforcementMode = 'monitor';
+            }
+        }
+
         // Sync with local DLP policy engine
         updatePolicy({
-            blockingEnabled: proxyEnabled && blockHighRiskEnabled,
+            enforcementMode,
+            blockingEnabled: enforcementMode === 'block',
             reuThreshold: settings.riskThreshold || 60
         });
 
-        console.log(`[proxy-msg] Settings Updated: proxy=${proxyEnabled ? 'ACTIVE' : 'PASSIVE'}, attribution=${userAttributionEnabled ? 'ON' : 'OFF'}`);
+        console.log(`[proxy-msg] Settings Updated: proxy=${proxyEnabled ? 'ACTIVE' : 'PASSIVE'}, enforcement=${enforcementMode}, attribution=${userAttributionEnabled ? 'ON' : 'OFF'}`);
         process.send({ type: 'settings-ack' });
     }
 });
@@ -190,13 +207,28 @@ async function syncSettings() {
             userAttributionEnabled = !!data.user_attribution_enabled;
             inspectAttachmentsEnabled = !!data.inspect_attachments;
 
+            // Read canonical enforcement mode (single source of truth)
+            if (data.enforcement_mode && VALID_ENFORCEMENT_MODES.includes(data.enforcement_mode)) {
+                enforcementMode = data.enforcement_mode;
+            } else {
+                // Legacy fallback: derive from boolean flags
+                if (blockHighRiskEnabled) {
+                    enforcementMode = 'block';
+                } else if (redactSensitiveEnabled) {
+                    enforcementMode = 'redact';
+                } else {
+                    enforcementMode = 'monitor';
+                }
+            }
+
             // Sync with local DLP policy engine
             updatePolicy({
-                blockingEnabled: blockHighRiskEnabled,
+                enforcementMode,
+                blockingEnabled: enforcementMode === 'block',
                 reuThreshold: data.risk_threshold || 60
             });
 
-            console.log(`[sync] Settings: bypass=${desktopBypassEnabled}, block=${blockHighRiskEnabled}, redact=${redactSensitiveEnabled}, attribution=${userAttributionEnabled}`);
+            console.log(`[sync] Settings: bypass=${desktopBypassEnabled}, enforcement=${enforcementMode}, attribution=${userAttributionEnabled}`);
         }
     } catch { }
 }
@@ -1081,31 +1113,96 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
             logToComplyze(targetUrl, method, headers, body || '', dlpResult);
 
             // ─── Policy Enforcement Layer ────────────────────────────────────
-            if (blockHighRiskEnabled && dlpResult && dlpResult.action === 'BLOCK') {
-                console.log(`   🚫 Blocked [${request_id}]: ${targetUrl} (REU: ${dlpResult.finalReu})`);
-                try {
-                    tlsSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 48\r\n\r\nAccess blocked by local Complyze Security Policy.');
-                    tlsSocket.end();
-                } catch { }
-                return;
+            // Read active enforcement mode from settings (single source of truth)
+            const activeMode = enforcementMode;
+            const isSensitive = dlpResult && (dlpResult.action !== 'ALLOW');
+
+            // Structured enforcement log
+            const enforcementLog = {
+                event: 'enforcement_decision',
+                timestamp: new Date().toISOString(),
+                request_id,
+                hostname,
+                path: reqPath,
+                detection_result: dlpResult ? dlpResult.action : 'NO_INSPECTION',
+                detection_reason: dlpResult ? dlpResult.reason : null,
+                reu_score: dlpResult ? dlpResult.finalReu : null,
+                enforcement_mode: activeMode,
+                enforcement_action: null,
+            };
+
+            if (isSensitive) {
+                switch (activeMode) {
+                    case 'block': {
+                        enforcementLog.enforcement_action = 'block';
+                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
+                        console.log(`   🚫 Blocked [${request_id}]: ${targetUrl} (REU: ${dlpResult.finalReu})`);
+                        const blockMsg = JSON.stringify({
+                            blocked: true,
+                            reason: 'Request blocked by policy: sensitive content detected',
+                            enforcement_mode: 'block',
+                        });
+                        try {
+                            tlsSocket.write(`HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(blockMsg)}\r\n\r\n${blockMsg}`);
+                            tlsSocket.end();
+                        } catch { }
+                        return;
+                    }
+
+                    case 'warn': {
+                        enforcementLog.enforcement_action = 'warn';
+                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
+                        const warnMsg = JSON.stringify({
+                            warning: true,
+                            reason: 'Sensitive content detected — review before proceeding',
+                            enforcement_mode: 'warn',
+                            override_allowed: true,
+                        });
+                        try {
+                            tlsSocket.write(`HTTP/1.1 299 Warning\r\nContent-Type: application/json\r\nX-Complyze-Warning: true\r\nX-Complyze-Enforcement: warn\r\nContent-Length: ${Buffer.byteLength(warnMsg)}\r\n\r\n${warnMsg}`);
+                            tlsSocket.end();
+                        } catch { }
+                        return;
+                    }
+
+                    case 'redact': {
+                        enforcementLog.enforcement_action = 'redact';
+                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
+                        // Fall through to forwarding — redaction applied below
+                        break;
+                    }
+
+                    case 'monitor':
+                    default: {
+                        enforcementLog.enforcement_action = 'monitor';
+                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
+                        // Fall through to forwarding — no action taken
+                        break;
+                    }
+                }
+            } else {
+                enforcementLog.enforcement_action = 'allow';
+                console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
             }
 
             // Forward to the real AI server
             const fwdHeaders = { ...headers, host: hostname };
             delete fwdHeaders['proxy-connection'];
 
-            // ─── Local Auto-Redaction ───
+            // ─── Local Auto-Redaction (only when enforcement mode is 'redact') ───
             let finalBody = body;
-            if (redactSensitiveEnabled && dlpResult && dlpResult.action !== 'BLOCK') {
-                const { redactText } = require('./dlp/deterministicScanner');
-                const redacted = redactText(body);
-                if (redacted !== body) {
-                    finalBody = redacted;
-                    console.log(`   ✂️  REDACTED [${request_id}]: Modified body for ${hostname}`);
-                    if (fwdHeaders['content-length']) {
-                        fwdHeaders['content-length'] = Buffer.byteLength(finalBody).toString();
+            if (activeMode === 'redact' && isSensitive) {
+                try {
+                    const { redactText } = require('./dlp/deterministicScanner');
+                    const redacted = redactText(body);
+                    if (redacted !== body) {
+                        finalBody = redacted;
+                        console.log(`   ✂️  REDACTED [${request_id}]: Modified body for ${hostname}`);
+                        if (fwdHeaders['content-length']) {
+                            fwdHeaders['content-length'] = Buffer.byteLength(finalBody).toString();
+                        }
                     }
-                }
+                } catch { /* redaction failure falls through to original */ }
             }
 
             const proxyReq = https.request(
