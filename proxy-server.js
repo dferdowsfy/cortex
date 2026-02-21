@@ -101,8 +101,7 @@ const PASSTHROUGH_DOMAINS = [
 ];
 
 const MONITOR_MODE = 'observe'; // tracking-only, never enforce
-let desktopBypassEnabled = false;
-let inspectAttachmentsEnabled = false;
+let desktopBypassEnabled = false; // updated by syncSettings() for CONNECT-level routing
 const TRACE_MODE = process.env.TRACE_MODE === 'true';
 
 // ─── Memory & Size Guards ─────────────────────────────────────────────────────
@@ -116,20 +115,38 @@ const MAX_INSPECTION_BYTES = MAX_INSPECTION_SIZE_MB * 1024 * 1024;
 const INSPECTION_TIMEOUT_MS = parseInt(process.env.INSPECTION_TIMEOUT_MS || '3000');
 const MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '512');
 
+// syncSettings — keeps the CONNECT-level transport routing variable current.
+// Only desktopBypassEnabled is needed here; all other settings are loaded
+// fresh per request inside the observability pipeline via loadSettings().
 async function syncSettings() {
     try {
         const res = await fetch(`http://localhost:3737/api/proxy/settings?workspaceId=${WORKSPACE_ID}`);
         if (res.ok) {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
-            inspectAttachmentsEnabled = !!data.inspect_attachments;
         } else {
             console.warn(`[SETTINGS_SYNC] ⚠️ Fetch failed (${res.status}).`);
         }
     } catch (err) {
         console.warn(`[SETTINGS_SYNC] ⚠️ Connection error: ${err.message}.`);
-        inspectAttachmentsEnabled = false;
     }
+}
+
+// loadSettings — fetches settings fresh on every request call.
+// Returns a plain object; never mutates module-level state.
+// Falls back to safe defaults on any network or parse error.
+async function loadSettings() {
+    try {
+        const res = await fetch(`http://localhost:3737/api/proxy/settings?workspaceId=${WORKSPACE_ID}`);
+        if (res.ok) {
+            const data = await res.json();
+            return {
+                desktopBypass: !!data.desktop_bypass,
+                inspectAttachments: !!data.inspect_attachments,
+            };
+        }
+    } catch { /* network unavailable — return safe defaults */ }
+    return { desktopBypass: false, inspectAttachments: false };
 }
 
 async function registerHeartbeat() {
@@ -305,12 +322,12 @@ function getCertForDomain(domain, ca) {
 
 let eventCount = 0;
 
-async function logToComplyze(targetUrl, method, headers, body, dlpResult = null) {
+// logToComplyze — ships the structured observability event to the Complyze API.
+// eventData shape: { userId, timestamp, model_endpoint, riskScore, flags, requestSize, isSensitive }
+async function logToComplyze(targetUrl, method, headers, body, eventData = null) {
     eventCount++;
     try {
-        // Use PROXY_USER_ID (Firebase UID from desktop login) if set,
-        // otherwise fall back to the device hostname for basic attribution.
-        const userId = PROXY_USER_ID || require('os').hostname();
+        const userId = (eventData && eventData.userId) || PROXY_USER_ID || require('os').hostname();
         const payload = {
             target_url: targetUrl,
             method,
@@ -318,15 +335,17 @@ async function logToComplyze(targetUrl, method, headers, body, dlpResult = null)
             body: typeof body === 'string' ? body : JSON.stringify(body),
             user_id: userId,
             log_only: true,
-            dlp: dlpResult
+            // Structured observability fields
+            risk_score: eventData ? eventData.riskScore : null,
+            flags: eventData ? eventData.flags : [],
+            is_sensitive: eventData ? eventData.isSensitive : false,
+            request_size: eventData ? eventData.requestSize : null,
+            model_endpoint: eventData ? eventData.model_endpoint : targetUrl,
         };
         await fetch(COMPLYZE_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ...payload,
-                workspace_id: WORKSPACE_ID
-            }),
+            body: JSON.stringify({ ...payload, workspace_id: WORKSPACE_ID }),
         });
     } catch (e) {
         console.error(`❌ Log error: ${e.message}`);
@@ -341,34 +360,7 @@ function sanitizeHeaders(headers) {
     return safe;
 }
 
-// ─── Inspection Error Logger ─────────────────────────────────────────────────
-
-/**
- * Emits a structured, machine-parseable error record for any inspection
- * failure. All fields are always present so downstream log aggregators can
- * index without schema mismatches.
- *
- * @param {object} opts
- * @param {string}        opts.request_id   - UUID for the in-flight request
- * @param {string}        opts.hostname     - Target hostname
- * @param {number|null}   opts.file_size    - Body/file size in bytes (null when N/A)
- * @param {Error}         opts.error        - The caught error
- * @param {number}        opts.inspection_ms - Elapsed time before the throw
- */
-function logInspectionError({ request_id, hostname, file_size, error, inspection_ms }) {
-    const entry = {
-        event: 'inspection_error',
-        timestamp: new Date().toISOString(),
-        request_id,
-        hostname,
-        file_size: file_size != null ? file_size : null,
-        error_message: error.message,
-        error_stack: error.stack,
-        inspection_ms,
-        action: 'bypass', // always forward on inspection error
-    };
-    console.error(`[INSPECTION_ERROR] ${JSON.stringify(entry)}`);
-}
+// ─── Observability Pipeline Helpers ──────────────────────────────────────────
 
 /**
  * Races an inspection promise against INSPECTION_TIMEOUT_MS.
@@ -388,21 +380,62 @@ function withInspectionTimeout(promise) {
 }
 
 /**
- * Logs a structured record when a body exceeds the inspection size limit.
- *   reason 'attachment_size_limit' → Content-Length > MAX_INSPECTION_BYTES (→ skip inspection, always forward)
+ * proxyLog — emits a single ordered [PROXY] lifecycle line.
+ * Every field is always present so log aggregators can index without schema gaps.
  */
-function logOversizedBody({ request_id, hostname, content_length, reason }) {
-    const entry = {
-        event: reason,
-        timestamp: new Date().toISOString(),
-        request_id,
-        hostname,
-        content_length,
-        limit_bytes: MAX_INSPECTION_BYTES,
-        limit_mb: MAX_INSPECTION_SIZE_MB.toFixed(1),
-        action: 'skip_inspection', // always forward regardless of size
-    };
-    console.warn(`[SIZE_LIMIT] ${JSON.stringify(entry)}`);
+function proxyLog(event, requestId, data = {}) {
+    console.log(`[PROXY] ${event} ${JSON.stringify({ request_id: requestId, timestamp: new Date().toISOString(), ...data })}`);
+}
+
+/**
+ * extractFlags — derives a deduped string[] of flag labels from the raw DLP result.
+ * Maps the reason string and any detectedCategories array into a flat list.
+ */
+function extractFlags(raw) {
+    if (!raw) return [];
+    const seen = new Set();
+    const flags = [];
+    for (const val of [raw.reason, ...(raw.detectedCategories || [])]) {
+        if (val && !seen.has(val)) { seen.add(val); flags.push(String(val)); }
+    }
+    return flags;
+}
+
+/**
+ * computeRiskScore — maps a raw DLP result to a deterministic integer 0–100.
+ * Uses finalReu (capped at 200 → score 100) when present.
+ * Falls back to action-string buckets for scanners that don't emit REU.
+ */
+const ACTION_SCORES = { ALLOW: 0, WARN: 25, REDACT: 50, BLOCK: 100 };
+function computeRiskScore(raw) {
+    if (!raw) return 0;
+    if (typeof raw.finalReu === 'number' && raw.finalReu >= 0) {
+        return Math.min(100, Math.round((raw.finalReu / 200) * 100));
+    }
+    return ACTION_SCORES[raw.action] ?? 0;
+}
+
+/**
+ * runDetection — runs DLP inspection and normalises the output to the pipeline schema:
+ *   { isSensitive: boolean, flags: string[], riskScore: number }
+ * Never throws; returns a zero-risk neutral result on any failure or timeout.
+ */
+async function runDetection(bodyStr) {
+    const neutral = { isSensitive: false, flags: [], riskScore: 0 };
+    try {
+        const { processOutgoingPrompt } = require('./dlp/textInterceptor');
+        const raw = await withInspectionTimeout(
+            processOutgoingPrompt(bodyStr, { appName: 'Web', destinationType: 'public_ai' })
+        );
+        if (!raw) return neutral;
+        return {
+            isSensitive: raw.action !== 'ALLOW',
+            flags: extractFlags(raw),
+            riskScore: computeRiskScore(raw),
+        };
+    } catch {
+        return neutral; // inspection errors never affect forwarding
+    }
 }
 
 /**
@@ -555,56 +588,60 @@ function startProxy() {
         res.end('Complyze AI Proxy is active.');
     });
 
-    // Internal MITM Server for handling decrypted traffic
+    // ─── Internal MITM Server ────────────────────────────────────────────────
+    //
+    // Every intercepted request follows this exact linear lifecycle:
+    //
+    //   1. [PROXY] request received   — log identity fields
+    //   2. [PROXY] settings loaded    — fresh per-request settings fetch
+    //   3. [PROXY] detection result   — DLP scan output (informational only)
+    //   4. [PROXY] risk score computed — deterministic 0-100 score
+    //   5. [PROXY] request forwarded  — original body sent to upstream
+    //   6. [PROXY] response received  — upstream status code logged
+    //
+    // No branching between steps 1-6 affects whether the request is forwarded.
+    // Detection may be skipped (large attachments, non-POST) but the pipeline
+    // always completes and always forwards.
+
     const mitmServer = http.createServer(async (req, res) => {
-        const hostname = req.headers.host; // Host header from the intercepted request
+        const requestId = crypto.randomUUID();
+        const hostname = req.headers.host;
         const reqPath = req.url;
         const method = req.method;
-        const { processOutgoingPrompt } = require('./dlp/textInterceptor');
+        const userId = PROXY_USER_ID || require('os').hostname();
 
-        // Helper to forward stream without inspection
-        const pipeToUpstream = (initialBody = null) => {
+        // Helper: send body (or stream req directly) to upstream, invoke
+        // onResponse(statusCode) the moment upstream response headers arrive.
+        const forwardToUpstream = (bodyBuffer, onResponse) => {
             const fwdHeaders = { ...req.headers };
             delete fwdHeaders['proxy-connection'];
             delete fwdHeaders['connection'];
             delete fwdHeaders['keep-alive'];
             delete fwdHeaders['transfer-encoding'];
 
-            const proxyReq = https.request({
-                hostname,
-                port: 443,
-                path: reqPath,
-                method,
-                headers: fwdHeaders,
-                rejectUnauthorized: true,
-                timeout: 30000 // Add timeout
-            }, (proxyRes) => {
-                res.writeHead(proxyRes.statusCode, proxyRes.headers);
-                proxyRes.pipe(res);
-            });
+            const proxyReq = https.request(
+                { hostname, port: 443, path: reqPath, method, headers: fwdHeaders, rejectUnauthorized: true, timeout: 30000 },
+                (proxyRes) => {
+                    onResponse(proxyRes.statusCode);
+                    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+                    proxyRes.pipe(res);
+                }
+            );
 
             proxyReq.on('error', (err) => {
                 console.error(`[PROXY_FWD] Upstream error to ${hostname}:`, err.message);
-                if (!res.headersSent) {
-                    res.writeHead(502);
-                    res.end('Bad Gateway');
-                }
+                if (!res.headersSent) { res.writeHead(502); res.end('Bad Gateway'); }
             });
-
             proxyReq.on('timeout', () => {
                 console.warn(`[PROXY_FWD] Upstream timeout to ${hostname}`);
                 proxyReq.destroy();
-                if (!res.headersSent) {
-                    res.writeHead(504);
-                    res.end('Gateway Timeout');
-                }
+                if (!res.headersSent) { res.writeHead(504); res.end('Gateway Timeout'); }
             });
 
-            if (initialBody) {
-                proxyReq.write(initialBody);
-            }
-            // If we haven't consumed the req stream yet, or have partial, we might need piping
-            if (!initialBody && !req.readableEnded) {
+            if (bodyBuffer) {
+                proxyReq.write(bodyBuffer);
+                proxyReq.end();
+            } else if (!req.readableEnded) {
                 req.pipe(proxyReq);
             } else {
                 proxyReq.end();
@@ -612,59 +649,76 @@ function startProxy() {
         };
 
         try {
-            // Check for large uploads (attachments)
+            // ── STEP 1: request received ──────────────────────────────────────
+            proxyLog('request received', requestId, { method, hostname, path: reqPath });
+
+            // ── STEP 2: settings loaded (fresh per request) ───────────────────
+            const settings = await loadSettings();
+            proxyLog('settings loaded', requestId, {
+                desktop_bypass: settings.desktopBypass,
+                inspect_attachments: settings.inspectAttachments,
+            });
+
+            // ── Buffer body ───────────────────────────────────────────────────
+            // Large multipart uploads skip deep scanning but still go through
+            // every remaining pipeline step and are always forwarded.
             const contentLength = parseInt(req.headers['content-length'] || '0');
             const isMultipart = (req.headers['content-type'] || '').includes('multipart/form-data');
+            const oversized = contentLength > MAX_INSPECTION_BYTES && isMultipart;
 
-            if (contentLength > MAX_INSPECTION_BYTES && isMultipart) {
-                const request_id = crypto.randomUUID();
-                console.log(`   📎 LARGE ATTACHMENT [${request_id}]: ${(contentLength / 1024 / 1024).toFixed(1)}MB > ${MAX_INSPECTION_SIZE_MB}MB — skipping inspection`);
-                logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, `[attachment: ${contentLength} bytes — skipped]`, null);
-                pipeToUpstream();
-                return;
+            let bodyBuffer = null;
+            if (!oversized) {
+                const chunks = [];
+                await new Promise(resolve => { req.on('data', c => chunks.push(c)); req.on('end', resolve); });
+                bodyBuffer = Buffer.concat(chunks);
             }
+            const requestSize = bodyBuffer ? bodyBuffer.length : contentLength;
+            const bodyStr = bodyBuffer ? bodyBuffer.toString() : '';
 
-            // For small requests, buffer and inspect
-            const chunks = [];
-            req.on('data', chunk => chunks.push(chunk));
-            req.on('end', async () => {
-                const bodyBuffer = Buffer.concat(chunks);
-                const bodyStr = bodyBuffer.toString(); // Naive utf8, but fine for JSON/Text prompts
+            // ── STEP 3: detection result ──────────────────────────────────────
+            // runDetection() always returns { isSensitive, flags, riskScore }.
+            // It never throws and never gates forwarding.
+            const canScan = method === 'POST' && bodyBuffer && bodyBuffer.length > 0;
+            const detection = canScan
+                ? await runDetection(bodyStr)
+                : { isSensitive: false, flags: [], riskScore: 0 };
 
-                // ── 1. DETECTION: Run DLP inspection (informational only) ──
-                let dlpResult = null;
-                if (method === 'POST' && bodyBuffer.length > 0 && bodyBuffer.length < MAX_INSPECTION_BYTES) {
-                    try {
-                        dlpResult = await withInspectionTimeout(processOutgoingPrompt(bodyStr, { appName: 'Web', destinationType: 'public_ai' }));
-                    } catch (e) {
-                        // Inspection errors never block the request — always forward
-                    }
-                }
+            proxyLog('detection result', requestId, {
+                isSensitive: detection.isSensitive,
+                flags: detection.flags,
+                skipped: !canScan,
+            });
 
-                // ── 2. TRACKING: Structured detection log (informational, no action taken) ──
-                const trackingLog = {
-                    event: 'request_tracked',
+            // ── STEP 4: risk score computed ───────────────────────────────────
+            proxyLog('risk score computed', requestId, { riskScore: detection.riskScore });
+
+            // Log structured event to Complyze API (fire-and-forget, never awaited
+            // to keep the forward path synchronous).
+            logToComplyze(
+                `https://${hostname}${reqPath}`, method, req.headers,
+                bodyStr.substring(0, 2000),
+                {
+                    userId,
                     timestamp: new Date().toISOString(),
-                    hostname,
-                    path: reqPath,
-                    detection_result: dlpResult ? dlpResult.action : 'NO_INSPECTION',
-                    detection_reason: dlpResult ? dlpResult.reason : null,
-                    reu_score: dlpResult ? dlpResult.finalReu : null,
-                    action: 'allow', // proxy always forwards
-                };
-                console.log(`[TRACKING] ${JSON.stringify(trackingLog)}`);
+                    model_endpoint: `https://${hostname}${reqPath}`,
+                    riskScore: detection.riskScore,
+                    flags: detection.flags,
+                    requestSize,
+                    isSensitive: detection.isSensitive,
+                }
+            );
 
-                // ── 3. LOG: Send event to Complyze API (always) ──
-                logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, bodyStr.substring(0, 2000), dlpResult);
+            // ── STEP 5: request forwarded ─────────────────────────────────────
+            proxyLog('request forwarded', requestId, { hostname, path: reqPath, requestSize });
 
-                // ── 4. FORWARD: Always send original request to upstream ──
-                pipeToUpstream(bodyBuffer);
+            forwardToUpstream(bodyBuffer, (statusCode) => {
+                // ── STEP 6: response received ─────────────────────────────────
+                proxyLog('response received', requestId, { statusCode, hostname });
             });
 
         } catch (err) {
             console.error('[MITM] Error:', err);
-            res.writeHead(500);
-            res.end();
+            if (!res.headersSent) { res.writeHead(500); res.end(); }
         }
     });
 
