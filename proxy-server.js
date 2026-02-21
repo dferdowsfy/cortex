@@ -101,7 +101,6 @@ const PASSTHROUGH_DOMAINS = [
 ];
 
 const MONITOR_MODE = 'observe'; // tracking-only, never enforce
-let desktopBypassEnabled = false; // updated by syncSettings() for CONNECT-level routing
 const TRACE_MODE = process.env.TRACE_MODE === 'true';
 
 // ─── Memory & Size Guards ─────────────────────────────────────────────────────
@@ -114,23 +113,6 @@ const MAX_INSPECTION_SIZE_MB = parseFloat(process.env.MAX_INSPECTION_SIZE_MB || 
 const MAX_INSPECTION_BYTES = MAX_INSPECTION_SIZE_MB * 1024 * 1024;
 const INSPECTION_TIMEOUT_MS = parseInt(process.env.INSPECTION_TIMEOUT_MS || '3000');
 const MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '512');
-
-// syncSettings — keeps the CONNECT-level transport routing variable current.
-// Only desktopBypassEnabled is needed here; all other settings are loaded
-// fresh per request inside the observability pipeline via loadSettings().
-async function syncSettings() {
-    try {
-        const res = await fetch(`http://localhost:3737/api/proxy/settings?workspaceId=${WORKSPACE_ID}`);
-        if (res.ok) {
-            const data = await res.json();
-            desktopBypassEnabled = !!data.desktop_bypass;
-        } else {
-            console.warn(`[SETTINGS_SYNC] ⚠️ Fetch failed (${res.status}).`);
-        }
-    } catch (err) {
-        console.warn(`[SETTINGS_SYNC] ⚠️ Connection error: ${err.message}.`);
-    }
-}
 
 // loadSettings — fetches settings fresh on every request call.
 // Returns a plain object; never mutates module-level state.
@@ -240,19 +222,20 @@ function isDesktopAppDomain(hostname) {
     return DESKTOP_APP_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
 }
 
-function shouldDeepInspect(hostname) {
+// desktopBypass is passed in from fresh settings — no global is read.
+function shouldDeepInspect(hostname, desktopBypass) {
     if (!hostname) return false;
     // Safety: never inspect loopback or local dashboard
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local')) return false;
     if (isPassthroughDomain(hostname)) return false;
     if (!isAIDomain(hostname)) return false;
-    if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return false;
+    if (desktopBypass && isDesktopAppDomain(hostname)) return false;
     return true;
 }
 
-function shouldLogMetadata(hostname) {
+function shouldLogMetadata(hostname, desktopBypass) {
     if (!hostname) return false;
-    if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return true;
+    if (desktopBypass && isDesktopAppDomain(hostname)) return true;
     return false;
 }
 
@@ -652,9 +635,9 @@ function startProxy() {
             // ── STEP 1: request received ──────────────────────────────────────
             proxyLog('request received', requestId, { method, hostname, path: reqPath });
 
-            // ── STEP 2: settings loaded (fresh per request) ───────────────────
+            // ── STEP 2: load settings fresh — no in-memory cache consulted ──
             const settings = await loadSettings();
-            proxyLog('settings loaded', requestId, {
+            proxyLog('active settings', requestId, {
                 desktop_bypass: settings.desktopBypass,
                 inspect_attachments: settings.inspectAttachments,
             });
@@ -722,7 +705,9 @@ function startProxy() {
         }
     });
 
-    server.on('connect', (req, clientSocket, head) => {
+    // CONNECT is made async so loadSettings() can be awaited per connection.
+    // This eliminates the last global mutable variable (desktopBypassEnabled).
+    server.on('connect', async (req, clientSocket, head) => {
         let hostname;
         let port;
         try {
@@ -741,7 +726,11 @@ function startProxy() {
             hostname = target.hostname;
             port = target.port;
 
-            if (shouldDeepInspect(hostname)) {
+            // Load settings fresh — no cached global is consulted.
+            // On failure loadSettings() returns safe defaults (desktopBypass: false).
+            const connectSettings = await loadSettings();
+
+            if (shouldDeepInspect(hostname, connectSettings.desktopBypass)) {
                 console.log(JSON.stringify({ hostname, mode: "inspection", timestamp: new Date().toISOString() }));
                 clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
                 const domainCert = getCertForDomain(hostname, ca);
@@ -767,9 +756,7 @@ function startProxy() {
 
     startMemoryWatchdog();
 
-    syncSettings();
     registerHeartbeat();
-    setInterval(syncSettings, 10000);
     setInterval(registerHeartbeat, 15000);
     server.listen(PROXY_PORT, '127.0.0.1', () => {
         telemetry.logStartup(PROXY_PORT, MONITOR_MODE);
