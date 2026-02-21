@@ -101,9 +101,12 @@ const PASSTHROUGH_DOMAINS = [
 ];
 
 let MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
+let enforcementMode = process.env.ENFORCEMENT_MODE || 'monitor'; // monitor | warn | redact | block
 let desktopBypassEnabled = false;
-let inspectAttachmentsEnabled = false; // NEW: Attachment Toggle
+let inspectAttachmentsEnabled = false;
+let redactSensitiveEnabled = false;
 const TRACE_MODE = process.env.TRACE_MODE === 'true';
+const VALID_ENFORCEMENT_MODES = ['monitor', 'warn', 'redact', 'block'];
 
 // ─── Fail-Open Configuration ─────────────────────────────────────────────────
 // When FAIL_OPEN=true (default), any inspection error causes the proxy to
@@ -133,12 +136,38 @@ async function syncSettings() {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
             inspectAttachmentsEnabled = !!data.inspect_attachments;
-            MONITOR_MODE = data.block_high_risk ? 'enforce' : 'observe';
+            redactSensitiveEnabled = !!data.redact_sensitive;
+
+            // Read canonical enforcement_mode from settings (single source of truth)
+            if (data.enforcement_mode && VALID_ENFORCEMENT_MODES.includes(data.enforcement_mode)) {
+                enforcementMode = data.enforcement_mode;
+            } else {
+                // Legacy fallback: derive from boolean flags
+                if (data.block_high_risk) {
+                    enforcementMode = 'block';
+                } else if (data.redact_sensitive) {
+                    enforcementMode = 'redact';
+                } else {
+                    enforcementMode = 'monitor';
+                }
+            }
+
+            // Keep legacy MONITOR_MODE in sync for telemetry/logging
+            MONITOR_MODE = enforcementMode === 'block' ? 'enforce' : 'observe';
+
+            // Sync enforcement mode to DLP policy engine
+            try {
+                const { updatePolicy } = require('./dlp/textInterceptor').policyEngine || {};
+                if (!updatePolicy) {
+                    const pe = require('./desktop/dlp/policyEngine');
+                    pe.updatePolicy({ enforcementMode });
+                }
+            } catch { /* DLP module may not be available */ }
         } else {
-            console.warn(`[SETTINGS_SYNC] ⚠️ Fetch failed (${res.status}). Attachment inspection defaults to ${inspectAttachmentsEnabled}.`);
+            console.warn(`[SETTINGS_SYNC] ⚠️ Fetch failed (${res.status}). Enforcement mode defaults to ${enforcementMode}.`);
         }
     } catch (err) {
-        console.warn(`[SETTINGS_SYNC] ⚠️ Connection error: ${err.message}. Attachment inspection disabled.`);
+        console.warn(`[SETTINGS_SYNC] ⚠️ Connection error: ${err.message}. Enforcement defaults to ${enforcementMode}.`);
         inspectAttachmentsEnabled = false; // Fail-safe: OFF
     }
 }
@@ -669,7 +698,7 @@ function startProxy() {
                 const bodyBuffer = Buffer.concat(chunks);
                 const bodyStr = bodyBuffer.toString(); // Naive utf8, but fine for JSON/Text prompts
 
-                // DLP Inspection
+                // ── 1. DETECTION: Run DLP inspection ──
                 let dlpResult = null;
                 if (method === 'POST' && bodyBuffer.length > 0 && bodyBuffer.length < MAX_INSPECTION_BYTES) {
                     try {
@@ -683,16 +712,96 @@ function startProxy() {
                     }
                 }
 
+                // ── 2. POLICY EVALUATION: Read active enforcement mode ──
+                // enforcementMode is synced from settings every 10s (single source of truth)
+                const activeMode = enforcementMode;
+                const isSensitive = dlpResult && (dlpResult.action !== 'ALLOW');
+
+                // ── 3. Structured enforcement log ──
+                const enforcementLog = {
+                    event: 'enforcement_decision',
+                    timestamp: new Date().toISOString(),
+                    hostname,
+                    path: reqPath,
+                    detection_result: dlpResult ? dlpResult.action : 'NO_INSPECTION',
+                    detection_reason: dlpResult ? dlpResult.reason : null,
+                    reu_score: dlpResult ? dlpResult.finalReu : null,
+                    enforcement_mode: activeMode,
+                    enforcement_action: null, // set below
+                };
+
+                // Log event to intercept API (always, regardless of mode)
                 logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, bodyStr.substring(0, 2000), dlpResult);
 
-                if (MONITOR_MODE === 'enforce' && dlpResult?.action === 'BLOCK') {
-                    res.writeHead(403);
-                    res.end('Blocked by Policy');
+                // ── 4. ENFORCEMENT: Apply action based on mode ──
+
+                if (!isSensitive) {
+                    // No sensitive content detected — always forward
+                    enforcementLog.enforcement_action = 'allow';
+                    console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
+                    pipeToUpstream(bodyBuffer);
                     return;
                 }
 
-                // Forward after inspection
-                pipeToUpstream(bodyBuffer);
+                // Sensitive content detected — apply mode-specific action
+                switch (activeMode) {
+                    case 'block': {
+                        enforcementLog.enforcement_action = 'block';
+                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
+                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({
+                            blocked: true,
+                            reason: 'Request blocked by policy: sensitive content detected',
+                            enforcement_mode: 'block',
+                            detection: dlpResult ? dlpResult.reason : undefined,
+                        }));
+                        return;
+                    }
+
+                    case 'warn': {
+                        enforcementLog.enforcement_action = 'warn';
+                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
+                        res.writeHead(299, {
+                            'Content-Type': 'application/json',
+                            'X-Complyze-Warning': 'true',
+                            'X-Complyze-Enforcement': 'warn',
+                        });
+                        res.end(JSON.stringify({
+                            warning: true,
+                            reason: 'Sensitive content detected — review before proceeding',
+                            enforcement_mode: 'warn',
+                            detection: dlpResult ? dlpResult.reason : undefined,
+                            override_allowed: true,
+                        }));
+                        return;
+                    }
+
+                    case 'redact': {
+                        enforcementLog.enforcement_action = 'redact';
+                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
+                        // Redact sensitive patterns from the body and forward
+                        let redactedBody = bodyStr;
+                        try {
+                            // Apply regex-based redaction (same patterns as proxy-classifier)
+                            redactedBody = redactedBody.replace(/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, '[REDACTED_EMAIL]');
+                            redactedBody = redactedBody.replace(/\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b/g, '[REDACTED_SSN]');
+                            redactedBody = redactedBody.replace(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '[REDACTED_CC]');
+                            redactedBody = redactedBody.replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[REDACTED_PHONE]');
+                            redactedBody = redactedBody.replace(/\b(?:10|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d{1,3}\.\d{1,3}\b/g, '[REDACTED_IP]');
+                        } catch { /* redaction failure falls through to original */ }
+                        pipeToUpstream(Buffer.from(redactedBody, 'utf8'));
+                        return;
+                    }
+
+                    case 'monitor':
+                    default: {
+                        // Monitor mode: allow request, log event only
+                        enforcementLog.enforcement_action = 'monitor';
+                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
+                        pipeToUpstream(bodyBuffer);
+                        return;
+                    }
+                }
             });
 
         } catch (err) {

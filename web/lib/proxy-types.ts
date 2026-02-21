@@ -5,18 +5,23 @@
  * and risk engine integration layer.
  */
 
+/* ── Enforcement Modes ── */
+
+export type EnforcementMode = "monitor" | "warn" | "redact" | "block";
+
 /* ── Proxy Settings ── */
 
 export interface ProxySettings {
     proxy_enabled: boolean;
     full_audit_mode: boolean;         // store full prompts
-    block_high_risk: boolean;         // block high-risk prompts
-    redact_sensitive: boolean;        // redact PII before forwarding
+    block_high_risk: boolean;         // legacy — use enforcement_mode instead
+    redact_sensitive: boolean;        // legacy — use enforcement_mode instead
+    enforcement_mode: EnforcementMode; // canonical enforcement action
     alert_on_violations: boolean;     // alert admin on policy violations
     desktop_bypass: boolean;          // allow cert-pinned desktop apps (metadata only)
     retention_days: number;           // configurable retention period
     proxy_endpoint: string;           // generated endpoint URL
-    inspect_attachments: boolean;     // NEW: Deep scan file uploads
+    inspect_attachments: boolean;     // deep scan file uploads
     updated_at: string;
 }
 
@@ -25,6 +30,7 @@ export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
     full_audit_mode: false,
     block_high_risk: false,
     redact_sensitive: false,
+    enforcement_mode: "monitor",
     alert_on_violations: true,
     desktop_bypass: false,            // default: deep inspect everything
     retention_days: 90,
@@ -69,6 +75,7 @@ export interface ActivityEvent {
     risk_category: string;
     timestamp: string;
     blocked?: boolean; // tracking enforcement action
+    enforcement_action?: EnforcementMode; // which enforcement action was applied
     // Only present when full_audit_mode is enabled
     full_prompt?: string;
     attachment_inspection_enabled?: boolean;
