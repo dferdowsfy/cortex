@@ -100,32 +100,19 @@ const PASSTHROUGH_DOMAINS = [
     'firebase.com',
 ];
 
-let MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
-let enforcementMode = process.env.ENFORCEMENT_MODE || 'monitor'; // monitor | warn | redact | block
+const MONITOR_MODE = 'observe'; // tracking-only, never enforce
 let desktopBypassEnabled = false;
 let inspectAttachmentsEnabled = false;
-let redactSensitiveEnabled = false;
 const TRACE_MODE = process.env.TRACE_MODE === 'true';
-const VALID_ENFORCEMENT_MODES = ['monitor', 'warn', 'redact', 'block'];
-
-// ─── Fail-Open Configuration ─────────────────────────────────────────────────
-// When FAIL_OPEN=true (default), any inspection error causes the proxy to
-// bypass the scan and forward the original request unchanged. This guarantees
-// traffic is never blocked due to internal errors.
-// Set FAIL_OPEN=false to block traffic on inspection failure instead.
-const FAIL_OPEN = process.env.FAIL_OPEN !== 'false'; // default: true
 
 // ─── Memory & Size Guards ─────────────────────────────────────────────────────
 // MAX_INSPECTION_SIZE_MB : attachments larger than this skip deep scanning.
-//   Metadata is still logged and the request is forwarded unchanged.
-// MAX_BODY_SIZE_MB       : requests whose Content-Length exceeds this are
-//   rejected with 413 before any body is buffered (OOM prevention).
+//   Metadata is still logged and the request is always forwarded unchanged.
 // INSPECTION_TIMEOUT_MS  : hard wall-clock limit for one inspection call.
+//   Timeout never blocks forwarding — the request is always sent upstream.
 // MAX_MEMORY_MB          : heap threshold that triggers a warning log.
 const MAX_INSPECTION_SIZE_MB = parseFloat(process.env.MAX_INSPECTION_SIZE_MB || '15');
 const MAX_INSPECTION_BYTES = MAX_INSPECTION_SIZE_MB * 1024 * 1024;
-const MAX_BODY_SIZE_MB = parseFloat(process.env.MAX_BODY_SIZE_MB || '50');
-const MAX_BODY_BYTES = MAX_BODY_SIZE_MB * 1024 * 1024;
 const INSPECTION_TIMEOUT_MS = parseInt(process.env.INSPECTION_TIMEOUT_MS || '3000');
 const MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '512');
 
@@ -136,39 +123,12 @@ async function syncSettings() {
             const data = await res.json();
             desktopBypassEnabled = !!data.desktop_bypass;
             inspectAttachmentsEnabled = !!data.inspect_attachments;
-            redactSensitiveEnabled = !!data.redact_sensitive;
-
-            // Read canonical enforcement_mode from settings (single source of truth)
-            if (data.enforcement_mode && VALID_ENFORCEMENT_MODES.includes(data.enforcement_mode)) {
-                enforcementMode = data.enforcement_mode;
-            } else {
-                // Legacy fallback: derive from boolean flags
-                if (data.block_high_risk) {
-                    enforcementMode = 'block';
-                } else if (data.redact_sensitive) {
-                    enforcementMode = 'redact';
-                } else {
-                    enforcementMode = 'monitor';
-                }
-            }
-
-            // Keep legacy MONITOR_MODE in sync for telemetry/logging
-            MONITOR_MODE = enforcementMode === 'block' ? 'enforce' : 'observe';
-
-            // Sync enforcement mode to DLP policy engine
-            try {
-                const { updatePolicy } = require('./dlp/textInterceptor').policyEngine || {};
-                if (!updatePolicy) {
-                    const pe = require('./desktop/dlp/policyEngine');
-                    pe.updatePolicy({ enforcementMode });
-                }
-            } catch { /* DLP module may not be available */ }
         } else {
-            console.warn(`[SETTINGS_SYNC] ⚠️ Fetch failed (${res.status}). Enforcement mode defaults to ${enforcementMode}.`);
+            console.warn(`[SETTINGS_SYNC] ⚠️ Fetch failed (${res.status}).`);
         }
     } catch (err) {
-        console.warn(`[SETTINGS_SYNC] ⚠️ Connection error: ${err.message}. Enforcement defaults to ${enforcementMode}.`);
-        inspectAttachmentsEnabled = false; // Fail-safe: OFF
+        console.warn(`[SETTINGS_SYNC] ⚠️ Connection error: ${err.message}.`);
+        inspectAttachmentsEnabled = false;
     }
 }
 
@@ -405,8 +365,7 @@ function logInspectionError({ request_id, hostname, file_size, error, inspection
         error_message: error.message,
         error_stack: error.stack,
         inspection_ms,
-        fail_open: FAIL_OPEN,
-        action: FAIL_OPEN ? 'bypass' : 'block',
+        action: 'bypass', // always forward on inspection error
     };
     console.error(`[INSPECTION_ERROR] ${JSON.stringify(entry)}`);
 }
@@ -429,21 +388,19 @@ function withInspectionTimeout(promise) {
 }
 
 /**
- * Logs a structured record when a body exceeds a size limit.
- *   reason 'body_too_large'        → Content-Length > MAX_BODY_BYTES   (→ 413)
- *   reason 'attachment_size_limit' → Content-Length > MAX_INSPECTION_BYTES (→ skip)
+ * Logs a structured record when a body exceeds the inspection size limit.
+ *   reason 'attachment_size_limit' → Content-Length > MAX_INSPECTION_BYTES (→ skip inspection, always forward)
  */
 function logOversizedBody({ request_id, hostname, content_length, reason }) {
-    const limitBytes = reason === 'body_too_large' ? MAX_BODY_BYTES : MAX_INSPECTION_BYTES;
     const entry = {
         event: reason,
         timestamp: new Date().toISOString(),
         request_id,
         hostname,
         content_length,
-        limit_bytes: limitBytes,
-        limit_mb: (limitBytes / (1024 * 1024)).toFixed(1),
-        action: reason === 'body_too_large' ? 'reject_413' : 'skip_inspection',
+        limit_bytes: MAX_INSPECTION_BYTES,
+        limit_mb: MAX_INSPECTION_SIZE_MB.toFixed(1),
+        action: 'skip_inspection', // always forward regardless of size
     };
     console.warn(`[SIZE_LIMIT] ${JSON.stringify(entry)}`);
 }
@@ -467,7 +424,7 @@ function startMemoryWatchdog() {
 
 // ─── HTTP Request Parser ───
 //
-// Three body-handling modes, chosen at header-parse time:
+// Two body-handling modes, chosen at header-parse time:
 //
 //   BODY      — content-length ≤ MAX_INSPECTION_BYTES (or non-multipart):
 //               full body buffered, onRequest(method,path,hdrs,body) called once.
@@ -475,15 +432,12 @@ function startMemoryWatchdog() {
 //   STREAMING — multipart body with content-length > MAX_INSPECTION_BYTES:
 //               onLargeBody(method,path,hdrs,contentLength) called immediately;
 //               must return a {write(buf), end()} sink. Body bytes piped to sink.
-//
-//   DRAINING  — content-length > MAX_BODY_BYTES:
-//               onOversizedBody fires once (caller sends 413); body discarded.
+//               Inspection is skipped; request is always forwarded unchanged.
 
 class HTTPRequestParser {
-    constructor(onRequest, onLargeBody = null, onOversizedBody = null) {
+    constructor(onRequest, onLargeBody = null) {
         this.onRequest = onRequest;
         this.onLargeBody = onLargeBody;
-        this.onOversizedBody = onOversizedBody || (() => { });
         this.buffer = Buffer.alloc(0);
         this.state = 'HEADERS';
         this.headers = {};
@@ -493,7 +447,6 @@ class HTTPRequestParser {
         this.contentLength = 0;
         this.streamSink = null;
         this.bytesStreamed = 0;
-        this.drainRemaining = 0;
     }
     feed(chunk) {
         this.buffer = Buffer.concat([this.buffer, chunk]);
@@ -517,15 +470,9 @@ class HTTPRequestParser {
             this.contentLength = parseInt(this.headers['content-length'] || '0');
             this.buffer = this.buffer.slice(idx + 4);
 
-            // ── Size guards (evaluated once, at header-parse time) ───────────
-
-            if (this.contentLength > MAX_BODY_BYTES) {
-                this.state = 'DRAINING';
-                this.drainRemaining = this.contentLength;
-                this.onOversizedBody(this.method, this.path, this.headers, this.contentLength);
-                this._advanceDrain();
-                return;
-            }
+            // ── Size guard (evaluated once, at header-parse time) ────────────
+            // Bodies larger than MAX_INSPECTION_BYTES skip deep scanning but are
+            // always forwarded; inspection is never a gate on forwarding.
 
             const ct = (this.headers['content-type'] || '').toLowerCase();
             const isMultipart = ct.includes('multipart/form-data');
@@ -562,7 +509,6 @@ class HTTPRequestParser {
             }
         }
         if (this.state === 'STREAMING') { this._advanceStream(); }
-        if (this.state === 'DRAINING') { this._advanceDrain(); }
     }
     _advanceStream() {
         if (!this.buffer.length) return;
@@ -582,18 +528,6 @@ class HTTPRequestParser {
             this.buffer = Buffer.alloc(0);
         }
     }
-    _advanceDrain() {
-        if (!this.buffer.length) return;
-        if (this.buffer.length >= this.drainRemaining) {
-            const overflow = this.buffer.slice(this.drainRemaining);
-            this._reset();
-            this.buffer = overflow;
-            if (overflow.length > 0) this._parse();
-        } else {
-            this.drainRemaining -= this.buffer.length;
-            this.buffer = Buffer.alloc(0);
-        }
-    }
     _reset() {
         this.state = 'HEADERS';
         this.headers = {};
@@ -603,7 +537,6 @@ class HTTPRequestParser {
         this.contentLength = 0;
         this.streamSink = null;
         this.bytesStreamed = 0;
-        this.drainRemaining = 0;
     }
 }
 
@@ -698,110 +631,34 @@ function startProxy() {
                 const bodyBuffer = Buffer.concat(chunks);
                 const bodyStr = bodyBuffer.toString(); // Naive utf8, but fine for JSON/Text prompts
 
-                // ── 1. DETECTION: Run DLP inspection ──
+                // ── 1. DETECTION: Run DLP inspection (informational only) ──
                 let dlpResult = null;
                 if (method === 'POST' && bodyBuffer.length > 0 && bodyBuffer.length < MAX_INSPECTION_BYTES) {
                     try {
                         dlpResult = await withInspectionTimeout(processOutgoingPrompt(bodyStr, { appName: 'Web', destinationType: 'public_ai' }));
                     } catch (e) {
-                        if (!FAIL_OPEN) {
-                            res.writeHead(503);
-                            res.end('Inspection Failed');
-                            return;
-                        }
+                        // Inspection errors never block the request — always forward
                     }
                 }
 
-                // ── 2. POLICY EVALUATION: Read active enforcement mode ──
-                // enforcementMode is synced from settings every 10s (single source of truth)
-                const activeMode = enforcementMode;
-                const isSensitive = dlpResult && (dlpResult.action !== 'ALLOW');
-
-                // ── 3. Structured enforcement log ──
-                const enforcementLog = {
-                    event: 'enforcement_decision',
+                // ── 2. TRACKING: Structured detection log (informational, no action taken) ──
+                const trackingLog = {
+                    event: 'request_tracked',
                     timestamp: new Date().toISOString(),
                     hostname,
                     path: reqPath,
                     detection_result: dlpResult ? dlpResult.action : 'NO_INSPECTION',
                     detection_reason: dlpResult ? dlpResult.reason : null,
                     reu_score: dlpResult ? dlpResult.finalReu : null,
-                    enforcement_mode: activeMode,
-                    enforcement_action: null, // set below
+                    action: 'allow', // proxy always forwards
                 };
+                console.log(`[TRACKING] ${JSON.stringify(trackingLog)}`);
 
-                // Log event to intercept API (always, regardless of mode)
+                // ── 3. LOG: Send event to Complyze API (always) ──
                 logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, bodyStr.substring(0, 2000), dlpResult);
 
-                // ── 4. ENFORCEMENT: Apply action based on mode ──
-
-                if (!isSensitive) {
-                    // No sensitive content detected — always forward
-                    enforcementLog.enforcement_action = 'allow';
-                    console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
-                    pipeToUpstream(bodyBuffer);
-                    return;
-                }
-
-                // Sensitive content detected — apply mode-specific action
-                switch (activeMode) {
-                    case 'block': {
-                        enforcementLog.enforcement_action = 'block';
-                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
-                        res.writeHead(403, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({
-                            blocked: true,
-                            reason: 'Request blocked by policy: sensitive content detected',
-                            enforcement_mode: 'block',
-                            detection: dlpResult ? dlpResult.reason : undefined,
-                        }));
-                        return;
-                    }
-
-                    case 'warn': {
-                        enforcementLog.enforcement_action = 'warn';
-                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
-                        res.writeHead(299, {
-                            'Content-Type': 'application/json',
-                            'X-Complyze-Warning': 'true',
-                            'X-Complyze-Enforcement': 'warn',
-                        });
-                        res.end(JSON.stringify({
-                            warning: true,
-                            reason: 'Sensitive content detected — review before proceeding',
-                            enforcement_mode: 'warn',
-                            detection: dlpResult ? dlpResult.reason : undefined,
-                            override_allowed: true,
-                        }));
-                        return;
-                    }
-
-                    case 'redact': {
-                        enforcementLog.enforcement_action = 'redact';
-                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
-                        // Redact sensitive patterns from the body and forward
-                        let redactedBody = bodyStr;
-                        try {
-                            // Apply regex-based redaction (same patterns as proxy-classifier)
-                            redactedBody = redactedBody.replace(/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, '[REDACTED_EMAIL]');
-                            redactedBody = redactedBody.replace(/\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b/g, '[REDACTED_SSN]');
-                            redactedBody = redactedBody.replace(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '[REDACTED_CC]');
-                            redactedBody = redactedBody.replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[REDACTED_PHONE]');
-                            redactedBody = redactedBody.replace(/\b(?:10|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d{1,3}\.\d{1,3}\b/g, '[REDACTED_IP]');
-                        } catch { /* redaction failure falls through to original */ }
-                        pipeToUpstream(Buffer.from(redactedBody, 'utf8'));
-                        return;
-                    }
-
-                    case 'monitor':
-                    default: {
-                        // Monitor mode: allow request, log event only
-                        enforcementLog.enforcement_action = 'monitor';
-                        console.log(`[ENFORCEMENT] ${JSON.stringify(enforcementLog)}`);
-                        pipeToUpstream(bodyBuffer);
-                        return;
-                    }
-                }
+                // ── 4. FORWARD: Always send original request to upstream ──
+                pipeToUpstream(bodyBuffer);
             });
 
         } catch (err) {
