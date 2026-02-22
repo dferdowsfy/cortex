@@ -35,28 +35,28 @@ export async function POST(req: NextRequest) {
 
         // ── System Proxy Control ──
         if ("proxy_enabled" in body) {
-            try {
-                if (body.proxy_enabled) {
-                    const proxyStart = await startProxy(workspaceId);
-                    if (!proxyStart.ok) {
-                        return NextResponse.json({
-                            error: proxyStart.message,
-                            details: "Proxy server failed to start. System proxy was not enabled.",
-                            code: "PROXY_START_FAILURE"
-                        }, { status: 500 });
+            // Only attempt local system proxy control if running in an environment that supports it
+            // (e.g., local development or within the Electron desktop app).
+            // Cloud environments (Vercel/Production) should only update the data store.
+            const isLocal = process.env.NODE_ENV === "development" || process.env.ELECTRON === "true" || process.env.IS_LOCAL === "true" || workspaceId === "default";
+
+            if (isLocal) {
+                try {
+                    if (body.proxy_enabled) {
+                        const proxyStart = await startProxy(workspaceId);
+                        // If proxy starts (or is already running), enable system proxy
+                        if (proxyStart.ok) {
+                            await enableProxy(8080);
+                        }
+                    } else {
+                        await disableProxy();
+                        await stopProxy();
                     }
-                    await enableProxy(8080);
-                } else {
-                    await disableProxy();
-                    await stopProxy();
+                } catch (err: any) {
+                    console.warn("[api/proxy/settings] Local system proxy update failed (expected in cloud):", err.message);
+                    // We don't return 500 here anymore because the Firestore update (the source of truth) 
+                    // should still succeed even if the local OS commands fail remotely.
                 }
-            } catch (err: any) {
-                // Return structured error to frontend as requested
-                return NextResponse.json({
-                    error: err.message || "macOS Permission Error",
-                    details: "Failed to update system proxy. Check if Complyze has necessary permissions.",
-                    code: "SYSTEM_PROXY_FAILURE"
-                }, { status: 500 });
             }
         }
 
