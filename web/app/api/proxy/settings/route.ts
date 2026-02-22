@@ -8,19 +8,17 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import store from "@/lib/proxy-store";
-import { enableProxy, disableProxy, getProxyState } from "@/lib/system-proxy-manager";
-import { startProxy, stopProxy } from "@/lib/proxy-manager";
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get("workspaceId") || "default";
     const settings = await store.getSettings(workspaceId);
 
-    // Include OS proxy state as informational metadata only.
     // DO NOT overwrite proxy_enabled based on OS state — the user's toggle
     // in the dashboard is the source of truth for the proxy's monitoring mode.
     let osProxyActive = false;
     try {
+        const { getProxyState } = await import("@/lib/system-proxy-manager");
         const osState = await getProxyState();
         osProxyActive = osState.enabled;
     } catch { }
@@ -42,6 +40,8 @@ export async function POST(req: NextRequest) {
 
             if (isLocal) {
                 try {
+                    const { startProxy, stopProxy } = await import("@/lib/proxy-manager");
+                    const { enableProxy, disableProxy } = await import("@/lib/system-proxy-manager");
                     if (body.proxy_enabled) {
                         const proxyStart = await startProxy(workspaceId);
                         // If proxy starts (or is already running), enable system proxy
