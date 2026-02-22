@@ -18137,7 +18137,7 @@
       "traffic_routing": false,
       "os_integration": true,
       "status": "Healthy",
-      "last_sync": "2026-02-22T18:55:08.789Z",
+      "last_sync": "2026-02-22T18:55:38.780Z",
       "firebase_synced": false
     }
   },
@@ -18248,7 +18248,7 @@
       "traffic_routing": true,
       "os_integration": true,
       "status": "Healthy",
-      "last_sync": "2026-02-22T18:55:13.887Z"
+      "last_sync": "2026-02-22T18:55:43.888Z"
     },
     "dev_c93325cfb1f84198": {
       "device_id": "dev_c93325cfb1f84198",
@@ -18266,6 +18266,24 @@
     }
   },
   "workspaces/ifC9ivfSlEXkfpizWZJG5vU63I53/events": [
+    {
+      "id": "evt_1771786521083_r0a9",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-22T18:55:21.083Z",
+      "attachment_inspection_enabled": true
+    },
     {
       "id": "evt_1771786495434_escx",
       "tool": "AI Tool (ab.chatgpt.com)",
@@ -36248,24 +36266,6 @@
       "policy_violation_flag": false,
       "risk_category": "low",
       "timestamp": "2026-02-22T06:07:56.362Z",
-      "attachment_inspection_enabled": false
-    },
-    {
-      "id": "evt_1771740476117_gzqt",
-      "tool": "AI Tool (ios.chat.openai.com)",
-      "tool_domain": "ios.chat.openai.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00ftsiok",
-      "prompt_length": 2000,
-      "token_count_estimate": 500,
-      "api_endpoint": "/ces/v1/telemetry/intake",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T06:07:56.117Z",
       "attachment_inspection_enabled": false
     }
   ]
