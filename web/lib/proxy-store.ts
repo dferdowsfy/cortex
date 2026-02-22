@@ -110,6 +110,7 @@ class ProxyStore {
                     full_audit_mode: userSettings.fullAuditMode ?? DEFAULT_SETTINGS.full_audit_mode,
                     block_high_risk: userSettings.blockHighRisk ?? DEFAULT_SETTINGS.block_high_risk,
                     redact_sensitive: userSettings.redactSensitive ?? DEFAULT_SETTINGS.redact_sensitive,
+                    enforcement_mode: userSettings.enforcementMode ?? DEFAULT_SETTINGS.enforcement_mode,
                     alert_on_violations: userSettings.alertOnViolations ?? DEFAULT_SETTINGS.alert_on_violations,
                     desktop_bypass: userSettings.desktopBypass ?? DEFAULT_SETTINGS.desktop_bypass,
                     retention_days: userSettings.retentionDays ?? DEFAULT_SETTINGS.retention_days,
