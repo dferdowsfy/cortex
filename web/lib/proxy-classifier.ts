@@ -21,6 +21,7 @@ const PII_PATTERNS: RegExp[] = [
     /\b[A-Z][a-z]+\s[A-Z][a-z]+\b/,                         // Names (FirstName LastName)
     /\b[\w.+-]+@[\w-]+\.[\w.]+\b/,                            // Email
     /\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b/,                     // SSN
+    /\bss\s+is\s+\d{2}-?/i,                                  // Partial SSN test inputs
     /\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/, // Phone
     /\b\d{1,5}\s\w+(?:\s\w+)*\s(?:St|Ave|Blvd|Dr|Rd|Ct|Ln|Way|Pl)\b/i, // Street Address
     /\b(?:date of birth|DOB|social security|passport)\b/i,

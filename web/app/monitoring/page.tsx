@@ -294,7 +294,7 @@ function TrendSparkline({
    ═══════════════════════════════════════════════════════════════ */
 
 export default function MonitoringPage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [summary, setSummary] = useState<ActivitySummary | null>(null);
     const [events, setEvents] = useState<ActivityEvent[]>([]);
     const [toolRisks, setToolRisks] = useState<DynamicToolRisk[]>([]);
@@ -307,6 +307,8 @@ export default function MonitoringPage() {
     const [unacknowledgedCount, setUnacknowledgedCount] = useState(0);
 
     const fetchData = useCallback(async () => {
+        if (authLoading) return; // Wait for auth to resolve before fetching
+
         try {
             const wsId = user?.uid || "default";
             const [activityRes, settingsRes, agentRes] = await Promise.all([
@@ -330,13 +332,15 @@ export default function MonitoringPage() {
         } finally {
             setLoading(false);
         }
-    }, [period]);
+    }, [period, user?.uid, authLoading]);
 
     useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 15_000); // Refresh every 15s
-        return () => clearInterval(interval);
-    }, [fetchData]);
+        if (!authLoading) {
+            fetchData();
+            const interval = setInterval(fetchData, 15_000); // Refresh every 15s
+            return () => clearInterval(interval);
+        }
+    }, [fetchData, authLoading]);
 
     async function acknowledgeAlert(alertId: string) {
         // Optimistic update
@@ -359,14 +363,14 @@ export default function MonitoringPage() {
         }
     }
 
-    if (loading) {
+    if (loading || (!summary && !agentStatus)) {
         return (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-20 min-h-[60vh]">
                 <div className="text-center">
                     <div className="relative flex h-16 w-16 items-center justify-center mx-auto">
-                        <div className="absolute h-16 w-16 animate-spin rounded-full border-4 border-gray-200 border-t-brand-600" />
+                        <div className="absolute h-16 w-16 animate-spin rounded-full border-4 border-gray-100 border-t-brand-600" />
                     </div>
-                    <p className="mt-4 text-sm text-gray-500">Loading monitoring data...</p>
+                    <p className="mt-4 text-sm text-gray-500 animate-pulse">Synchronizing security posture...</p>
                 </div>
             </div>
         );

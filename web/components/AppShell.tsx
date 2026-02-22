@@ -7,11 +7,52 @@ import { useAuth } from "@/lib/auth-context";
 import { useUserSettings } from "@/lib/hooks/use-user-settings";
 
 function MonitoringToggle() {
-    const { settings, saveSettings, loading } = useUserSettings();
+    const { settings, saveSettings, loading, user } = useUserSettings();
+    const [toggling, setToggling] = useState(false);
+    const [toggleError, setToggleError] = useState("");
 
     if (loading) return null;
 
     const enabled = settings.proxyEnabled;
+
+    async function handleToggle() {
+        if (toggling) return;
+        setToggling(true);
+        setToggleError("");
+
+        const newState = !enabled;
+
+        try {
+            // 1. Save to Firestore (realtime UI sync)
+            await saveSettings({ proxyEnabled: newState });
+
+            // 2. Push to local proxy backend — starts/stops proxy server + macOS system proxy
+            const res = await fetch("/api/proxy/settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    proxy_enabled: newState,
+                    workspaceId: user?.uid || "default",
+                }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                const errMsg = data.error || "Failed to update proxy";
+                console.error("[MonitoringToggle] Backend error:", errMsg);
+                setToggleError(errMsg);
+                // Revert Firestore state on failure
+                await saveSettings({ proxyEnabled: !newState });
+            }
+        } catch (err: any) {
+            console.error("[MonitoringToggle] Toggle error:", err);
+            setToggleError(err.message || "Connection error");
+            // Revert Firestore state on failure
+            await saveSettings({ proxyEnabled: !newState });
+        } finally {
+            setToggling(false);
+        }
+    }
 
     return (
         <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-white/5 border border-white/10">
@@ -20,19 +61,26 @@ function MonitoringToggle() {
             </span>
             <div className="flex items-center gap-2">
                 <button
-                    onClick={() => saveSettings({ proxyEnabled: !enabled })}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${enabled ? "bg-green-500" : "bg-white/20"
-                        }`}
+                    onClick={handleToggle}
+                    disabled={toggling}
+                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${toggling ? "cursor-wait opacity-60" : "cursor-pointer"
+                        } ${enabled ? "bg-green-500" : "bg-white/20"}`}
                 >
                     <span
                         className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enabled ? "translate-x-4" : "translate-x-0"
                             }`}
                     />
                 </button>
-                <span className={`text-[10px] font-bold min-w-[50px] ${enabled ? "text-green-400" : "text-white/60"}`}>
-                    {enabled ? "ACTIVE" : "INACTIVE"}
+                <span className={`text-[10px] font-bold min-w-[50px] ${toggling ? "text-yellow-400" : enabled ? "text-green-400" : "text-white/60"
+                    }`}>
+                    {toggling ? "..." : enabled ? "ACTIVE" : "INACTIVE"}
                 </span>
             </div>
+            {toggleError && (
+                <span className="text-[9px] text-red-400 max-w-[120px] truncate" title={toggleError}>
+                    ⚠ {toggleError}
+                </span>
+            )}
         </div>
     );
 }

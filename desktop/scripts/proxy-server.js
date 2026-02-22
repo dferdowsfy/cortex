@@ -107,12 +107,12 @@ const PASSTHROUGH_DOMAINS = [
 
 const MONITOR_MODE_DEFAULT = 'observe';
 let proxyEnabled = process.env.PROXY_ENABLED !== 'false'; // Current toggle state
-let desktopBypassEnabled = false;
-let blockHighRiskEnabled = false;
-let redactSensitiveEnabled = false;
+let desktopBypassEnabled = process.env.DESKTOP_BYPASS === 'true';
+let blockHighRiskEnabled = process.env.BLOCK_HIGH_RISK === 'true';
+let redactSensitiveEnabled = process.env.REDACT_SENSITIVE === 'true';
 let userAttributionEnabled = process.env.USER_ATTRIBUTION_ENABLED === 'true';
 let authenticatedUserId = process.env.FIREBASE_UID || null;
-let inspectAttachmentsEnabled = false;
+let inspectAttachmentsEnabled = process.env.INSPECT_ATTACHMENTS === 'true';
 const TRACE_MODE = process.env.TRACE_MODE === 'true';
 
 // ─── Fail-Open Configuration ─────────────────────────────────────────────────
@@ -179,27 +179,7 @@ function FindProxyForURL(url, host) {
 
 const { updatePolicy } = require('../dlp/policyEngine');
 
-async function syncSettings() {
-    try {
-        const res = await fetch('http://localhost:3737/api/proxy/settings');
-        if (res.ok) {
-            const data = await res.json();
-            desktopBypassEnabled = !!data.desktop_bypass;
-            blockHighRiskEnabled = !!data.block_high_risk;
-            redactSensitiveEnabled = !!data.redact_sensitive;
-            userAttributionEnabled = !!data.user_attribution_enabled;
-            inspectAttachmentsEnabled = !!data.inspect_attachments;
 
-            // Sync with local DLP policy engine
-            updatePolicy({
-                blockingEnabled: blockHighRiskEnabled,
-                reuThreshold: data.risk_threshold || 60
-            });
-
-            console.log(`[sync] Settings: bypass=${desktopBypassEnabled}, block=${blockHighRiskEnabled}, redact=${redactSensitiveEnabled}, attribution=${userAttributionEnabled}`);
-        }
-    } catch { }
-}
 
 /**
  * Determines if a hostname belongs to an AI service provider.
@@ -220,20 +200,27 @@ function isDesktopAppDomain(hostname) {
     return DESKTOP_APP_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
 }
 
-function shouldDeepInspect(hostname) {
+function isBrowserRequest(req) {
+    if (!req || !req.headers) return false;
+    const ua = (req.headers['user-agent'] || '').toLowerCase();
+    // Desktop apps generally don't send standard browser UAs, or they have clear custom strings.
+    return ua.includes('mozilla/') || ua.includes('chrome/') || ua.includes('safari/') || ua.includes('edge/');
+}
+
+function shouldDeepInspect(hostname, req) {
     if (!hostname) return false;
     if (!proxyEnabled) return false; // Inactive mode: no deep inspection
     if (isPassthroughDomain(hostname)) return false;
     if (!isAIDomain(hostname)) return false;
-    if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return false;
+    if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) return false;
     return true;
 }
 
-function shouldLogMetadata(hostname) {
+function shouldLogMetadata(hostname, req) {
     if (!hostname) return false;
     // Log metadata for AI domains even if deep inspection is disabled (Passive Mode)
     if (!proxyEnabled && isAIDomain(hostname)) return true;
-    if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return true;
+    if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) return true;
     return false;
 }
 
@@ -787,11 +774,11 @@ function startProxy() {
         if (isPassthroughDomain(hostname)) {
             // Infrastructure domains — always transparent, never inspect
             handleTunnel(hostname, port, clientSocket, head);
-        } else if (shouldDeepInspect(hostname)) {
+        } else if (shouldDeepInspect(hostname, req)) {
             // Deep inspection: MITM to read full prompt content
             console.log(`\n🔍 [#${id}] INTERCEPTING → ${hostname}:${port}`);
             handleMITM(hostname, port, clientSocket, head, ca, id);
-        } else if (shouldLogMetadata(hostname)) {
+        } else if (shouldLogMetadata(hostname, req)) {
             // Desktop bypass mode: metadata-only logging
             console.log(`\n📊 [#${id}] METADATA (desktop bypass) → ${hostname}:${port}`);
             logMetadata(hostname);
@@ -808,9 +795,7 @@ function startProxy() {
 
     startMemoryWatchdog();
 
-    // Sync desktop bypass setting on startup and every 30 seconds
-    syncSettings();
-    setInterval(syncSettings, 30000);
+    // Removed redundant API polling for settings. Settings are pushed via IPC from the desktop app's Firebase listener.
 
     server.listen(PROXY_PORT, '127.0.0.1', () => {
         telemetry.logStartup(PROXY_PORT, blockHighRiskEnabled ? 'enforce' : 'observe');
