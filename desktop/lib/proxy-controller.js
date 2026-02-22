@@ -51,12 +51,14 @@ class ProxyController {
             env: {
                 ...process.env,
                 CERTS_DIR: this.certsDir,
+                PROXY_ENABLED: String(settings.proxyEnabled !== false),
                 BLOCK_ENABLED: String(settings.blockEnabled),
                 BLOCK_HIGH_RISK: String(settings.blockHighRisk),
                 REDACT_SENSITIVE: String(settings.redactSensitive),
                 RISK_THRESHOLD: String(settings.riskThreshold),
                 DESKTOP_BYPASS: String(settings.desktopBypass),
                 USER_ATTRIBUTION_ENABLED: String(settings.userAttributionEnabled),
+                INSPECT_ATTACHMENTS: String(settings.inspectAttachments || false),
                 FIREBASE_UID: settings.uid || '',
             }
         });

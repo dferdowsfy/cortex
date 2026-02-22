@@ -38,8 +38,8 @@ const CERTS_DIR = path.join(__dirname, '..', 'certs');
 
 // ─── Domain Configuration ────────────────────────────────────────────────────
 
-// ALL AI domains — deep inspection by default
-const AI_DOMAINS = [
+// API-only domains — safe to MITM (no Cloudflare JS challenges, no HTTP/2 requirement)
+const API_DOMAINS = [
     'api.openai.com',
     'api.anthropic.com',
     'api.cohere.com',
@@ -52,17 +52,25 @@ const AI_DOMAINS = [
     'api.fireworks.ai',
     'api.replicate.com',
     'generativelanguage.googleapis.com',
+];
+
+// Web UI domains — protected by Cloudflare, MITM breaks HTTP/2 negotiation.
+// These are tunneled transparently, with metadata-only logging.
+const WEB_UI_DOMAINS = [
     'chatgpt.com',
     'chat.openai.com',
     'claude.ai',
     'perplexity.ai',
     'www.perplexity.ai',
+    'ios.chat.openai.com',
+    'ws.chatgpt.com',
 ];
+
+// Combined list for quick "is this an AI domain?" checks
+const AI_DOMAINS = [...API_DOMAINS, ...WEB_UI_DOMAINS];
 
 // Domains that cert-pinned desktop apps use
 const DESKTOP_APP_DOMAINS = [
-    'chatgpt.com',
-    'chat.openai.com',
     'chatgpt.com',
     'chat.openai.com',
     'claude.ai',
@@ -92,6 +100,7 @@ const PASSTHROUGH_DOMAINS = [
     'firebase.com',
 ];
 
+let proxyEnabled = true;
 let MONITOR_MODE = process.env.MONITOR_MODE || 'observe'; // observe (default) or enforce
 let enforcementMode = process.env.ENFORCEMENT_MODE || 'monitor'; // monitor | warn | redact | block
 let desktopBypassEnabled = false;
@@ -126,6 +135,7 @@ async function syncSettings() {
         const res = await fetch(`http://localhost:3737/api/proxy/settings?workspaceId=${WORKSPACE_ID}`);
         if (res.ok) {
             const data = await res.json();
+            proxyEnabled = data.proxy_enabled !== false;
             desktopBypassEnabled = !!data.desktop_bypass;
             inspectAttachmentsEnabled = !!data.inspect_attachments;
             redactSensitiveEnabled = !!data.redact_sensitive;
@@ -181,6 +191,22 @@ async function registerHeartbeat() {
 function isAIDomain(hostname) {
     if (!hostname) return false;
     return AI_DOMAINS.some(domain => hostname === domain || hostname.endsWith('.' + domain));
+}
+
+/**
+ * Determines if a hostname is an API-only domain (safe to MITM).
+ */
+function isAPIDomain(hostname) {
+    if (!hostname) return false;
+    return API_DOMAINS.some(domain => hostname === domain || hostname.endsWith('.' + domain));
+}
+
+/**
+ * Determines if a hostname is a web UI domain (Cloudflare-protected, NOT safe to MITM).
+ */
+function isWebUIDomain(hostname) {
+    if (!hostname) return false;
+    return WEB_UI_DOMAINS.some(domain => hostname === domain || hostname.endsWith('.' + domain));
 }
 
 function handleTunnel(hostname, port, clientSocket, head) {
@@ -246,19 +272,32 @@ function isDesktopAppDomain(hostname) {
     return DESKTOP_APP_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
 }
 
-function shouldDeepInspect(hostname) {
+function isBrowserRequest(req) {
+    if (!req || !req.headers) return false;
+    const ua = (req.headers['user-agent'] || '').toLowerCase();
+    return ua.includes('mozilla/') || ua.includes('chrome/') || ua.includes('safari/') || ua.includes('edge/');
+}
+
+function shouldDeepInspect(hostname, req) {
     if (!hostname) return false;
+    if (!proxyEnabled) return false; // Inactive mode: no deep inspection
     // Safety: never inspect loopback or local dashboard
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local')) return false;
     if (isPassthroughDomain(hostname)) return false;
-    if (!isAIDomain(hostname)) return false;
-    if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return false;
+    // Only MITM pure API domains — web UI domains (chatgpt.com, claude.ai)
+    // are Cloudflare-protected and break under HTTP/1.1 downgrade.
+    if (!isAPIDomain(hostname)) return false;
+    if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) return false;
     return true;
 }
 
-function shouldLogMetadata(hostname) {
+function shouldLogMetadata(hostname, req) {
     if (!hostname) return false;
-    if (desktopBypassEnabled && isDesktopAppDomain(hostname)) return true;
+    // Web UI AI domains: transparent tunnel + metadata-only logging
+    if (proxyEnabled && isWebUIDomain(hostname)) return true;
+    // Log metadata for AI domains even if deep inspection is disabled (Passive Mode)
+    if (!proxyEnabled && isAIDomain(hostname)) return true;
+    if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) return true;
     return false;
 }
 
@@ -359,6 +398,33 @@ function sanitizeHeaders(headers) {
     delete safe['x-api-key'];
     delete safe['cookie'];
     return safe;
+}
+
+// Log metadata for cert-pinned domains (connection-level, no content)
+async function logMetadata(hostname) {
+    eventCount++;
+    try {
+        const payload = {
+            target_url: `https://${hostname}/`,
+            method: 'CONNECT',
+            headers: {},
+            body: `[metadata-only: connection to ${hostname}]`,
+            user_id: 'local-user',
+            log_only: true,
+            dlp: null
+        };
+        await fetch(COMPLYZE_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...payload,
+                workspace_id: WORKSPACE_ID
+            }),
+        });
+        console.log(`      📊 Metadata logged #${eventCount}`);
+    } catch {
+        // Silent fail for metadata — non-critical
+    }
 }
 
 // ─── Inspection Error Logger ─────────────────────────────────────────────────
@@ -604,18 +670,29 @@ function startProxy() {
 
     // Internal MITM Server for handling decrypted traffic
     const mitmServer = http.createServer(async (req, res) => {
-        const hostname = req.headers.host; // Host header from the intercepted request
+        // Strip port from Host header (e.g. "chatgpt.com:443" → "chatgpt.com")
+        const rawHost = req.headers.host || '';
+        const hostname = rawHost.replace(/:\d+$/, '');
         const reqPath = req.url;
         const method = req.method;
         const { processOutgoingPrompt } = require('./dlp/textInterceptor');
 
-        // Helper to forward stream without inspection
+        // Helper to forward to upstream — this MUST always succeed.
+        // The proxy is an observer; it should never block traffic.
         const pipeToUpstream = (initialBody = null) => {
             const fwdHeaders = { ...req.headers };
+            // Only strip proxy-specific hop-by-hop headers.
+            // IMPORTANT: preserve accept-encoding, user-agent, cookie, and all
+            // other headers so upstream servers (and Cloudflare) see a genuine
+            // browser request.  The old code stripped accept-encoding which caused
+            // Cloudflare to trigger JS challenges.
             delete fwdHeaders['proxy-connection'];
-            delete fwdHeaders['connection'];
-            delete fwdHeaders['keep-alive'];
-            delete fwdHeaders['transfer-encoding'];
+
+            // If we buffered a body, fix content-length to match what we're sending
+            if (initialBody) {
+                fwdHeaders['content-length'] = Buffer.byteLength(initialBody).toString();
+                delete fwdHeaders['transfer-encoding'];
+            }
 
             const proxyReq = https.request({
                 hostname,
@@ -624,34 +701,47 @@ function startProxy() {
                 method,
                 headers: fwdHeaders,
                 rejectUnauthorized: true,
-                timeout: 30000 // Add timeout
+                // No timeout — SSE streams from ChatGPT can last minutes
+                timeout: 0,
             }, (proxyRes) => {
-                res.writeHead(proxyRes.statusCode, proxyRes.headers);
-                proxyRes.pipe(res);
-            });
+                const isSSE = (proxyRes.headers['content-type'] || '').includes('text/event-stream');
 
-            proxyReq.on('error', (err) => {
-                console.error(`[PROXY_FWD] Upstream error to ${hostname}:`, err.message);
-                if (!res.headersSent) {
-                    res.writeHead(502);
-                    res.end('Bad Gateway');
+                // Pass the upstream response back exactly as-is (including any
+                // content-encoding like gzip/br). The browser already advertised
+                // those encodings so it knows how to decode them.
+                res.writeHead(proxyRes.statusCode, proxyRes.headers);
+
+                if (isSSE) {
+                    // For SSE: flush headers immediately, forward each chunk without buffering
+                    res.flushHeaders();
+                    proxyRes.on('data', (chunk) => {
+                        res.write(chunk);
+                    });
+                    proxyRes.on('end', () => {
+                        res.end();
+                    });
+                    proxyRes.on('error', () => {
+                        res.end();
+                    });
+                } else {
+                    proxyRes.pipe(res);
                 }
             });
 
-            proxyReq.on('timeout', () => {
-                console.warn(`[PROXY_FWD] Upstream timeout to ${hostname}`);
-                proxyReq.destroy();
+            // Never let a forwarding error kill the proxy — just close the client
+            proxyReq.on('error', (err) => {
+                if (TRACE_MODE) console.error(`[PROXY_FWD] Upstream error to ${hostname}:`, err.message);
                 if (!res.headersSent) {
-                    res.writeHead(504);
-                    res.end('Gateway Timeout');
+                    res.writeHead(502);
+                    res.end('Bad Gateway');
+                } else {
+                    res.end();
                 }
             });
 
             if (initialBody) {
-                proxyReq.write(initialBody);
-            }
-            // If we haven't consumed the req stream yet, or have partial, we might need piping
-            if (!initialBody && !req.readableEnded) {
+                proxyReq.end(initialBody);
+            } else if (!req.readableEnded) {
                 req.pipe(proxyReq);
             } else {
                 proxyReq.end();
@@ -666,30 +756,35 @@ function startProxy() {
             if (contentLength > MAX_INSPECTION_BYTES && isMultipart) {
                 const request_id = crypto.randomUUID();
                 console.log(`   📎 LARGE ATTACHMENT [${request_id}]: ${(contentLength / 1024 / 1024).toFixed(1)}MB > ${MAX_INSPECTION_SIZE_MB}MB — skipping inspection`);
-                logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, `[attachment: ${contentLength} bytes — skipped]`, null);
+                logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, `[attachment: ${contentLength} bytes — skipped]`, null).catch(() => { });
                 pipeToUpstream();
                 return;
             }
 
-            // For small requests, buffer and inspect
+            // For GET/HEAD/OPTIONS — no body to inspect, just pipe through and log
+            if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+                logToComplyze(`https://${hostname}${reqPath}`, method, req.headers, '', null).catch(() => { });
+                pipeToUpstream();
+                return;
+            }
+
+            // For POST/PUT/PATCH with body — buffer, inspect, then forward.
+            // IMPORTANT: Always forward the request, even if logging/inspection fails.
             const chunks = [];
             req.on('data', chunk => chunks.push(chunk));
             req.on('end', async () => {
                 const bodyBuffer = Buffer.concat(chunks);
-                const bodyStr = bodyBuffer.toString(); // Naive utf8, but fine for JSON/Text prompts
+                const bodyStr = bodyBuffer.toString();
 
                 // ── 1. DETECTION: Run DLP inspection ──
                 let dlpResult = null;
-                if (method === 'POST' && bodyBuffer.length > 0 && bodyBuffer.length < MAX_INSPECTION_BYTES) {
-                    try {
+                try {
+                    if (bodyBuffer.length > 0 && bodyBuffer.length < MAX_INSPECTION_BYTES) {
                         dlpResult = await withInspectionTimeout(processOutgoingPrompt(bodyStr, { appName: 'Web', destinationType: 'public_ai' }));
-                    } catch (e) {
-                        if (!FAIL_OPEN) {
-                            res.writeHead(503);
-                            res.end('Inspection Failed');
-                            return;
-                        }
                     }
+                } catch (e) {
+                    // Fail-open: inspection failed, still forward the request
+                    if (TRACE_MODE) console.warn(`[DLP] Inspection error (fail-open): ${e.message}`);
                 }
 
                 // ── 2. POLICY EVALUATION: Read active enforcement mode ──
@@ -777,10 +872,19 @@ function startProxy() {
                 }
             });
 
+            req.on('error', (err) => {
+                if (TRACE_MODE) console.error('[MITM] Request read error:', err.message);
+                pipeToUpstream();
+            });
+
         } catch (err) {
             console.error('[MITM] Error:', err);
-            res.writeHead(500);
-            res.end();
+            // Even on error, try to forward
+            try { pipeToUpstream(); } catch { }
+            if (!res.headersSent) {
+                res.writeHead(500);
+                res.end();
+            }
         }
     });
 
@@ -803,12 +907,13 @@ function startProxy() {
             hostname = target.hostname;
             port = target.port;
 
-            if (shouldDeepInspect(hostname)) {
+            if (shouldDeepInspect(hostname, req)) {
                 console.log(JSON.stringify({ hostname, mode: "inspection", timestamp: new Date().toISOString() }));
                 clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
                 const domainCert = getCertForDomain(hostname, ca);
                 const tlsSocket = new tls.TLSSocket(clientSocket, { isServer: true, key: domainCert.key, cert: domainCert.cert });
-                tlsSocket.setTimeout(30000, () => tlsSocket.destroy());
+                // No hard timeout — SSE streams from ChatGPT can last minutes
+                tlsSocket.setTimeout(0);
 
                 // Use internal MITM server to handle the decrypted traffic
                 mitmServer.emit('connection', tlsSocket);
@@ -817,6 +922,12 @@ function startProxy() {
                     if (TRACE_MODE) console.error(`[TLS] Error: ${err.message}`);
                     handleTunnel(hostname, port, clientSocket, head);
                 });
+            } else if (shouldLogMetadata(hostname, req)) {
+                // Web UI / Desktop bypass: transparent tunnel + metadata-only logging
+                console.log(`[METADATA] Transparent tunnel for ${hostname}:${port}`);
+                // Log the connection as metadata so it still appears in the dashboard
+                logToComplyze(`https://${hostname}/`, 'CONNECT', {}, `[metadata-only: transparent tunnel to ${hostname}]`, null).catch(() => { });
+                handleTunnel(hostname, port, clientSocket, head);
             } else {
                 handleTunnel(hostname, port, clientSocket, head);
             }

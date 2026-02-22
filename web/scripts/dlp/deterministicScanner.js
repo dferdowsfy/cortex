@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const PATTERNS = {
     CRITICAL: [
         { name: 'SSN', regex: /\b\d{3}-\d{2}-\d{4}\b/g, points: 100 },
+        { name: 'Partial SSN (Test)', regex: /\bss\s+is\s+\d{2}-?/i, points: 100 },
         { name: 'Private Key Block', regex: /-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----/g, points: 100 }
     ],
     HIGH: [

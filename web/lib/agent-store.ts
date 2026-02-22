@@ -1,23 +1,38 @@
 import { adminDb } from "./firebase/admin";
-import type { AgentRegistration, AgentStatus } from "./proxy-types";
+import type { AgentRegistration } from "./proxy-types";
+import { localStorage } from "./local-storage";
 
 const AGENTS_PATH = "agent_registry";
 
-// In-memory fallback
-const memAgents = new Map<string, AgentRegistration>();
-
 class AgentStore {
+    private getMemAgents(workspaceId: string): Record<string, AgentRegistration> {
+        const agents = localStorage.getWorkspaceData(workspaceId, "agents", {});
+        if (Object.keys(agents).length === 0 && workspaceId !== "default") {
+            return localStorage.getWorkspaceData("default", "agents", {});
+        }
+        return agents;
+    }
+
+    private setMemAgents(workspaceId: string, agents: Record<string, AgentRegistration>) {
+        localStorage.setWorkspaceData(workspaceId, "agents", agents);
+    }
+
     async registerAgent(agent: AgentRegistration): Promise<void> {
         const workspaceId = agent.workspace_id || "default";
         try {
-            if (!adminDb) throw new Error("Database not initialized");
+            if (!adminDb || !adminDb.app.options.databaseURL) throw new Error("Database not initialized");
             await adminDb.ref(`${AGENTS_PATH}/${workspaceId}/${agent.device_id}`).set({
                 ...agent,
-                updated_at: new Date().toISOString(),
+                last_sync: new Date().toISOString(),
             });
         } catch (err) {
-            console.warn("[agent-store] RTDB registerAgent failed, using cache:", err);
-            memAgents.set(agent.device_id, agent);
+            console.warn("[agent-store] RTDB registerAgent failed, using local storage:", err);
+            const agents = this.getMemAgents(workspaceId);
+            agents[agent.device_id] = {
+                ...agent,
+                last_sync: new Date().toISOString(),
+            };
+            this.setMemAgents(workspaceId, agents);
         }
     }
 
@@ -31,10 +46,23 @@ class AgentStore {
             });
         } catch (err) {
             console.warn("[agent-store] RTDB updateHeartbeat failed:", err);
-            const existing = memAgents.get(deviceId);
-            if (existing) {
-                memAgents.set(deviceId, { ...existing, ...data, last_sync: new Date().toISOString(), status: "Healthy" });
-            }
+            const agents = this.getMemAgents(workspaceId);
+            const existing = agents[deviceId] || {};
+            const defaults: AgentRegistration = {
+                device_id: deviceId,
+                hostname: "unknown",
+                os: "macOS",
+                version: "1.0.0",
+                heartbeat_interval: 30,
+                workspace_id: workspaceId,
+                service_connectivity: true,
+                traffic_routing: true,
+                os_integration: true,
+                status: "Healthy",
+                last_sync: new Date().toISOString(),
+            };
+            agents[deviceId] = { ...defaults, ...existing, ...data, last_sync: new Date().toISOString(), status: "Healthy" };
+            this.setMemAgents(workspaceId, agents);
         }
     }
 
@@ -42,31 +70,30 @@ class AgentStore {
         try {
             if (!adminDb || !adminDb.app.options.databaseURL) throw new Error("DB Unavailable");
             const snap = await adminDb.ref(`${AGENTS_PATH}/${workspaceId}/${deviceId}`).get();
-            return snap.exists() ? (snap.val() as AgentRegistration) : memAgents.get(deviceId) || null;
+            if (snap.exists()) return snap.val() as AgentRegistration;
+            return this.getMemAgents(workspaceId)[deviceId] || null;
         } catch (err) {
-            return memAgents.get(deviceId) || null;
+            return this.getMemAgents(workspaceId)[deviceId] || null;
         }
     }
 
     async listAgents(workspaceId: string = "default"): Promise<AgentRegistration[]> {
-        let agents: AgentRegistration[] = [];
+        let agentsDict: Record<string, AgentRegistration> = {};
         try {
             if (!adminDb || !adminDb.app.options.databaseURL) throw new Error("DB Unavailable");
             const snap = await adminDb.ref(`${AGENTS_PATH}/${workspaceId}`).get();
             if (snap.exists()) {
-                const data = snap.val() as Record<string, AgentRegistration>;
-                agents = Object.values(data);
+                agentsDict = snap.val() as Record<string, AgentRegistration>;
             }
         } catch (err) {
             console.warn("[agent-store] listAgents RTDB error:", err);
-            agents = Array.from(memAgents.values());
+            agentsDict = this.getMemAgents(workspaceId);
         }
 
-        // Merge with memory agents that might not be in DB yet
-        const dbIds = new Set(agents.map(a => a.device_id));
-        for (const [id, agent] of memAgents.entries()) {
-            if (!dbIds.has(id)) agents.push(agent);
-        }
+        // Merge with local agents that might not be in DB yet
+        const localAgents = this.getMemAgents(workspaceId);
+        const merged = { ...agentsDict, ...localAgents };
+        const agents = Object.values(merged);
 
         // Check for offline agents (no heartbeat in 3 mins)
         const now = Date.now();
@@ -84,10 +111,14 @@ class AgentStore {
     async logInstallation(log: any): Promise<void> {
         if (!adminDb) return;
         const id = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-        await adminDb.ref(`installation_logs/${id}`).set({
-            ...log,
-            timestamp: new Date().toISOString(),
-        });
+        try {
+            await adminDb.ref(`installation_logs/${id}`).set({
+                ...log,
+                timestamp: new Date().toISOString(),
+            });
+        } catch {
+            // Fallback for logs if needed, but not critical
+        }
     }
 }
 

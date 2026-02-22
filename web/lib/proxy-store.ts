@@ -15,6 +15,7 @@ import type {
     ProxyAlert,
     ProxyReportData
 } from "./proxy-types";
+import { localStorage } from "./local-storage";
 
 // ── Default settings ─────────────────────────────────────────
 const DEFAULT_SETTINGS: ProxySettings = {
@@ -52,17 +53,38 @@ function getDb(): database.Database | null {
     }
 }
 
-// ── In-memory fallback (for when RTDB is unavailable) ────────
-const globalStore = globalThis as unknown as {
-    _memSettings: ProxySettings;
-    _memEvents: ActivityEvent[];
-    _memAlerts: ProxyAlert[];
-};
+// ── Fallback helpers ─────────────────────────────────────────
+function getMemSettings(workspaceId: string): ProxySettings {
+    const mem = localStorage.getWorkspaceData(workspaceId, "settings", null);
+    if (!mem && workspaceId !== "default") return localStorage.getWorkspaceData("default", "settings", { ...DEFAULT_SETTINGS });
+    return mem || { ...DEFAULT_SETTINGS };
+}
 
-if (!globalStore._memSettings) {
-    globalStore._memSettings = { ...DEFAULT_SETTINGS };
-    globalStore._memEvents = [];
-    globalStore._memAlerts = [];
+function getMemEvents(workspaceId: string): ActivityEvent[] {
+    const mem = localStorage.getWorkspaceData(workspaceId, "events", []);
+    if (mem.length === 0 && workspaceId !== "default") return localStorage.getWorkspaceData("default", "events", []);
+    return mem;
+}
+
+function getMemAlerts(workspaceId: string): ProxyAlert[] {
+    const mem = localStorage.getWorkspaceData(workspaceId, "alerts", []);
+    if (mem.length === 0 && workspaceId !== "default") return localStorage.getWorkspaceData("default", "alerts", []);
+    return mem;
+}
+
+function setMemSettings(workspaceId: string, settings: ProxySettings) {
+    localStorage.setWorkspaceData(workspaceId, "settings", settings);
+    if (workspaceId !== "default") {
+        localStorage.setWorkspaceData("default", "settings", settings);
+    }
+}
+
+function setMemEvents(workspaceId: string, events: ActivityEvent[]) {
+    localStorage.setWorkspaceData(workspaceId, "events", events);
+}
+
+function setMemAlerts(workspaceId: string, alerts: ProxyAlert[]) {
+    localStorage.setWorkspaceData(workspaceId, "alerts", alerts);
 }
 
 // ── RTDB paths ───────────────────────────────────────────────
@@ -74,20 +96,42 @@ class ProxyStore {
     // ── Settings ─────────────────────────────────────────────
     async getSettings(workspaceId: string = "default"): Promise<ProxySettings> {
         const db = getDb();
-        if (!db) return globalStore._memSettings;
+        if (!db) return getMemSettings(workspaceId);
 
-        const path = `workspaces/${workspaceId}/${SETTINGS_PATH}`;
+        // Use the unified UserSettings path for the single source of truth
+        const path = `users/${workspaceId}/settings`;
         try {
             const snap = await db.ref(path).get();
             if (snap.exists()) {
-                return snap.val() as ProxySettings;
+                const userSettings = snap.val();
+                // Map camelCase (UserSettings) to snake_case (ProxySettings)
+                return {
+                    proxy_enabled: userSettings.proxyEnabled ?? DEFAULT_SETTINGS.proxy_enabled,
+                    full_audit_mode: userSettings.fullAuditMode ?? DEFAULT_SETTINGS.full_audit_mode,
+                    block_high_risk: userSettings.blockHighRisk ?? DEFAULT_SETTINGS.block_high_risk,
+                    redact_sensitive: userSettings.redactSensitive ?? DEFAULT_SETTINGS.redact_sensitive,
+                    alert_on_violations: userSettings.alertOnViolations ?? DEFAULT_SETTINGS.alert_on_violations,
+                    desktop_bypass: userSettings.desktopBypass ?? DEFAULT_SETTINGS.desktop_bypass,
+                    retention_days: userSettings.retentionDays ?? DEFAULT_SETTINGS.retention_days,
+                    proxy_endpoint: DEFAULT_SETTINGS.proxy_endpoint,
+                    inspect_attachments: userSettings.inspectAttachments ?? DEFAULT_SETTINGS.inspect_attachments,
+                    updated_at: new Date(userSettings.updatedAt || Date.now()).toISOString(),
+                };
             }
-            // No settings yet — create with defaults
-            await db.ref(path).set(DEFAULT_SETTINGS);
-            return { ...DEFAULT_SETTINGS };
+
+            // If no settings exist at users/{id}/settings, fallback to older proxy_config path or default
+            const fallbackPath = `workspaces/${workspaceId}/${SETTINGS_PATH}`;
+            const fallbackSnap = await db.ref(fallbackPath).get();
+            if (fallbackSnap.exists()) {
+                const settings = fallbackSnap.val() as ProxySettings;
+                setMemSettings(workspaceId, settings);
+                return settings;
+            }
+
+            return getMemSettings(workspaceId);
         } catch (err) {
             console.warn("[proxy-store] getSettings RTDB error, using memory:", err);
-            return globalStore._memSettings;
+            return getMemSettings(workspaceId);
         }
     }
 
@@ -102,14 +146,33 @@ class ProxyStore {
         const db = getDb();
         if (db) {
             try {
-                const path = `workspaces/${workspaceId}/${SETTINGS_PATH}`;
-                await db.ref(path).set(updated);
+                // Keep the old proxy_config updated for any lingering old clients/agents
+                const oldPath = `workspaces/${workspaceId}/${SETTINGS_PATH}`;
+                await db.ref(oldPath).set(updated);
+
+                // Update the unified UserSettings path mapping snake_case to camelCase
+                const unifiedPath = `users/${workspaceId}/settings`;
+                const unifiedPatch: Record<string, any> = {};
+
+                if ('proxy_enabled' in newSettings) unifiedPatch.proxyEnabled = newSettings.proxy_enabled;
+                if ('full_audit_mode' in newSettings) unifiedPatch.fullAuditMode = newSettings.full_audit_mode;
+                if ('block_high_risk' in newSettings) unifiedPatch.blockHighRisk = newSettings.block_high_risk;
+                if ('redact_sensitive' in newSettings) unifiedPatch.redactSensitive = newSettings.redact_sensitive;
+                if ('alert_on_violations' in newSettings) unifiedPatch.alertOnViolations = newSettings.alert_on_violations;
+                if ('desktop_bypass' in newSettings) unifiedPatch.desktopBypass = newSettings.desktop_bypass;
+                if ('retention_days' in newSettings) unifiedPatch.retentionDays = newSettings.retention_days;
+                if ('inspect_attachments' in newSettings) unifiedPatch.inspectAttachments = newSettings.inspect_attachments;
+                unifiedPatch.updatedAt = Date.now();
+
+                if (Object.keys(unifiedPatch).length > 1) { // >1 because updatedAt is always set
+                    await db.ref(unifiedPath).update(unifiedPatch);
+                }
             } catch (err) {
                 console.warn("[proxy-store] updateSettings RTDB error:", err);
             }
         }
 
-        globalStore._memSettings = updated;
+        setMemSettings(workspaceId, updated);
         return updated;
     }
 
@@ -129,8 +192,10 @@ class ProxyStore {
             }
         }
 
-        globalStore._memEvents.unshift(event);
-        if (globalStore._memEvents.length > 1000) globalStore._memEvents.pop();
+        const memEvents = getMemEvents(workspaceId);
+        memEvents.unshift(event);
+        if (memEvents.length > 1000) memEvents.pop();
+        setMemEvents(workspaceId, memEvents);
 
         // Auto-register tool in inventory
         try {
@@ -165,7 +230,7 @@ class ProxyStore {
                 console.warn("[proxy-store] getEvents RTDB error:", err);
             }
         }
-        return globalStore._memEvents.slice(0, limitCount);
+        return getMemEvents(workspaceId).slice(0, limitCount);
     }
 
     // ── Summary & Risks ──────────────────────────────────────
@@ -198,7 +263,7 @@ class ProxyStore {
                 console.warn("[proxy-store] getAlerts RTDB error:", err);
             }
         }
-        return globalStore._memAlerts.slice(0, limitCount);
+        return getMemAlerts(workspaceId).slice(0, limitCount);
     }
 
     async addAlert(alert: ProxyAlert, workspaceId: string = "default"): Promise<void> {
@@ -211,7 +276,9 @@ class ProxyStore {
                 console.warn("[proxy-store] addAlert RTDB error:", err);
             }
         }
-        globalStore._memAlerts.unshift(alert);
+        const memAlerts = getMemAlerts(workspaceId);
+        memAlerts.unshift(alert);
+        setMemAlerts(workspaceId, memAlerts);
     }
 
     async acknowledgeAlert(alertId: string, workspaceId: string = "default"): Promise<void> {
@@ -224,9 +291,12 @@ class ProxyStore {
                 console.warn("[proxy-store] acknowledgeAlert RTDB error:", err);
             }
         }
-        const alerts = globalStore._memAlerts;
+        const alerts = getMemAlerts(workspaceId);
         const alert = alerts.find((a) => a.id === alertId);
-        if (alert) alert.acknowledged = true;
+        if (alert) {
+            alert.acknowledged = true;
+            setMemAlerts(workspaceId, alerts);
+        }
     }
 
     async getUnacknowledgedCount(workspaceId: string = "default"): Promise<number> {
@@ -266,9 +336,11 @@ class ProxyStore {
         // ── Top Categories ──
         const catMap = new Map<string, number>();
         events.forEach(e => {
-            e.sensitivity_categories.forEach(c => {
-                if (c !== "none") catMap.set(c, (catMap.get(c) || 0) + 1);
-            });
+            if (e.sensitivity_categories) {
+                e.sensitivity_categories.forEach(c => {
+                    if (c && c !== "none") catMap.set(c, (catMap.get(c) || 0) + 1);
+                });
+            }
         });
         const top_risk_categories = Array.from(catMap.entries())
             .map(([category, count]) => ({ category, count }))
@@ -294,7 +366,7 @@ class ProxyStore {
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
-        // ── Risk Trend (Daily) ──
+        // ── Risk Trend (Daily, Padded with zeros) ──
         const trendMap = new Map<string, { score: number, count: number }>();
         events.forEach(e => {
             const date = e.timestamp.split("T")[0];
@@ -304,13 +376,22 @@ class ProxyStore {
                 count: current.count + 1
             });
         });
-        const risk_trend = Array.from(trendMap.entries())
-            .map(([date, data]) => ({
-                date,
-                score: Math.round(data.score / data.count),
+
+        // Pad with zeros for at least the last 7 or 30 days
+        const risk_trend = [];
+        const daysToPad = period === "30d" ? 30 : 7;
+        const now = new Date();
+        for (let i = daysToPad - 1; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split("T")[0];
+            const data = trendMap.get(dateStr) || { score: 0, count: 0 };
+            risk_trend.push({
+                date: dateStr,
+                score: data.count > 0 ? Math.round(data.score / data.count) : 0,
                 requests: data.count
-            }))
-            .sort((a, b) => a.date.localeCompare(b.date));
+            });
+        }
 
         return {
             total_requests: total,

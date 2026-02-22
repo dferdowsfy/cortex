@@ -1,10 +1,18 @@
 import { adminFirestore } from "./firebase/admin";
 import type { AssetTool } from "./proxy-types";
+import { localStorage } from "./local-storage";
 
 const TOOLS_COLLECTION = "asset_inventory";
-const memTools = new Map<string, AssetTool>();
 
 class ToolRegistryStore {
+    private getMemTools(): Record<string, AssetTool> {
+        return localStorage.getItem("asset_inventory", {});
+    }
+
+    private setMemTools(tools: Record<string, AssetTool>) {
+        localStorage.setItem("asset_inventory", tools);
+    }
+
     async addTool(tool: Partial<AssetTool>): Promise<string> {
         const id = tool.id || `tool_${Date.now()}`;
         const newTool: AssetTool = {
@@ -26,8 +34,10 @@ class ToolRegistryStore {
             if (!adminFirestore) throw new Error("Firestore not initialized");
             await adminFirestore.collection(TOOLS_COLLECTION).doc(id).set(newTool);
         } catch (err) {
-            console.warn("[tool-registry-store] Firestore addTool failed, using memory:", err);
-            memTools.set(id, newTool);
+            console.warn("[tool-registry-store] Firestore addTool failed, using local storage:", err);
+            const tools = this.getMemTools();
+            tools[id] = newTool;
+            this.setMemTools(tools);
         }
         return id;
     }
@@ -36,9 +46,15 @@ class ToolRegistryStore {
         try {
             if (!adminFirestore) throw new Error("Firestore not initialized");
             const snap = await adminFirestore.collection(TOOLS_COLLECTION).get();
-            return snap.docs.map(d => d.data() as AssetTool);
+            const dbTools = snap.docs.map(d => d.data() as AssetTool);
+
+            // Merge with local tools
+            const localTools = this.getMemTools();
+            const merged = { ...localTools };
+            dbTools.forEach(t => { merged[t.id] = t; });
+            return Object.values(merged);
         } catch (err) {
-            return Array.from(memTools.values());
+            return Object.values(this.getMemTools());
         }
     }
 
@@ -48,7 +64,9 @@ class ToolRegistryStore {
                 await adminFirestore.collection(TOOLS_COLLECTION).doc(id).delete();
             }
         } catch { }
-        memTools.delete(id);
+        const tools = this.getMemTools();
+        delete tools[id];
+        this.setMemTools(tools);
     }
 
     async getStats() {

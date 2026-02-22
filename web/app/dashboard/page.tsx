@@ -16,12 +16,14 @@ interface ActivitySummary {
 }
 
 export default function Dashboard() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [stats, setStats] = useState({ total: 0 });
     const [proxySummary, setProxySummary] = useState<ActivitySummary | null>(null);
     const [lastUpdated, setLastUpdated] = useState("");
 
     const fetchData = useCallback(async () => {
+        if (authLoading) return;
+
         try {
             const wsId = user?.uid || "default";
             const [toolRes, proxyRes] = await Promise.all([
@@ -39,13 +41,15 @@ export default function Dashboard() {
             }
             setLastUpdated(new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }));
         } catch { }
-    }, []);
+    }, [user?.uid, authLoading]);
 
     useEffect(() => {
-        fetchData();
-        const iv = setInterval(fetchData, 60000);
-        return () => clearInterval(iv);
-    }, [fetchData]);
+        if (!authLoading) {
+            fetchData();
+            const iv = setInterval(fetchData, 15000);
+            return () => clearInterval(iv);
+        }
+    }, [fetchData, authLoading]);
 
     // Format risk trend for the executive view (e.g., last 6 months or 30 days)
     // Here we use the 30d trend but mock it to look like monthly for the "Executive" vibe if needed,

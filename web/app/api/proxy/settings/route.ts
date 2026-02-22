@@ -16,15 +16,16 @@ export async function GET(req: NextRequest) {
     const workspaceId = searchParams.get("workspaceId") || "default";
     const settings = await store.getSettings(workspaceId);
 
-    // Sync with real macOS system state (Source of Truth)
-    const osState = await getProxyState();
-    if (osState.enabled !== settings.proxy_enabled && osState.service !== "n/a") {
-        // Silently sync OS truth back to persistence
-        await store.updateSettings({ proxy_enabled: osState.enabled }, workspaceId);
-        settings.proxy_enabled = osState.enabled;
-    }
+    // Include OS proxy state as informational metadata only.
+    // DO NOT overwrite proxy_enabled based on OS state — the user's toggle
+    // in the dashboard is the source of truth for the proxy's monitoring mode.
+    let osProxyActive = false;
+    try {
+        const osState = await getProxyState();
+        osProxyActive = osState.enabled;
+    } catch { }
 
-    return NextResponse.json(settings);
+    return NextResponse.json({ ...settings, workspaceId, os_proxy_active: osProxyActive });
 }
 
 export async function POST(req: NextRequest) {
