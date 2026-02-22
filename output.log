@@ -1,0 +1,32 @@
+
+> complyze@0.1.0 launch
+> concurrently --kill-others -n "WEB,APP" "npm run dev:web" "npm run dev:app"
+
+[APP] 
+[APP] > complyze@0.1.0 dev:app
+[APP] > npm run dev -w desktop
+[APP] 
+[WEB] 
+[WEB] > complyze@0.1.0 dev:web
+[WEB] > npm run dev -w web
+[WEB] 
+[APP] 
+[APP] > complyze-desktop@1.0.0 dev
+[APP] > electron .
+[APP] 
+[WEB] 
+[WEB] > complyze-web@0.1.0 dev
+[WEB] > next dev --turbopack -p 3737
+[WEB] 
+[APP] npm run dev:app exited with code 0
+--> Sending SIGTERM to other processes..
+[WEB]  ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+[WEB]  We detected multiple lockfiles and selected the directory of /Users/dariusferdows/package-lock.json as the root directory.
+[WEB]  To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[WEB]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+[WEB]  Detected additional lockfiles: 
+[WEB]    * /Users/dariusferdows/Cortex/cortex/web/package-lock.json
+[WEB]    * /Users/dariusferdows/Cortex/cortex/package-lock.json
+[WEB] 
+[WEB] [?25h
+[WEB] npm run dev:web exited with code 0

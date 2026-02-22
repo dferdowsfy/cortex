@@ -15,11 +15,27 @@ interface ActivitySummary {
     total_tools: number;
 }
 
+interface ActivityEvent {
+    id: string;
+    tool: string;
+    tool_domain: string;
+    user_hash: string;
+    sensitivity_score: number;
+    sensitivity_categories: string[];
+    policy_violation_flag: boolean;
+    risk_category: string;
+    timestamp: string;
+    token_count_estimate: number;
+    attachment_inspection_enabled?: boolean;
+}
+
 export default function Dashboard() {
     const { user, loading: authLoading } = useAuth();
     const [stats, setStats] = useState({ total: 0 });
     const [proxySummary, setProxySummary] = useState<ActivitySummary | null>(null);
+    const [events, setEvents] = useState<ActivityEvent[]>([]);
     const [lastUpdated, setLastUpdated] = useState("");
+    const [loading, setLoading] = useState(true);
 
     const fetchData = useCallback(async () => {
         if (authLoading) return;
@@ -28,7 +44,7 @@ export default function Dashboard() {
             const wsId = user?.uid || "default";
             const [toolRes, proxyRes] = await Promise.all([
                 fetch(`/api/tools/stats?workspaceId=${wsId}`),
-                fetch(`/api/proxy/activity?period=30d&workspaceId=${wsId}`),
+                fetch(`/api/proxy/activity?period=30d&events=5&workspaceId=${wsId}`),
             ]);
 
             if (toolRes.ok) {
@@ -38,9 +54,12 @@ export default function Dashboard() {
             if (proxyRes.ok) {
                 const data = await proxyRes.json();
                 setProxySummary(data.summary);
+                if (data.events) setEvents(data.events);
             }
             setLastUpdated(new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }));
-        } catch { }
+        } catch { } finally {
+            setLoading(false);
+        }
     }, [user?.uid, authLoading]);
 
     useEffect(() => {
@@ -69,10 +88,12 @@ export default function Dashboard() {
     const activeTrend = proxySummary?.risk_trend && proxySummary.risk_trend.length > 0
         ? proxySummary.risk_trend.map(p => {
             const date = new Date(p.date + 'T12:00:00'); // Mid-day to avoid TZ shifts
-            const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+            const month = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
             return { month, score: p.score };
         })
         : mockTrend;
+
+    // Render immediately - no blocking full-page loaders for maximum perceived performance.
 
     return (
         <ExecutiveDashboard
@@ -81,6 +102,7 @@ export default function Dashboard() {
             blockedPrompts={proxySummary?.total_blocked || 0}
             riskTrend={activeTrend}
             lastUpdated={lastUpdated || "Just now"}
+            recentActivity={events}
         />
     );
 }
