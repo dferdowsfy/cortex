@@ -69,11 +69,39 @@ class LocalStorage {
         const fullKey = `workspaces/${workspaceId}/${type}`;
         this.setItem(fullKey, value);
     }
+
+    findWorkspaceForToken(tokenId: string): string | null {
+        this.ensureFresh();
+        for (const [key, value] of Object.entries(this.cache)) {
+            if (key.endsWith('/enrollment_tokens')) {
+                const tokens = value as Record<string, any>;
+                if (tokens && tokens[tokenId]) {
+                    const match = key.match(/^workspaces\/([^\/]+)\/enrollment_tokens$/);
+                    if (match) return match[1];
+                }
+            }
+        }
+        return null;
+    }
+
+    findWorkspaceForDevice(deviceId: string): string | null {
+        this.ensureFresh();
+        for (const [key, value] of Object.entries(this.cache)) {
+            if (key.endsWith('/devices')) {
+                const devices = value as Record<string, any>;
+                if (devices && devices[deviceId]) {
+                    const match = key.match(/^workspaces\/([^\/]+)\/devices$/);
+                    if (match) return match[1];
+                }
+            }
+        }
+        return null;
+    }
 }
 
 // Global instance to survive HMR in Next.js dev
 const globalStorage = global as any;
-if (!globalStorage._complyze_local_storage) {
+if (!globalStorage._complyze_local_storage || typeof globalStorage._complyze_local_storage.findWorkspaceForToken !== 'function') {
     globalStorage._complyze_local_storage = new LocalStorage();
 }
 

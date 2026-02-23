@@ -457,11 +457,13 @@ export default function ReportPage() {
   const [reportType, setReportType] = useState("Quarterly");
   const [report, setReport] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<any[]>([]);
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
     if (!initialLoadDone.current) {
       setTools(loadTools());
+      setHistory(JSON.parse(localStorage.getItem("complyze_reports") || "[]"));
       /* Default report period */
       const now = new Date();
       const quarter = Math.ceil((now.getMonth() + 1) / 3);
@@ -508,6 +510,20 @@ export default function ReportPage() {
       }
 
       const data = await res.json();
+
+      const newReportEntry = {
+        id: `report_${Date.now()}`,
+        name: `${companyName} - ${reportType} Report`,
+        date: new Date().toISOString(),
+        toolsIncluded: assessments.length,
+        data: data
+      };
+
+      const existingReports = JSON.parse(localStorage.getItem("complyze_reports") || "[]");
+      const updatedHistory = [newReportEntry, ...existingReports];
+      localStorage.setItem("complyze_reports", JSON.stringify(updatedHistory));
+      setHistory(updatedHistory);
+
       setReport(data);
       setStep("done");
     } catch (e: unknown) {
@@ -583,7 +599,7 @@ export default function ReportPage() {
             </label>
             <input
               type="text"
-              className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               placeholder="e.g. Acme Corporation"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
@@ -597,7 +613,7 @@ export default function ReportPage() {
               </label>
               <input
                 type="text"
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 placeholder="e.g. Financial Services"
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
@@ -609,7 +625,7 @@ export default function ReportPage() {
               </label>
               <input
                 type="number"
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 placeholder="e.g. 500"
                 value={employeeCount}
                 onChange={(e) => setEmployeeCount(e.target.value)}
@@ -624,7 +640,7 @@ export default function ReportPage() {
               </label>
               <input
                 type="text"
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 placeholder="e.g. Q1 2025"
                 value={reportPeriod}
                 onChange={(e) => setReportPeriod(e.target.value)}
@@ -660,6 +676,42 @@ export default function ReportPage() {
         >
           Generate Board Report
         </button>
+
+        {/* Report History */}
+        {history.length > 0 && (
+          <div className="card mt-8">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Report History</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="pb-2 pr-3">Report Name</th>
+                    <th className="pb-2 pr-3">Date</th>
+                    <th className="pb-2 pr-3 text-center">Tools Included</th>
+                    <th className="pb-2 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {history.map((h, i) => (
+                    <tr key={i}>
+                      <td className="py-3 pr-3 font-medium text-gray-900">{h.name}</td>
+                      <td className="py-3 pr-3 text-gray-600">{new Date(h.date).toLocaleDateString()}</td>
+                      <td className="py-3 pr-3 text-gray-600 text-center">{h.toolsIncluded}</td>
+                      <td className="py-3 text-right">
+                        <button
+                          onClick={() => { setReport(h.data); setStep("done"); }}
+                          className="text-brand-600 hover:text-brand-700 font-medium"
+                        >
+                          View Report
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

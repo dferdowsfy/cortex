@@ -1,0 +1,22 @@
+{
+  "api_base": "http://localhost:3737/api",
+  "device_id": "9578de1a-bb06-4fa9-9623-0415f6751453",
+  "device_secret": "9Bs-pGpsCWOhVQ63oW9wRhFuSOeXBQ9nRmZSx5tTHRw",
+  "last_policy_version": 3,
+  "last_policy": {
+    "org_id": "fe1fb946-5268-459d-ba6c-e8dc9fb01b57",
+    "policy_version": 3,
+    "policy_config": {
+      "risk_threshold": 60,
+      "block_high_risk": true,
+      "auto_redaction": true,
+      "audit_mode": false,
+      "scan_attachments": false,
+      "retention_days": 90
+    },
+    "issued_at": "2026-02-23T20:46:46.635Z",
+    "signature": "785d9ea090436bd307afdf0776ca391d19dedd4713a35f92d5eeab49aefd61c4"
+  },
+  "revoked": false,
+  "last_heartbeat": "2026-02-23T21:14:47.650Z"
+}

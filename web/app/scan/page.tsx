@@ -223,7 +223,7 @@ function EnrichmentForm({
             ) : (
               /* ── Free Text ── */
               <textarea
-                className="w-full rounded-lg border border-gray-200 p-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="w-full rounded-lg border border-gray-200 p-3 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 rows={2}
                 placeholder="Type your answer..."
                 value={(answers[q.question_id] as string) || ""}
@@ -605,7 +605,7 @@ export default function ScanPage() {
               </label>
               <input
                 type="text"
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 placeholder="e.g. ChatGPT, Microsoft Copilot, Grammarly..."
                 value={toolName}
                 onChange={(e) => handleToolNameChange(e.target.value)}
@@ -635,7 +635,7 @@ export default function ScanPage() {
               </label>
               <input
                 type="text"
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 placeholder="e.g. OpenAI, Microsoft, Google..."
                 value={vendor}
                 onChange={(e) => setVendor(e.target.value)}
