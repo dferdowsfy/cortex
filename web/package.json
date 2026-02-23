@@ -16,6 +16,7 @@
     "firebase": "^12.9.0",
     "firebase-admin": "^13.6.1",
     "framer-motion": "^12.34.3",
+    "lucide-react": "^0.575.0",
     "mammoth": "^1.11.0",
     "next": "^15.1.0",
     "node-forge": "^1.3.3",
