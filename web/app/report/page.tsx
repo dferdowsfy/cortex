@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 /* ═══════════════════════════════════════════════════════════════
    Types
@@ -23,23 +24,7 @@ type ReportStep = "form" | "generating" | "done" | "error";
    Helpers
    ═══════════════════════════════════════════════════════════════ */
 
-function loadTools(): StoredTool[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem("complyze_tools") || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function loadAssessment(id: string): Record<string, unknown> | null {
-  try {
-    const raw = localStorage.getItem(`complyze_assessment_${id}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
+/* Removed sync localStorage loaders */
 
 function riskBadge(tier: string) {
   const cls: Record<string, string> = {
@@ -460,17 +445,26 @@ export default function ReportPage() {
   const [history, setHistory] = useState<any[]>([]);
   const initialLoadDone = useRef(false);
 
+  const { user } = useAuth();
+  const workspaceId = user?.uid || "default";
+
   useEffect(() => {
     if (!initialLoadDone.current) {
-      setTools(loadTools());
-      setHistory(JSON.parse(localStorage.getItem("complyze_reports") || "[]"));
+      initialLoadDone.current = true;
       /* Default report period */
       const now = new Date();
       const quarter = Math.ceil((now.getMonth() + 1) / 3);
       setReportPeriod(`Q${quarter} ${now.getFullYear()}`);
-      initialLoadDone.current = true;
+
+      fetch(`/api/user/assessments?workspaceId=${workspaceId}`)
+        .then(res => res.json())
+        .then(data => setTools(data.tools || []));
+
+      fetch(`/api/user/reports?workspaceId=${workspaceId}`)
+        .then(res => res.json())
+        .then(data => setHistory(data.reports || []));
     }
-  }, []);
+  }, [workspaceId]);
 
   async function generateReport() {
     if (!companyName.trim()) return;
@@ -479,9 +473,10 @@ export default function ReportPage() {
 
     try {
       /* Load full assessments for all tools */
-      const assessments = tools
-        .map((t) => loadAssessment(t.id))
-        .filter(Boolean);
+      const loadedAssessments = await Promise.all(
+        tools.map(t => fetch(`/api/user/assessments/${t.id}?workspaceId=${workspaceId}`).then(res => res.json()).then(data => data.assessment))
+      );
+      const assessments = loadedAssessments.filter(Boolean);
 
       if (assessments.length === 0) {
         throw new Error(
@@ -519,10 +514,13 @@ export default function ReportPage() {
         data: data
       };
 
-      const existingReports = JSON.parse(localStorage.getItem("complyze_reports") || "[]");
-      const updatedHistory = [newReportEntry, ...existingReports];
-      localStorage.setItem("complyze_reports", JSON.stringify(updatedHistory));
-      setHistory(updatedHistory);
+      await fetch("/api/user/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, reportData: newReportEntry }),
+      });
+
+      setHistory(prev => [newReportEntry, ...prev]);
 
       setReport(data);
       setStep("done");
