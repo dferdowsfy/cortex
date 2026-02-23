@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 /* ═══════════════════════════════════════════════════════════════
    Types
@@ -438,6 +439,7 @@ function ResultsView({ data }: { data: Record<string, unknown> }) {
    ═══════════════════════════════════════════════════════════════ */
 
 export default function ScanPage() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>("input");
   const [toolName, setToolName] = useState("");
@@ -572,9 +574,17 @@ export default function ScanPage() {
         scanned_at: new Date().toISOString(),
       };
 
-      const existing = JSON.parse(localStorage.getItem("complyze_tools") || "[]");
-      localStorage.setItem("complyze_tools", JSON.stringify([...existing, storedTool]));
-      localStorage.setItem(`complyze_assessment_${toolId}`, JSON.stringify(fullAssessment));
+      const workspaceId = user?.uid || "default";
+      await fetch("/api/user/assessments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          toolId,
+          toolData: storedTool,
+          assessmentData: fullAssessment,
+        }),
+      });
 
       setStep("results");
     } catch (e: unknown) {

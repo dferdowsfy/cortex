@@ -18149,7 +18149,7 @@
       "traffic_routing": true,
       "os_integration": true,
       "status": "Healthy",
-      "last_sync": "2026-02-23T21:32:03.389Z"
+      "last_sync": "2026-02-23T23:54:16.341Z"
     },
     "dev_c93325cfb1f84198": {
       "device_id": "dev_c93325cfb1f84198",
@@ -18273,7 +18273,7 @@
       "traffic_routing": true,
       "os_integration": true,
       "status": "Healthy",
-      "last_sync": "2026-02-23T21:32:13.142Z"
+      "last_sync": "2026-02-23T23:54:11.493Z"
     },
     "dev_c93325cfb1f84198": {
       "device_id": "dev_c93325cfb1f84198",
@@ -18291,6 +18291,1374 @@
     }
   },
   "workspaces/ifC9ivfSlEXkfpizWZJG5vU63I53/events": [
+    {
+      "id": "evt_1771890755616_s731",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:52:35.616Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890745802_fwuq",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:52:25.802Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890685387_hbnu",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:51:25.387Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890652440_voy1",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:50:52.440Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890621574_73z4",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:50:21.574Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890621570_o74r",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:50:21.570Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890586428_v8fw",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:49:46.428Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890539441_himz",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:48:59.441Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890455593_wdt4",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:47:35.593Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890446869_bjnl",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:47:26.869Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890445798_xv5w",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:47:25.798Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890385409_di80",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:46:25.409Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890155600_nrfr",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:42:35.600Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890145797_a36y",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:42:25.797Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771890085391_b3pv",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:41:25.391Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889998433_hfst",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:39:58.433Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889869151_kx60",
+      "tool": "AI Tool (claude.ai)",
+      "tool_domain": "claude.ai",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00uanmo8",
+      "prompt_length": 48,
+      "token_count_estimate": 12,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:37:49.151Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889855595_ugsv",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:37:35.595Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889846867_m19w",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:37:26.867Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889845793_3tm9",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:37:25.793Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889785401_7yup",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:36:25.401Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889636597_9xpw",
+      "tool": "AI Tool (comet-safebrowsing.perplexity.ai)",
+      "tool_domain": "comet-safebrowsing.perplexity.ai",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00tflkd9",
+      "prompt_length": 71,
+      "token_count_estimate": 18,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:33:56.597Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889555588_ilmq",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:32:35.588Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889545794_c287",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:32:25.794Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889506460_qcez",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:31:46.460Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889485399_j8qy",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:31:25.399Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889457451_vzfh",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:30:57.451Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889255583_3ir0",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:27:35.583Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889247347_h4sk",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:27:27.347Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889247062_iq0p",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:27:27.062Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889205148_gpu8",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:26:45.148Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889204899_s30f",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:26:44.899Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889184387_23fw",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:26:24.387Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889170302_sb1x",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:26:10.302Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889161796_c34t",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:26:01.796Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889158255_2w88",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:25:58.255Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889157755_ivbi",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:25:57.755Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889154898_unsa",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:25:54.898Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889154656_1qsp",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:25:54.656Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889150923_l79e",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:25:50.923Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889150438_07sr",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:25:50.438Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889144839_g7gb",
+      "tool": "AI Tool (claude.ai)",
+      "tool_domain": "claude.ai",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00uanmo8",
+      "prompt_length": 48,
+      "token_count_estimate": 12,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:25:44.839Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771889015321_osfj",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:23:35.321Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771887604557_6xt1",
+      "tool": "AI Tool (claude.ai)",
+      "tool_domain": "claude.ai",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00uanmo8",
+      "prompt_length": 48,
+      "token_count_estimate": 12,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:00:04.557Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771887602783_h4rc",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:00:02.783Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771887601997_rqqc",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T23:00:01.997Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771886441912_r1om",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:40:41.912Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885925386_dy7t",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:32:05.386Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885859563_ystr",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:30:59.563Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885805670_7z4r",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:30:05.670Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885734718_chhp",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:28:54.718Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885538145_6xio",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:25:38.145Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885537221_bnc7",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:25:37.221Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885528026_wr9r",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:25:28.026Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885188426_7u1z",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:19:48.426Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885187300_s59c",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:19:47.300Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771885186929_qmfi",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:19:46.929Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771884483315_viem",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:08:03.315Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771884482569_aifd",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:08:02.569Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771884482546_5m94",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T22:08:02.546Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771883535605_g7sc",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:52:15.605Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771883533760_iuju",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:52:13.761Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771883532060_dywu",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:52:12.060Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771883524001_9obv",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:52:04.001Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771883522613_7cx3",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:52:02.613Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771883521355_fsm4",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:52:01.355Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771883521038_1f4q",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:52:01.038Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771883513656_woo6",
+      "tool": "AI Tool (ws.chatgpt.com)",
+      "tool_domain": "ws.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00ecw75m",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:51:53.656Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771883512684_tl2q",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:51:52.684Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771882520695_47z6",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:35:20.695Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771882518915_4fbs",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:35:18.915Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771882500607_perd",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:35:00.607Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771882489731_jh72",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:34:49.731Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771882488681_ruqs",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:34:48.681Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771882488546_2m6v",
+      "tool": "AI Tool (ios.chat.openai.com)",
+      "tool_domain": "ios.chat.openai.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_00w00rk6",
+      "prompt_length": 58,
+      "token_count_estimate": 15,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:34:48.546Z",
+      "attachment_inspection_enabled": true
+    },
+    {
+      "id": "evt_1771882488542_elqd",
+      "tool": "AI Tool (ab.chatgpt.com)",
+      "tool_domain": "ab.chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005ggjhd",
+      "prompt_length": 53,
+      "token_count_estimate": 14,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-23T21:34:48.542Z",
+      "attachment_inspection_enabled": true
+    },
     {
       "id": "evt_1771882259879_u2wo",
       "tool": "AI Tool (ab.chatgpt.com)",
@@ -34921,1374 +36289,6 @@
       "policy_violation_flag": false,
       "risk_category": "low",
       "timestamp": "2026-02-22T20:37:52.323Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792626339_20ox",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:37:06.339Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792611314_kodq",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:36:51.314Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792593324_61m2",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:36:33.324Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792550296_y301",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:35:50.296Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792524374_qvb7",
-      "tool": "AI Tool (www.perplexity.ai)",
-      "tool_domain": "www.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00ezd1j1",
-      "prompt_length": 56,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:35:24.374Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792495485_o5ic",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:34:55.485Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792489310_i4jy",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:34:49.310Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792485686_ml9f",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:34:45.686Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792428301_o7r7",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:33:48.301Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792388298_ott9",
-      "tool": "AI Tool (count.perplexity.ai)",
-      "tool_domain": "count.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00f123t7",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:33:08.298Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792367698_73ql",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:32:47.698Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792307419_31k7",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:31:47.419Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792247167_wi9o",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:30:47.167Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792241655_sn3j",
-      "tool": "AI Tool (www.perplexity.ai)",
-      "tool_domain": "www.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00ezd1j1",
-      "prompt_length": 56,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:30:41.655Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792205592_qj2j",
-      "tool": "AI Tool (www.perplexity.ai)",
-      "tool_domain": "www.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00ezd1j1",
-      "prompt_length": 56,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:30:05.592Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792195470_jkim",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:29:55.470Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792186892_4pxi",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:29:46.893Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792186758_d9kj",
-      "tool": "AI Tool (ios.chat.openai.com)",
-      "tool_domain": "ios.chat.openai.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00w00rk6",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:29:46.758Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792185683_634b",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:29:45.683Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792126638_xd8d",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:28:46.638Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792088308_chqj",
-      "tool": "AI Tool (count.perplexity.ai)",
-      "tool_domain": "count.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00f123t7",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:28:08.308Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792086326_i9hn",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:28:06.326Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792066359_m9dv",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:27:46.359Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792052338_8siw",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:27:32.338Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792006065_2dm0",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:26:46.065Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791945828_0tiw",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:25:45.828Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791942529_pzxp",
-      "tool": "AI Tool (ws.chatgpt.com)",
-      "tool_domain": "ws.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00ecw75m",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:25:42.529Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791942305_5ou7",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:25:42.305Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791895478_b6lb",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:24:55.478Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791885649_svnn",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:24:45.649Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791885587_a1vj",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:24:45.587Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791825320_ejbm",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:23:45.320Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791788323_opa7",
-      "tool": "AI Tool (count.perplexity.ai)",
-      "tool_domain": "count.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00f123t7",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:23:08.323Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791765030_xn0r",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:22:45.030Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791704841_02qq",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:21:44.841Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791644606_k57o",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:20:44.606Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791595473_r6y7",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:19:55.473Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791586774_prrq",
-      "tool": "AI Tool (ios.chat.openai.com)",
-      "tool_domain": "ios.chat.openai.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00w00rk6",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:19:46.775Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791585686_s0x7",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:19:45.686Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791584367_i3ok",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:19:44.367Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791574465_6nkg",
-      "tool": "AI Tool (www.perplexity.ai)",
-      "tool_domain": "www.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00ezd1j1",
-      "prompt_length": 56,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:19:34.465Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791546333_ytj0",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:19:06.333Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791524077_3o7b",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:18:44.077Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791511342_dpoq",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:18:31.342Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791488320_r13u",
-      "tool": "AI Tool (count.perplexity.ai)",
-      "tool_domain": "count.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00f123t7",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:18:08.320Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791463829_8spi",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:17:43.829Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791453374_gsbg",
-      "tool": "AI Tool (comet-safebrowsing.perplexity.ai)",
-      "tool_domain": "comet-safebrowsing.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00tflkd9",
-      "prompt_length": 71,
-      "token_count_estimate": 18,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:17:33.374Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791403568_d4o7",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:16:43.568Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791343334_mijo",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:15:43.334Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791295480_xmub",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:14:55.480Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791285675_ohpw",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:14:45.675Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791283034_91er",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:14:43.034Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791222776_e8ll",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:13:42.776Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791188320_eoha",
-      "tool": "AI Tool (count.perplexity.ai)",
-      "tool_domain": "count.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00f123t7",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:13:08.320Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791162503_u5mo",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:12:42.503Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791102249_3ssq",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:11:42.249Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791042005_jio1",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:10:42.005Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771791006330_qs4d",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:10:06.330Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790995468_hf8c",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:09:55.468Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790986770_vgng",
-      "tool": "AI Tool (ios.chat.openai.com)",
-      "tool_domain": "ios.chat.openai.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00w00rk6",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:09:46.770Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790985673_n1ka",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:09:45.673Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790981752_tes2",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:09:41.752Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790970332_19qk",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:09:30.332Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790921510_uda8",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:08:41.510Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790888305_tu42",
-      "tool": "AI Tool (count.perplexity.ai)",
-      "tool_domain": "count.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00f123t7",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:08:08.305Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790861121_l9fw",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:07:41.121Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790800712_a4nt",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:06:40.712Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790740443_cd6l",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:05:40.443Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790695467_w1z8",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:04:55.467Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790685670_kqmh",
-      "tool": "AI Tool (ab.chatgpt.com)",
-      "tool_domain": "ab.chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005ggjhd",
-      "prompt_length": 53,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:04:45.670Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790680101_j9nq",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:04:40.101Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790619845_e750",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:03:39.845Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790588308_xopm",
-      "tool": "AI Tool (count.perplexity.ai)",
-      "tool_domain": "count.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00f123t7",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:03:08.308Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790559617_zy5b",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:02:39.617Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790546550_a10q",
-      "tool": "AI Tool (www.perplexity.ai)",
-      "tool_domain": "www.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00ezd1j1",
-      "prompt_length": 56,
-      "token_count_estimate": 14,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:02:26.550Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771790499340_b4w8",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:01:39.340Z",
       "attachment_inspection_enabled": true
     }
   ],
