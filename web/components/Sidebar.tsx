@@ -104,8 +104,20 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
     const pathname = usePathname();
     const { user, signOut } = useAuth();
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setUserMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     return (
         <div
@@ -158,26 +170,42 @@ export function Sidebar() {
             <div className="px-3 flex flex-col gap-2 relative">
                 <MonitoringToggle collapsed={collapsed} />
 
-                <Link
-                    href="/settings"
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 mt-2`}
-                    title={collapsed ? "Settings" : undefined}
-                >
-                    <Settings size={20} className="shrink-0" strokeWidth={2} />
-                    {!collapsed && <span className="text-sm tracking-wide font-medium">Settings</span>}
-                </Link>
+                <div className="relative mt-1 mb-1" ref={menuRef}>
+                    <div
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer ${userMenuOpen ? 'bg-zinc-800/80 text-zinc-200' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'}`}
+                        title={collapsed ? "User Menu" : undefined}
+                        onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    >
+                        <UserCircle size={20} className="shrink-0" strokeWidth={2} />
+                        {!collapsed && (
+                            <div className="flex flex-col flex-1 overflow-hidden opacity-100 transition-opacity">
+                                <span className="text-sm tracking-wide font-medium text-zinc-300 group-hover:text-zinc-200 truncate">
+                                    {user?.email?.split('@')[0] || "Profile"}
+                                </span>
+                            </div>
+                        )}
+                    </div>
 
-                <div
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer text-zinc-400 hover:text-red-400 hover:bg-red-950/30"
-                    title={collapsed ? "Sign Out" : undefined}
-                    onClick={signOut}
-                >
-                    <UserCircle size={20} className="shrink-0" strokeWidth={2} />
-                    {!collapsed && (
-                        <div className="flex flex-col">
-                            <span className="text-sm tracking-wide font-medium text-zinc-300 group-hover:text-red-400">
-                                {user?.email?.split('@')[0]}
-                            </span>
+                    {userMenuOpen && (
+                        <div className={`absolute mb-2 w-48 rounded-xl bg-[#18181b] border border-[#27272a] shadow-xl py-1 z-50 overflow-hidden ${collapsed ? 'bottom-0 left-16' : 'bottom-full left-0'}`}>
+                            <Link
+                                href="/settings"
+                                className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800/50 hover:text-zinc-100 transition-colors"
+                                onClick={() => setUserMenuOpen(false)}
+                            >
+                                <Settings size={14} className="shrink-0" />
+                                User Settings
+                            </Link>
+                            <button
+                                onClick={() => {
+                                    setUserMenuOpen(false);
+                                    signOut();
+                                }}
+                                className="flex items-center w-full gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                            >
+                                <UserCircle size={14} className="shrink-0" />
+                                Logout
+                            </button>
                         </div>
                     )}
                 </div>

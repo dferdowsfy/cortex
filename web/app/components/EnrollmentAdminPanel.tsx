@@ -345,22 +345,26 @@ export default function EnrollmentAdminPanel() {
                                             {tokens.map(t => {
                                                 const status = getTokenStatus(t);
                                                 return (
-                                                    <div key={t.token_id} className="flex justify-between items-center bg-black/20 border border-[#27272a] hover:bg-black/40 transition-colors rounded-lg p-3.5 text-xs group">
-                                                        <div className="flex flex-col gap-1.5 w-full">
-                                                            <div className="flex justify-between items-center pr-2">
-                                                                <span className="font-mono text-zinc-500 text-[11px] select-all">ID: {t.token_id}</span>
-                                                                <span className={`px-2.5 py-0.5 rounded font-bold text-[9px] uppercase tracking-widest ${status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                                                                    {status}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center mt-0.5">
+                                                    <div key={t.token_id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-black/20 border border-[#27272a] hover:bg-black/40 transition-colors rounded-lg p-3.5 text-xs group gap-3">
+                                                        <div className="flex flex-col gap-1.5 flex-1 min-w-0 pr-0 sm:pr-4">
+                                                            <div className="font-mono text-zinc-300 text-[11px] select-all line-clamp-1">ID: {t.token_id}</div>
+                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-0.5">
                                                                 <span className="text-[10px] text-zinc-500">Created: {new Date(t.created_at).toLocaleDateString()} | Expires: {new Date(t.expires_at).toLocaleDateString()}</span>
-                                                                <span className="text-[10px] text-zinc-500 pr-2">Uses: {t.uses_count} / {t.max_uses ?? '∞'}</span>
+                                                                <span className="text-[10px] text-zinc-500">Uses: {t.uses_count} / {t.max_uses ?? '∞'}</span>
                                                             </div>
                                                         </div>
-                                                        {status === 'Active' && (
-                                                            <button onClick={() => handleRevokeToken(t.token_id)} className="ml-2 text-red-400 hover:text-red-300 font-bold border border-red-500/20 px-3.5 py-1.5 rounded-md transition bg-red-500/5 hover:bg-red-500/10 whitespace-nowrap opacity-0 group-hover:opacity-100 focus:opacity-100">Revoke</button>
-                                                        )}
+                                                        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#27272a]">
+                                                            <span className={`px-2.5 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-widest shrink-0 w-[72px] text-center flex items-center justify-center ${status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                                                                {status}
+                                                            </span>
+                                                            {status === 'Active' ? (
+                                                                <button onClick={() => handleRevokeToken(t.token_id)} className="shrink-0 w-[84px] text-red-400 hover:text-red-300 font-bold border border-red-500/20 px-3.5 py-1.5 rounded-md transition bg-red-500/5 hover:bg-red-500/10 whitespace-nowrap opacity-100 sm:opacity-0 group-hover:opacity-100 focus:opacity-100">
+                                                                    Revoke
+                                                                </button>
+                                                            ) : (
+                                                                <div className="w-[84px] shrink-0 hidden sm:block" />
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 )
                                             })}
@@ -375,30 +379,30 @@ export default function EnrollmentAdminPanel() {
                                             {devices.map(d => {
                                                 const status = getDeviceStatus(d);
                                                 return (
-                                                    <div key={d.device_id} className="flex items-center bg-black/20 border border-[#27272a] hover:bg-black/40 transition-colors rounded-lg p-3.5 text-xs group">
-                                                        <div className="flex flex-col gap-1.5 flex-1 w-full min-w-0 pr-4">
-                                                            <div className="flex justify-between items-center">
-                                                                <span className="font-medium text-zinc-50 truncate">
-                                                                    {d.device_name || 'Unnamed Device'}
-                                                                    <span className="font-normal text-zinc-500 font-mono text-[10px] ml-2 tracking-tight">({d.device_id})</span>
-                                                                </span>
-                                                                <span className={`px-2.5 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-widest shrink-0 ${status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : status === 'Offline' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                                                                    {status}
-                                                                </span>
+                                                    <div key={d.device_id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-black/20 border border-[#27272a] hover:bg-black/40 transition-colors rounded-lg p-3.5 text-xs group gap-3">
+                                                        <div className="flex flex-col gap-1.5 flex-1 min-w-0 pr-0 sm:pr-4">
+                                                            <div className="font-medium text-zinc-50 truncate">
+                                                                {d.device_name || 'Unnamed Device'}
+                                                                <span className="font-normal text-zinc-500 font-mono text-[10px] ml-2 tracking-tight">({d.device_id})</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center mt-0.5">
+                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-0.5">
                                                                 <span className="text-[10px] text-zinc-500">OS: <span className="text-zinc-400">{d.os_type}</span> | Agent: <span className="text-zinc-400">v{d.agent_version}</span></span>
                                                                 <span className="text-[10px] text-zinc-500">Last Heartbeat: {new Date(d.last_heartbeat).toLocaleString()}</span>
                                                             </div>
                                                         </div>
 
-                                                        {status !== 'Revoked' ? (
-                                                            <button onClick={() => handleRevokeDevice(d.device_id)} className="shrink-0 text-red-400 hover:text-red-300 font-bold border border-red-500/20 px-3.5 py-1.5 rounded-md transition bg-red-500/5 hover:bg-red-500/10 whitespace-nowrap opacity-0 group-hover:opacity-100 focus:opacity-100">
-                                                                Revoke
-                                                            </button>
-                                                        ) : (
-                                                            <div className="w-[84px] shrink-0" /> /* Spacer for alignment */
-                                                        )}
+                                                        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#27272a]">
+                                                            <span className={`px-2.5 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-widest shrink-0 w-[72px] text-center flex items-center justify-center ${status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : status === 'Offline' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                                                                {status}
+                                                            </span>
+                                                            {status !== 'Revoked' ? (
+                                                                <button onClick={() => handleRevokeDevice(d.device_id)} className="shrink-0 w-[84px] text-red-400 hover:text-red-300 font-bold border border-red-500/20 px-3.5 py-1.5 rounded-md transition bg-red-500/5 hover:bg-red-500/10 whitespace-nowrap opacity-100 sm:opacity-0 group-hover:opacity-100 focus:opacity-100">
+                                                                    Revoke
+                                                                </button>
+                                                            ) : (
+                                                                <div className="w-[84px] shrink-0 hidden sm:block" />
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 )
                                             })}

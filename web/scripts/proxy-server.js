@@ -132,35 +132,43 @@ const MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '512');
 
 async function syncSettings() {
     try {
-        const res = await fetch(`http://localhost:3737/api/proxy/settings?workspaceId=${WORKSPACE_ID}`);
-        if (res.ok) {
-            const data = await res.json();
-            proxyEnabled = data.proxy_enabled !== false;
-            desktopBypassEnabled = !!data.desktop_bypass;
-            inspectAttachmentsEnabled = !!data.inspect_attachments;
-            redactSensitiveEnabled = !!data.redact_sensitive;
+        let data;
+        const localConfigPath = process.env.COMPLYZE_LOCAL_CONFIG;
 
-            // Read canonical enforcement_mode from settings (single source of truth)
-            if (data.enforcement_mode && VALID_ENFORCEMENT_MODES.includes(data.enforcement_mode)) {
-                enforcementMode = data.enforcement_mode;
-            } else {
-                // Legacy fallback: derive from boolean flags
-                if (data.block_high_risk) {
-                    enforcementMode = 'block';
-                } else if (data.redact_sensitive) {
-                    enforcementMode = 'redact';
-                } else {
-                    enforcementMode = 'monitor';
-                }
-            }
-
-            // Keep legacy MONITOR_MODE in sync for telemetry/logging
-            MONITOR_MODE = enforcementMode === 'block' ? 'enforce' : 'observe';
+        if (localConfigPath && fs.existsSync(localConfigPath)) {
+            data = JSON.parse(fs.readFileSync(localConfigPath, 'utf8'));
         } else {
-            console.warn(`[SETTINGS_SYNC] ⚠️ Fetch failed (${res.status}). Enforcement mode defaults to ${enforcementMode}.`);
+            const res = await fetch(`http://localhost:3737/api/proxy/settings?workspaceId=${WORKSPACE_ID}`);
+            if (!res.ok) {
+                console.warn(`[SETTINGS_SYNC] ⚠️ Fetch failed (${res.status}). Enforcement mode defaults to ${enforcementMode}.`);
+                return;
+            }
+            data = await res.json();
         }
+
+        proxyEnabled = data.proxy_enabled !== false;
+        desktopBypassEnabled = !!data.desktop_bypass;
+        inspectAttachmentsEnabled = !!data.inspect_attachments;
+        redactSensitiveEnabled = !!data.redact_sensitive;
+
+        // Read canonical enforcement_mode from settings (single source of truth)
+        if (data.enforcement_mode && VALID_ENFORCEMENT_MODES.includes(data.enforcement_mode)) {
+            enforcementMode = data.enforcement_mode;
+        } else {
+            // Legacy fallback: derive from boolean flags
+            if (data.block_high_risk) {
+                enforcementMode = 'block';
+            } else if (data.redact_sensitive) {
+                enforcementMode = 'redact';
+            } else {
+                enforcementMode = 'monitor';
+            }
+        }
+
+        // Keep legacy MONITOR_MODE in sync for telemetry/logging
+        MONITOR_MODE = enforcementMode === 'block' ? 'enforce' : 'observe';
     } catch (err) {
-        console.warn(`[SETTINGS_SYNC] ⚠️ Connection error: ${err.message}. Enforcement defaults to ${enforcementMode}.`);
+        console.warn(`[SETTINGS_SYNC] ⚠️ Connection/Parse error: ${err.message}. Enforcement defaults to ${enforcementMode}.`);
         inspectAttachmentsEnabled = false; // Fail-safe: OFF
     }
 }
