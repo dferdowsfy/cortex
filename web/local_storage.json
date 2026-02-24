@@ -18264,7 +18264,7 @@
   "workspaces/ifC9ivfSlEXkfpizWZJG5vU63I53/agents": {
     "local-proxy-server": {
       "device_id": "local-proxy-server",
-      "hostname": "Mac",
+      "hostname": "Dariuss-MacBook-Air.local",
       "os": "macOS",
       "version": "1.0.0-proxy",
       "heartbeat_interval": 30,
@@ -18273,7 +18273,7 @@
       "traffic_routing": true,
       "os_integration": true,
       "status": "Healthy",
-      "last_sync": "2026-02-23T23:54:11.493Z"
+      "last_sync": "2026-02-24T17:47:09.732Z"
     },
     "dev_c93325cfb1f84198": {
       "device_id": "dev_c93325cfb1f84198",
@@ -18291,6 +18291,24 @@
     }
   },
   "workspaces/ifC9ivfSlEXkfpizWZJG5vU63I53/events": [
+    {
+      "id": "evt_1771955223321_38k0",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-24T17:47:03.321Z",
+      "attachment_inspection_enabled": true
+    },
     {
       "id": "evt_1771890755616_s731",
       "tool": "AI Tool (ab.chatgpt.com)",
@@ -36271,24 +36289,6 @@
       "policy_violation_flag": false,
       "risk_category": "low",
       "timestamp": "2026-02-22T20:38:08.290Z",
-      "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792672323_xifh",
-      "tool": "AI Tool (chatgpt.com)",
-      "tool_domain": "chatgpt.com",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_005c9r3a",
-      "prompt_length": 50,
-      "token_count_estimate": 13,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:37:52.323Z",
       "attachment_inspection_enabled": true
     }
   ],

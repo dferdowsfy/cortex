@@ -344,10 +344,10 @@ export default function EnrollmentAdminPanel() {
                                                     <span className="text-xs text-zinc-500 font-medium">Max Uses:</span>
                                                     <input type="number" placeholder="unlimited" value={tokenMaxUses} onChange={(e) => setTokenMaxUses(e.target.value ? Number(e.target.value) : "")} className="bg-black/50 border border-zinc-800 rounded w-28 px-2 py-1.5 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600 placeholder:text-zinc-600" />
                                                 </div>
+                                                <button onClick={handleGenerateToken} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 py-1.5 text-xs font-bold transition whitespace-nowrap">
+                                                    Generate Token
+                                                </button>
                                             </div>
-                                            <button onClick={handleGenerateToken} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 text-sm font-bold transition flex items-center justify-center mt-1">
-                                                Generate Token
-                                            </button>
                                         </div>
 
                                         {newlyGeneratedToken && (
