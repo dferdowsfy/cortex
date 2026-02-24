@@ -9,21 +9,38 @@ function initFirebase() {
         return;
     }
 
-    // We only try to initialize if keys are present (prevent crashing in basic dev modes)
-    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    // We only try to initialize if keys are present
+    const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } = process.env;
+
+    if (FIREBASE_PROJECT_ID && FIREBASE_CLIENT_EMAIL && FIREBASE_PRIVATE_KEY) {
         try {
+            console.log("Initializing Firebase Admin with provided credentials...");
+            const privateKey = FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+
+            if (!privateKey.includes("BEGIN PRIVATE KEY")) {
+                console.warn("FIREBASE_PRIVATE_KEY format looks invalid (missing BEGIN header)");
+            }
+
             initializeApp({
                 credential: cert({
-                    projectId: process.env.FIREBASE_PROJECT_ID,
-                    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                    privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, '\n')
+                    projectId: FIREBASE_PROJECT_ID,
+                    clientEmail: FIREBASE_CLIENT_EMAIL,
+                    privateKey
                 }),
-                databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
+                databaseURL: `https://${FIREBASE_PROJECT_ID}.firebaseio.com`
             });
             isInitialized = true;
+            console.log("Firebase Admin successfully initialized.");
         } catch (e: any) {
-            console.error("Failed to initialize Firebase Admin:", e.message);
+            console.error("Failed to initialize Firebase Admin SDK:", e.message);
+            console.error(e.stack);
         }
+    } else {
+        const missing = [];
+        if (!FIREBASE_PROJECT_ID) missing.push("FIREBASE_PROJECT_ID");
+        if (!FIREBASE_CLIENT_EMAIL) missing.push("FIREBASE_CLIENT_EMAIL");
+        if (!FIREBASE_PRIVATE_KEY) missing.push("FIREBASE_PRIVATE_KEY");
+        console.warn(`Skipping Firebase initialization. Missing env vars: ${missing.join(", ")}`);
     }
 }
 

@@ -40,26 +40,30 @@ function getAdminApp() {
     }
 
     // Option 2: Individual env vars (easier than full JSON)
-    if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
+
+    if (clientEmail && privateKeyRaw) {
         try {
+            console.log("[firebase-admin] Initializing with clientEmail:", clientEmail);
+            const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
             return initializeApp({
                 credential: cert({
                     projectId,
-                    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(
-                        /\\n/g,
-                        "\n"
-                    ),
+                    clientEmail,
+                    privateKey,
                 }),
                 projectId,
                 databaseURL: RTDB_URL,
             });
-        } catch (err) {
-            console.warn(
+        } catch (err: any) {
+            console.error(
                 "[firebase-admin] Could not init with individual env vars:",
                 err
             );
         }
+    } else {
+        console.warn("[firebase-admin] Missing individual env vars for service account.");
     }
 
     // Option 3: Fallback (Highly restricted)

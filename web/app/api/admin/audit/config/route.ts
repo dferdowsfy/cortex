@@ -9,6 +9,7 @@ export async function GET() {
         const snapshot = await ref.once("value");
         return NextResponse.json(snapshot.val() || { scheduleHour: 13, emailRecipient: "" });
     } catch (e: any) {
+        console.error("Audit config GET API error:", e);
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ status: "ok" });
     } catch (e: any) {
+        console.error("Audit config POST API error:", e);
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }

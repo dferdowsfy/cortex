@@ -20,6 +20,7 @@ export async function GET() {
         // Reverse to show newest first
         return NextResponse.json({ reports: reports.reverse() });
     } catch (e: any) {
+        console.error("Audit history API error:", e);
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
