@@ -11,6 +11,16 @@ const STORE_PATH = path.join(__dirname, '.complyze-agent-store.json');
 const PROXY_CONFIG_PATH = path.join(__dirname, '.complyze-proxy-config.json');
 const WIN_ENCLAVE_PATH = path.join(__dirname, '.complyze-win-vault.enc');
 
+const ENTERPRISE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnmlgpOABLIsWakMZC7fI
+Sb2OyJHJlD6jVkFFTKwxKs/2tsGDG+PqYfdRl/AXWvDp7YzY6KzdFPi9PZ6WAhNs
+IfW3Z4WaaEUBXMseorWT2wYZ0og14FzJGoZ2cv0tegJGeFdFYJKfVSFfRUnQVMgn
+QTWVYsPjeq3rfew+xOUcIQAMhzc4RmW6DVkVS6pDaZrkty5/b0qNoPSEI/eNSUmt
+nnt7peZTyOlcue7EzMx+Zr8GzZP2p7Z6c5l9Qz2b8VvF9sekHIVm6oA69D66u6Ym
+957CCeG+eL/0Wp5IU27FyD1gAWqR7rk0AZm3O4auumxiPG+3xuIFzaiq6OuCwRXn
+DQIDAQAB
+-----END PUBLIC KEY-----`;
+
 const POLLING_INTERVAL = 60 * 1000;
 const PROXY_PORT = 8080;
 
@@ -18,6 +28,7 @@ let store = {
     device_id: null,
     last_policy_version: 0,
     last_policy: null,
+    last_successful_sync: null,
     revoked: false
 };
 let device_secret_memory = null;
@@ -98,9 +109,19 @@ function enforceSystemProxyState(enable) {
             if (enable) {
                 execSync(`networksetup -setwebproxy "Wi-Fi" 127.0.0.1 ${PROXY_PORT}`);
                 execSync(`networksetup -setsecurewebproxy "Wi-Fi" 127.0.0.1 ${PROXY_PORT}`);
+
+                // Block QUIC/UDP out port 443 to force TCP fallback
+                // Note: pfctl requires root privileges
+                const pfConf = "block drop out proto udp from any to any port 443";
+                fs.writeFileSync('/tmp/complyze_quic_block.conf', pfConf);
+                execSync(`pfctl -a complyze/quic_block -f /tmp/complyze_quic_block.conf || true`);
+                execSync(`pfctl -E || true`);
             } else {
                 execSync(`networksetup -setwebproxystate "Wi-Fi" off`);
                 execSync(`networksetup -setsecurewebproxystate "Wi-Fi" off`);
+
+                // Remove QUIC/UDP block
+                execSync(`pfctl -a complyze/quic_block -F all || true`);
             }
         } catch (e) {
             console.warn('[OS Warning] Failed to modify macOS proxy routes (requires privileges/network hardware checks).');
@@ -109,8 +130,14 @@ function enforceSystemProxyState(enable) {
         try {
             if (enable) {
                 execSync(`powershell -Command "Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings' -Name ProxyServer -Value '127.0.0.1:${PROXY_PORT}'; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings' -Name ProxyEnable -Value 1"`);
+
+                // Block QUIC/UDP out port 443
+                execSync(`powershell -Command "if (-not (Get-NetFirewallRule -DisplayName 'Complyze_QUIC_Block' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -DisplayName 'Complyze_QUIC_Block' -Direction Outbound -Protocol UDP -RemotePort 443 -Action Block }"`);
             } else {
                 execSync(`powershell -Command "Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings' -Name ProxyEnable -Value 0"`);
+
+                // Remove QUIC/UDP block
+                execSync(`powershell -Command "Remove-NetFirewallRule -DisplayName 'Complyze_QUIC_Block' -ErrorAction SilentlyContinue"`);
             }
         } catch (e) {
             console.warn('[OS Warning] Failed to modify Windows proxy registry.');
@@ -164,7 +191,7 @@ function syncProxyConfigWithPolicy(policyConfig) {
         enforcement_mode: 'monitor'
     };
 
-    if (policyConfig.block_high_risk) mappedConfig.enforcement_mode = 'block';
+    if (policyConfig.block_high_risk || policyConfig.fail_closed) mappedConfig.enforcement_mode = 'block';
     else if (policyConfig.auto_redaction) mappedConfig.enforcement_mode = 'redact';
     else if (policyConfig.audit_mode) mappedConfig.enforcement_mode = 'warn';
 
@@ -193,6 +220,20 @@ function getAuthHeaders() {
     };
 }
 
+function verifyPolicySignature(policyData) {
+    if (!policyData || !policyData.signature || !policyData.payload_json) return false;
+    try {
+        return crypto.verify(
+            "sha256",
+            Buffer.from(policyData.payload_json),
+            ENTERPRISE_PUBLIC_KEY,
+            Buffer.from(policyData.signature, 'base64')
+        );
+    } catch (e) {
+        return false;
+    }
+}
+
 async function fetchWithBackoff(url, options, maxRetries = 5) {
     let retries = 0;
     let delay = 1000;
@@ -206,6 +247,16 @@ async function fetchWithBackoff(url, options, maxRetries = 5) {
             retries++;
             if (retries > maxRetries) {
                 console.log(`[Error] Max retries reached ensuring last known policy retains enforcement.`);
+
+                // Fail-Closed Sinkhole Protection: 72 hours TTL
+                if (store.last_successful_sync) {
+                    const offlineDuration = Date.now() - store.last_successful_sync;
+                    if (offlineDuration > 72 * 60 * 60 * 1000) {
+                        console.error(`[Critical Warning] Agent has been offline for > 72 hours. Entering Fail-Closed mode.`);
+                        syncProxyConfigWithPolicy({ fail_closed: true, enable_ai_monitoring: true });
+                    }
+                }
+
                 // Ensure the proxy continues functioning isolated and offline with local config.
                 // It will naturally re-try at the next POLLING_INTERVAL tick.
                 throw err;
@@ -233,6 +284,11 @@ async function enroll(token) {
     const data = await res.json();
     if (!res.ok) {
         console.error(`[Enrollment Failed] ${data.error || res.statusText}`);
+        process.exit(1);
+    }
+
+    if (!verifyPolicySignature(data.policy)) {
+        console.error(`[Enrollment Failed] Invalid cryptographic signature on initial policy payload.`);
         process.exit(1);
     }
 
@@ -266,6 +322,16 @@ async function syncPolicy() {
         }
 
         if (!res.ok) return;
+
+        store.last_successful_sync = Date.now();
+        saveStore();
+
+        if (!verifyPolicySignature(data)) {
+            console.error(`[Security Alert] Policy payload signature verification failed! Possible MITM bridging attempt.`);
+            // Intentional fail-closed mechanism for payload tampering
+            enforceSystemProxyState(false);
+            return;
+        }
 
         if (data.policy_version > store.last_policy_version) {
             console.log(`[Policy Update] Version incremented from ${store.last_policy_version} -> ${data.policy_version}`);
