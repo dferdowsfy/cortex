@@ -283,12 +283,18 @@ export default function EnrollmentAdminPanel() {
                                     <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-5 shadow-sm">
                                         <h4 className="font-bold text-sm text-zinc-300 uppercase tracking-widest mb-4">Enrollment Tokens</h4>
 
-                                        <div className="flex gap-2 mb-4 items-center">
-                                            <span className="text-xs text-zinc-500 font-medium">Expire (hrs):</span>
-                                            <input type="number" value={tokenExpiresIn} onChange={(e) => setTokenExpiresIn(Number(e.target.value))} className="bg-black/50 border border-zinc-800 rounded w-16 px-2 py-1 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600" />
-                                            <span className="text-xs text-zinc-500 font-medium ml-2">Max Uses:</span>
-                                            <input type="number" placeholder="unlimited" value={tokenMaxUses} onChange={(e) => setTokenMaxUses(e.target.value ? Number(e.target.value) : "")} className="bg-black/50 border border-zinc-800 rounded w-20 px-2 py-1 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600 placeholder:text-zinc-600" />
-                                            <button onClick={handleGenerateToken} className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-1.5 text-xs font-bold transition">
+                                        <div className="flex flex-col gap-3 mb-4">
+                                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-zinc-500 font-medium">Expire (hrs):</span>
+                                                    <input type="number" value={tokenExpiresIn} onChange={(e) => setTokenExpiresIn(Number(e.target.value))} className="bg-black/50 border border-zinc-800 rounded w-20 px-2 py-1.5 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600" />
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-zinc-500 font-medium">Max Uses:</span>
+                                                    <input type="number" placeholder="unlimited" value={tokenMaxUses} onChange={(e) => setTokenMaxUses(e.target.value ? Number(e.target.value) : "")} className="bg-black/50 border border-zinc-800 rounded w-28 px-2 py-1.5 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600 placeholder:text-zinc-600" />
+                                                </div>
+                                            </div>
+                                            <button onClick={handleGenerateToken} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 text-sm font-bold transition flex items-center justify-center mt-1">
                                                 Generate Token
                                             </button>
                                         </div>
