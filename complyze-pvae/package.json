@@ -1,0 +1,20 @@
+{
+    "name": "complyze-pvae",
+    "version": "1.0.0",
+    "description": "Complyze Proxy Validation & Assurance Engine",
+    "main": "dist/cli.js",
+    "scripts": {
+        "build": "tsc",
+        "audit": "ts-node src/cli.ts",
+        "start": "node dist/cli.js"
+    },
+    "dependencies": {
+        "dotenv": "^16.4.5",
+        "resend": "^3.2.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.20",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.3.3"
+    }
+}

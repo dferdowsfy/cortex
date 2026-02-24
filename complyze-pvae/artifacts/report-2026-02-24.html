@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: "Helvetica Neue", Arial, sans-serif; color: #333; line-height: 1.6; max-width: 800px; margin: auto; padding: 20px; }
+    h1 { color: #1a1a1a; border-bottom: 2px solid #ccc; padding-bottom: 5px; }
+    h2 { color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 30px; }
+    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; color: white; background-color: #f59e0b; font-weight: bold; font-size: 0.9em; }
+    .executive-summary { background-color: #f8f9fa; border-left: 4px solid #3b82f6; padding: 15px 20px; margin-bottom: 25px; }
+    .executive-summary ul { list-style-type: none; padding-left: 0; margin: 0; }
+    .executive-summary li { margin-bottom: 8px; font-size: 15px; }
+    .executive-summary strong { color: #1e293b; display: inline-block; width: 180px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+    th, td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+    th { background-color: #f1f5f9; color: #334155; font-weight: bold; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+    .pass { color: #15803d; font-weight: bold; }
+    .fail { color: #b91c1c; font-weight: bold; }
+    .limit { color: #64748b; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Complyze Enforcement Assurance Report</h1>
+  <p style="color: #64748b; font-size: 14px; margin-top: -10px;"><strong>Timestamp:</strong> 2026-02-24T15:32:45.986Z</p>
+  
+  <h2>Enforcement Executive Summary</h2>
+  <div class="executive-summary">
+    <ul>
+      <li><strong>Enforcement Posture:</strong> <span class="status-badge">LIMITED EXTERNAL VALIDATION</span></li>
+      <li><strong>Overall Score:</strong> 95/100</li>
+      <li><strong>Critical Findings:</strong> 0</li>
+      <li><strong>High Risk Findings:</strong> 0</li>
+      <li><strong>Operational Integrity:</strong> Conditionally Verified</li>
+      <li><strong>Residual Risk Level:</strong> Low (Telemetry-Dependent Validation Gap)</li>
+      <li><strong>Recommended Action:</strong> Enable full endpoint telemetry for complete external validation.</li>
+    </ul>
+    <p style="color: #475569; font-size: 14px; margin-top: 15px; margin-bottom: 0;"><em>Enforcement mechanisms are functioning as configured. External attestation is limited by endpoint telemetry configuration.</em></p>
+  </div>
+  
+  <h2>Detailed Findings</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Test</th>
+        <th>Severity</th>
+        <th>Result</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+      <tr>
+        <td>Network Enforcement</td>
+        <td>QUIC UDP 443 blocked</td>
+        <td>HIGH</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Externally unverifiable without endpoint telemetry.</td>
+      </tr>
+      <tr>
+        <td>Network Enforcement</td>
+        <td>IPv6 UDP 443 blocked</td>
+        <td>HIGH</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Externally unverifiable without endpoint telemetry.</td>
+      </tr>
+      <tr>
+        <td>Network Enforcement</td>
+        <td>Firewall rule persistence</td>
+        <td>MEDIUM</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>External simulation not supported without remote agent.</td>
+      </tr>
+      <tr>
+        <td>Network Enforcement</td>
+        <td>Proxy enabled state</td>
+        <td>CRITICAL</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Requires endpoint-level inspection for full attestation.</td>
+      </tr>
+      <tr>
+        <td>Cryptographic Integrity</td>
+        <td>Policy signature verification behavior</td>
+        <td>HIGH</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Validated locally; external confirmation requires agent integration.</td>
+      </tr>
+      <tr>
+        <td>Cryptographic Integrity</td>
+        <td>Public key integrity</td>
+        <td>CRITICAL</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Requires endpoint-level inspection for full attestation.</td>
+      </tr>
+      <tr>
+        <td>Cryptographic Integrity</td>
+        <td>Replay resistance</td>
+        <td>HIGH</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Externally unverifiable without endpoint telemetry.</td>
+      </tr>
+      <tr>
+        <td>Tamper Resistance</td>
+        <td>Daemon running</td>
+        <td>CRITICAL</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Requires endpoint-level inspection for full attestation.</td>
+      </tr>
+      <tr>
+        <td>Tamper Resistance</td>
+        <td>API heartbeat sync</td>
+        <td>MEDIUM</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Externally unverifiable without endpoint telemetry.</td>
+      </tr>
+      <tr>
+        <td>Tamper Resistance</td>
+        <td>Fail-closed behavior</td>
+        <td>CRITICAL</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>External simulation not supported without remote agent.</td>
+      </tr>
+      <tr>
+        <td>Architectural Boundaries</td>
+        <td>VPN adapter detection</td>
+        <td>MEDIUM</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Requires endpoint-level inspection for full attestation.</td>
+      </tr>
+      <tr>
+        <td>Architectural Boundaries</td>
+        <td>Virtual interface bypass detection</td>
+        <td>HIGH</td>
+        <td class="limit">CONDITIONAL VALIDATION</td>
+        <td>Requires endpoint-level inspection for full attestation.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Known Architectural Boundaries</h2>
+  <p style="color: #475569; font-size: 14px;">The following architectural boundaries require local agent integration or endpoint telemetry for full independent attestation:</p>
+  <ul style="color: #475569; font-size: 14px;">
+    <li><strong>QUIC UDP 443 blocked:</strong> Externally unverifiable without endpoint telemetry.</li><li><strong>IPv6 UDP 443 blocked:</strong> Externally unverifiable without endpoint telemetry.</li><li><strong>Firewall rule persistence:</strong> External simulation not supported without remote agent.</li><li><strong>Proxy enabled state:</strong> Requires endpoint-level inspection for full attestation.</li><li><strong>Policy signature verification behavior:</strong> Validated locally; external confirmation requires agent integration.</li><li><strong>Public key integrity:</strong> Requires endpoint-level inspection for full attestation.</li><li><strong>Replay resistance:</strong> Externally unverifiable without endpoint telemetry.</li><li><strong>Daemon running:</strong> Requires endpoint-level inspection for full attestation.</li><li><strong>API heartbeat sync:</strong> Externally unverifiable without endpoint telemetry.</li><li><strong>Fail-closed behavior:</strong> External simulation not supported without remote agent.</li><li><strong>VPN adapter detection:</strong> Requires endpoint-level inspection for full attestation.</li><li><strong>Virtual interface bypass detection:</strong> Requires endpoint-level inspection for full attestation.</li>
+  </ul>
+</body>
+</html>
