@@ -15,7 +15,7 @@ export async function sendReportEmail(params: {
     const resend = new Resend(apiKey);
 
     try {
-        const fromEmail = process.env.RESEND_FROM_EMAIL || "alerts@complyze.co";
+        const fromEmail = process.env.RESEND_FROM_EMAIL || "governance@complyze.co";
         const data = await resend.emails.send({
             from: `Complyze Governance <${fromEmail}>`,
             to: [params.to],
