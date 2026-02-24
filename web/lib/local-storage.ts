@@ -15,7 +15,10 @@ class LocalStorage {
     private readonly READ_DEBOUNCE_MS = 100; // Very short debounce for responsiveness
 
     constructor() {
-        this.filePath = path.join(process.cwd(), 'local_storage.json');
+        const isVercel = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+        this.filePath = isVercel
+            ? path.join('/tmp', 'local_storage.json')
+            : path.join(process.cwd(), 'local_storage.json');
         this.loadFromDisk();
     }
 
