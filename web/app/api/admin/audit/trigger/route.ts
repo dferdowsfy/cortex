@@ -11,10 +11,10 @@ export async function POST() {
         const repoName = "cortex";
         const workflowId = "daily-audit.yml";
 
-        const response = await fetch(\`https://api.github.com/repos/\${repoOwner}/\${repoName}/actions/workflows/\${workflowId}/dispatches\`, {
+        const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/actions/workflows/${workflowId}/dispatches`, {
             method: "POST",
             headers: {
-                "Authorization": \`Bearer \${ghPat}\`,
+                "Authorization": `Bearer ${ghPat}`,
                 "Accept": "application/vnd.github.v3+json",
                 "Content-Type": "application/json"
             },
@@ -26,7 +26,7 @@ export async function POST() {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("GitHub API Error:", response.status, errorText);
-            return NextResponse.json({ error: \`GitHub API error: \${response.statusText}\` }, { status: response.status });
+            return NextResponse.json({ error: `GitHub API error: ${response.statusText}` }, { status: response.status });
         }
 
         return NextResponse.json({ status: "ok", message: "Audit successfully triggered" });
