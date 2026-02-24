@@ -329,7 +329,7 @@ async function syncPolicy() {
         if (!verifyPolicySignature(data)) {
             console.error(`[Security Alert] Policy payload signature verification failed! Possible MITM bridging attempt.`);
             // Intentional fail-closed mechanism for payload tampering
-            enforceSystemProxyState(false);
+            syncProxyConfigWithPolicy({ fail_closed: true, enable_ai_monitoring: true });
             return;
         }
 
