@@ -2,6 +2,35 @@ import { adminDb } from "./firebase/admin";
 import { localStorage } from "./local-storage";
 import crypto from "crypto";
 
+const ENTERPRISE_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCeaWCk4AEsixZq
+QxkLt8hJvY7IkcmUPqNWQUVMrDEqz/a2wYMb4+ph91GX8Bda8OntjNjorN0U+L09
+npYCE2wh9bdnhZpoRQFcyx6itZPbBhnSiDXgXMkahnZy/S16AkZ4V0Vgkp9VIV9F
+SdBUyCdBNZViw+N6ret97D7E5RwhAAyHNzhGZboNWRVLqkNpmuS3Ln9vSo2g9IQj
+941JSa2ee3ul5lPI6Vy57sTMzH5mvwbNk/antnpzmX1DPZvxW8X2x6QchWbqgDr0
+Prq7pib3nsIJ4b54v/RankhTbsXIPWABapHuuTQBmbc7hq66bGI8b7fG4gXNqKro
+64LBFecNAgMBAAECggEAC6xtTEkbnQo04SjHqDbnYhO/eWVQ6wVAqSMPNcq8ptCD
+eE1DWaNOiuCcWSt+tRtqybAm7eKLOjfoTimpGUcQIWKHnO/aBJQNOSbYv5nM5weI
+kJysB7ges78z7F5e4w5W3hhkSu0TI8VdTXBWk2Daj7Igq5IO6eP2JiXqLD1L+Nx3
+4cHp8i83ZPfBRKVT4N7o7rHbaNU7hkb8xbnB+jfDmHXN55Qg1leBMfNdzBVFl4tv
+hKShR/6xWu0Jkz7RHAEnqn9M9JYmjETnKmmW4lJXWRcaYX2g9cRCV5sC9KCY0ajK
+sjpCBuPvyS08SfVF48Cbd2o+B8tJrO3/Jbehbpz3SwKBgQDJsDdTqpRs5a5UiRp0
+tF1MGeN69kemp9T350yZ8NEmkl1by1mBeifoazwaEufpDF2DgqsJQ3iuYYnokfuT
+pM7oCrQLlPlaDrGF7JhvmrMayLORnpkYvTRy+FpnQHORTpnxI6zd68qwu+xgdtFc
+WzvZZJnb6Sd9DhfkVQ98tijSlwKBgQDJEcu5B/9VksmQebKh05lBs/cFfwvylM5I
+2mPiF8nuNvP9lyz9Ab57484PBOUarUG7Q7Fn6XNlTyGadIsjNbdsRBIj/5O6rLZ8
+dD+g7RiYLgvzCAbQiq/WGNuBCyjtRbz2wAGXpQEVJJlo8JGaTT8nLO2OXf11NBfw
+3cOGtKKb+wKBgFbhUMP6vBs4yWLi+IGDXJk2obZLNsxEicoMWgQKJ55s+EhdjX3n
+6B8Haol00W+jgvjupczEwsyjeau0juGn4fU0/x/qGYvAvpoJNBUHV9XW1PuKjTqJ
+7nkEILVPnzjd2hR1ILcsJlEBcq6PIFqfdmWMH3cKtZb6JjKWrag0M9ubAoGBAMJF
+UHoJkRnERr4x53dV9Bi4Yi7MTuXmAt3/LEyyQWfJbrsRSuV1vu8C7wAx8Y5x4jWm
+NQ26UMWMzGHowtqVNxEDQCfJ85mE8JiU1TmOe5nlu6PomHT72uLYh5VKDBQcsnQS
+ljdHtSERiKwM7BGTGzalwS0yAQcx+wO9sQJBG2/rAoGBAMBq6btYmlk+RO0+poIp
+SPNkV7TZhk4HUY+oOhJObuKF7Gm6tNw2dqDVOKKmRsGwCJoUweJ1QDEtDR9MPpbo
+s9a8iPX8uETpQq+ZTIS/i7JI2UNjlAn92uN96xde4NY/DjLKAeSpHPK23hvU6u8A
+1wHhmAReCPFwLfFIkHRQ9rvh
+-----END PRIVATE KEY-----`;
+
 export interface Organization {
     org_id: string;
     name: string;
@@ -289,12 +318,12 @@ class EnrollmentStore {
             issued_at: new Date().toISOString()
         };
 
-        const signature = crypto.createHmac('sha256', org.signing_secret)
-            .update(JSON.stringify(payload))
-            .digest('hex');
+        const payloadString = JSON.stringify(payload);
+        const signature = crypto.sign("sha256", Buffer.from(payloadString), ENTERPRISE_PRIVATE_KEY).toString('base64');
 
         return {
             ...payload,
+            payload_json: payloadString,
             signature
         };
     }
