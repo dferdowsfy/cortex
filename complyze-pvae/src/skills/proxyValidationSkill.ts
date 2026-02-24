@@ -36,7 +36,7 @@ export async function executeProxyValidationSkill(input: SkillInput): Promise<Sk
             subject = `⚠️ ALERT: ${subject}`;
         }
 
-        const toEmail = process.env.VALIDATION_REPORT_EMAIL;
+        const toEmail = (input.target as any).overrideEmail || process.env.VALIDATION_REPORT_EMAIL;
         if (toEmail) {
             await sendReportEmail({
                 html: htmlReport,

@@ -28,10 +28,29 @@ export default function EnrollmentAdminPanel() {
     const [tokenMaxUses, setTokenMaxUses] = useState<number | "">("");
 
     const [newlyGeneratedToken, setNewlyGeneratedToken] = useState<string | null>(null);
+    const [auditStatus, setAuditStatus] = useState<string>("");
+    const [auditConfig, setAuditConfig] = useState<{ scheduleHour: number, emailRecipient: string }>({ scheduleHour: 13, emailRecipient: "" });
+    const [auditHistory, setAuditHistory] = useState<any[]>([]);
+    const [showHistory, setShowHistory] = useState(false);
+    const [selectedReport, setSelectedReport] = useState<any | null>(null);
 
     useEffect(() => {
         fetchOrgs();
+        fetchAuditConfig();
+        fetchAuditHistory();
     }, [workspaceId]);
+
+    const fetchAuditConfig = async () => {
+        const res = await fetch("/api/admin/audit/config");
+        const data = await res.json();
+        if (data && !data.error) setAuditConfig(data);
+    };
+
+    const fetchAuditHistory = async () => {
+        const res = await fetch("/api/admin/audit/history");
+        const data = await res.json();
+        if (data && data.reports) setAuditHistory(data.reports);
+    };
 
     const fetchOrgs = async () => {
         const res = await fetch(`/api/orgs?workspaceId=${workspaceId}`);
@@ -144,6 +163,38 @@ export default function EnrollmentAdminPanel() {
         if (data.status === "ok") {
             setNewlyGeneratedToken(data.token);
             fetchTokens(selectedOrg.org_id);
+        }
+    };
+
+    const handleRunAudit = async () => {
+        setAuditStatus("Triggering GitHub Action...");
+        try {
+            const res = await fetch("/api/admin/audit/trigger", { method: "POST" });
+            const data = await res.json();
+            if (res.ok) {
+                setAuditStatus("Audit triggered! You will receive an email shortly once complete.");
+            } else {
+                setAuditStatus("Failed to trigger audit: " + data.error);
+            }
+        } catch (e: any) {
+            setAuditStatus("Error triggering audit.");
+        }
+    };
+
+    const handleUpdateAuditConfig = async () => {
+        setAuditStatus("Updating configuration...");
+        try {
+            const res = await fetch("/api/admin/audit/config", {
+                method: "POST",
+                body: JSON.stringify(auditConfig)
+            });
+            if (res.ok) {
+                setAuditStatus("Audit configuration updated successfully.");
+            } else {
+                setAuditStatus("Failed to update configuration.");
+            }
+        } catch (e) {
+            setAuditStatus("Error updating configuration.");
         }
     };
 
@@ -417,6 +468,156 @@ export default function EnrollmentAdminPanel() {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Full-width Assurance Box */}
+                            <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-5 shadow-sm mt-0">
+                                <h4 className="font-bold text-sm text-zinc-300 uppercase tracking-widest mb-4">Governance Assurance & Auditing</h4>
+                                <p className="text-zinc-400 text-sm mb-4">
+                                    Trigger an independent validation of your organization's telemetry and enforcement boundaries. The PVAE engine runs externally and evaluates the structural integrity of your deployment, producing an executive-ready compliance report.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                    <button
+                                        onClick={handleRunAudit}
+                                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-6 py-2.5 text-sm font-bold transition flex items-center justify-center"
+                                    >
+                                        Run Independent Validation Scan
+                                    </button>
+                                    {auditStatus && (
+                                        <p className="text-zinc-300 text-sm font-medium">{auditStatus}</p>
+                                    )}
+                                </div>
+
+                                <div className="mt-8 border-t border-zinc-800 pt-6">
+                                    <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Audit & Scheduling Preferences</h5>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-xs text-zinc-400 font-medium">Daily Audit Hour (UTC 0-23):</span>
+                                            <input
+                                                type="number"
+                                                min="0" max="23"
+                                                value={auditConfig.scheduleHour}
+                                                onChange={(e) => setAuditConfig({ ...auditConfig, scheduleHour: parseInt(e.target.value) })}
+                                                className="bg-black/50 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-xs text-zinc-400 font-medium">Report Recipient Email:</span>
+                                            <input
+                                                type="email"
+                                                placeholder="admin@example.com"
+                                                value={auditConfig.emailRecipient}
+                                                onChange={(e) => setAuditConfig({ ...auditConfig, emailRecipient: e.target.value })}
+                                                className="bg-black/50 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600"
+                                            />
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={handleUpdateAuditConfig}
+                                        className="mt-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg px-4 py-2 text-xs font-bold transition"
+                                    >
+                                        Save Audit Preferences
+                                    </button>
+                                </div>
+
+                                <div className="mt-8 border-t border-zinc-800 pt-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Independent Validation History</h5>
+                                        <button onClick={() => setShowHistory(!showHistory)} className="text-xs text-blue-400 hover:text-blue-300 font-bold uppercase tracking-wider">
+                                            {showHistory ? "Hide History" : "View Recent Scans"}
+                                        </button>
+                                    </div>
+
+                                    {showHistory && (
+                                        <div className="flex flex-col gap-3">
+                                            {auditHistory.map((report) => (
+                                                <div
+                                                    key={report.id}
+                                                    onClick={() => setSelectedReport(report)}
+                                                    className="flex items-center justify-between bg-black/30 border border-zinc-800/50 hover:border-zinc-700 rounded-lg p-3 cursor-pointer transition"
+                                                >
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-xs font-bold text-zinc-200">{new Date(report.timestamp).toLocaleString()}</span>
+                                                        <span className="text-[10px] text-zinc-500 font-mono">ID: {report.id.substring(0, 12)}...</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-xs font-bold text-zinc-100">Score: {report.enforcementScore}/100</span>
+                                                            <span className={`text-[10px] font-bold uppercase ${report.overallStatus === 'HEALTHY' ? 'text-emerald-400' : report.overallStatus === 'CRITICAL' ? 'text-red-400' : 'text-amber-400'}`}>
+                                                                {report.overallStatus}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-zinc-600">→</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {auditHistory.length === 0 && <p className="text-xs text-zinc-600 italic">No audit history found.</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Report viewer modal overlay if report selected */}
+                            {selectedReport && (
+                                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                                    <div className="bg-[#18181b] border border-[#27272a] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                                        <div className="flex items-center justify-between p-5 border-b border-zinc-800 bg-zinc-900/50">
+                                            <div>
+                                                <h3 className="font-bold text-lg text-zinc-50">Validation Report Details</h3>
+                                                <p className="text-xs text-zinc-500 mt-1 uppercase tracking-widest">{new Date(selectedReport.timestamp).toLocaleString()}</p>
+                                            </div>
+                                            <button onClick={() => setSelectedReport(null)} className="text-zinc-400 hover:text-zinc-50 p-2">
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8 custom-scrollbar">
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Status</p>
+                                                    <p className={`text-sm font-bold ${selectedReport.overallStatus === 'HEALTHY' ? 'text-emerald-400' : 'text-amber-400'}`}>{selectedReport.overallStatus}</p>
+                                                </div>
+                                                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Score</p>
+                                                    <p className="text-sm font-bold text-zinc-100">{selectedReport.enforcementScore}/100</p>
+                                                </div>
+                                                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Criticals</p>
+                                                    <p className="text-sm font-bold text-zinc-100">{selectedReport.findings.filter((f: any) => f.severity === 'CRITICAL' && f.result === 'FAIL').length}</p>
+                                                </div>
+                                                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">High Risk</p>
+                                                    <p className="text-sm font-bold text-zinc-100">{selectedReport.findings.filter((f: any) => f.severity === 'HIGH' && f.result === 'FAIL').length}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col gap-4">
+                                                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Findings Table</h4>
+                                                <div className="border border-zinc-800 rounded-xl overflow-hidden">
+                                                    <table className="w-full text-xs text-left">
+                                                        <thead className="bg-zinc-900 border-b border-zinc-800">
+                                                            <tr>
+                                                                <th className="p-3 font-bold text-zinc-500 uppercase tracking-widest text-[10px]">Test Case</th>
+                                                                <th className="p-3 font-bold text-zinc-500 uppercase tracking-widest text-[10px]">Severity</th>
+                                                                <th className="p-3 font-bold text-zinc-500 uppercase tracking-widest text-[10px]">Result</th>
+                                                                <th className="p-3 font-bold text-zinc-500 uppercase tracking-widest text-[10px]">Notes</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-zinc-800">
+                                                            {selectedReport.findings.map((f: any, i: number) => (
+                                                                <tr key={i} className="hover:bg-zinc-800/20">
+                                                                    <td className="p-3 text-zinc-300 font-medium">{f.test}</td>
+                                                                    <td className="p-3 font-bold">{f.severity}</td>
+                                                                    <td className={`p-3 font-bold ${f.result === 'PASS' ? 'text-emerald-400' : f.result === 'FAIL' ? 'text-red-400' : 'text-zinc-500'}`}>{f.result}</td>
+                                                                    <td className="p-3 text-zinc-500">{f.notes}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
