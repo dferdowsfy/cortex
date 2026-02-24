@@ -27,7 +27,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           VALIDATION_REPORT_EMAIL: ${{ secrets.VALIDATION_REPORT_EMAIL }}
           VALIDATION_SCORE_ALERT_THRESHOLD: 75
-          RESEND_FROM_EMAIL: alerts@complyze.co
+          RESEND_FROM_EMAIL: governance@complyze.co
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
           FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
