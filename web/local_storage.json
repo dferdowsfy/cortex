@@ -36836,6 +36836,14 @@
       "policy_version": 1,
       "policy_config": {},
       "signing_secret": "2224717f7c5486aa0136f8a12dd48c46ae9114a9a00ffbf90fcd883b2e74b336"
+    },
+    "2a09d7d4-a760-4728-9a1f-e8346ad4431c": {
+      "org_id": "2a09d7d4-a760-4728-9a1f-e8346ad4431c",
+      "name": "NewTestOrg",
+      "created_at": "2026-02-24T18:18:46.541Z",
+      "policy_version": 1,
+      "policy_config": {},
+      "signing_secret": "c9d57150fe4bdb4bb5961f92a2f154d0deab9f4ee2d8c9a3dbd13f491fa39a21"
     }
   }
 }

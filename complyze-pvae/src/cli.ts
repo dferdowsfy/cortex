@@ -52,8 +52,9 @@ async function main() {
 
     try {
         await saveAuditReport(result.report);
-    } catch (e) {
-        console.error("Failed to save report to database:", e);
+    } catch (e: any) {
+        console.error("FATAL: Failed to save report to database:", e.message);
+        process.exit(1);
     }
 
     console.log("\n================ REPORT ================\n");
@@ -72,6 +73,6 @@ async function main() {
 }
 
 main().catch((err) => {
-    console.error("Fatal error during audit execution:", err);
+    console.error("Fatal error during audit execution:", err.message);
     process.exit(1);
 });

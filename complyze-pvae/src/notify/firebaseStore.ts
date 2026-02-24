@@ -40,7 +40,8 @@ function initFirebase() {
         if (!FIREBASE_PROJECT_ID) missing.push("FIREBASE_PROJECT_ID");
         if (!FIREBASE_CLIENT_EMAIL) missing.push("FIREBASE_CLIENT_EMAIL");
         if (!FIREBASE_PRIVATE_KEY) missing.push("FIREBASE_PRIVATE_KEY");
-        console.warn(`Skipping Firebase initialization. Missing env vars: ${missing.join(", ")}`);
+        const msg = `CRITICAL: Firebase initialization failed. Missing env vars: ${missing.join(", ")}`;
+        console.error(msg);
     }
 }
 
@@ -64,8 +65,7 @@ export async function getAuditConfig(): Promise<{ scheduleHour?: number, emailRe
 export async function saveAuditReport(report: any): Promise<void> {
     initFirebase();
     if (!isInitialized) {
-        console.warn("Skipping saving report to DB because Firebase is not configured.");
-        return;
+        throw new Error("Cannot save report: Firebase is not initialized. Check your Environment Variables / Secrets.");
     }
 
     try {
@@ -78,5 +78,6 @@ export async function saveAuditReport(report: any): Promise<void> {
         console.log("Successfully saved audit report to Firebase.");
     } catch (e: any) {
         console.error("Error saving audit report:", e.message);
+        throw e;
     }
 }
