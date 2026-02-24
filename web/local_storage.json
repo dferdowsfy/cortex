@@ -18273,7 +18273,7 @@
       "traffic_routing": true,
       "os_integration": true,
       "status": "Healthy",
-      "last_sync": "2026-02-24T17:47:09.732Z"
+      "last_sync": "2026-02-24T17:48:08.696Z"
     },
     "dev_c93325cfb1f84198": {
       "device_id": "dev_c93325cfb1f84198",
@@ -18291,6 +18291,24 @@
     }
   },
   "workspaces/ifC9ivfSlEXkfpizWZJG5vU63I53/events": [
+    {
+      "id": "evt_1771955275128_hemh",
+      "tool": "AI Tool (chatgpt.com)",
+      "tool_domain": "chatgpt.com",
+      "user_hash": "h_00yhzmbk",
+      "prompt_hash": "h_005c9r3a",
+      "prompt_length": 50,
+      "token_count_estimate": 13,
+      "api_endpoint": "/",
+      "sensitivity_score": 0,
+      "sensitivity_categories": [
+        "none"
+      ],
+      "policy_violation_flag": false,
+      "risk_category": "low",
+      "timestamp": "2026-02-24T17:47:55.128Z",
+      "attachment_inspection_enabled": true
+    },
     {
       "id": "evt_1771955223321_38k0",
       "tool": "AI Tool (chatgpt.com)",
@@ -36272,24 +36290,6 @@
       "risk_category": "low",
       "timestamp": "2026-02-22T20:38:53.287Z",
       "attachment_inspection_enabled": true
-    },
-    {
-      "id": "evt_1771792688290_td72",
-      "tool": "AI Tool (count.perplexity.ai)",
-      "tool_domain": "count.perplexity.ai",
-      "user_hash": "h_00yhzmbk",
-      "prompt_hash": "h_00f123t7",
-      "prompt_length": 58,
-      "token_count_estimate": 15,
-      "api_endpoint": "/",
-      "sensitivity_score": 0,
-      "sensitivity_categories": [
-        "none"
-      ],
-      "policy_violation_flag": false,
-      "risk_category": "low",
-      "timestamp": "2026-02-22T20:38:08.290Z",
-      "attachment_inspection_enabled": true
     }
   ],
   "workspaces/default/organizations": {
@@ -36826,6 +36826,16 @@
       "enrolled_at": "2026-02-23T20:46:46.633Z",
       "last_heartbeat": "2026-02-23T21:14:47.648Z",
       "status": "active"
+    }
+  },
+  "workspaces/AluhBIvpPNQabo7YzjY6daRPnme2/organizations": {
+    "15bef7f6-bb98-47d2-afac-7d5d9c017583": {
+      "org_id": "15bef7f6-bb98-47d2-afac-7d5d9c017583",
+      "name": "TestOrg",
+      "created_at": "2026-02-24T17:57:43.984Z",
+      "policy_version": 1,
+      "policy_config": {},
+      "signing_secret": "2224717f7c5486aa0136f8a12dd48c46ae9114a9a00ffbf90fcd883b2e74b336"
     }
   }
 }

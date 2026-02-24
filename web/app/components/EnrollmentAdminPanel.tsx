@@ -33,6 +33,7 @@ export default function EnrollmentAdminPanel() {
     const [auditHistory, setAuditHistory] = useState<any[]>([]);
     const [showHistory, setShowHistory] = useState(false);
     const [selectedReport, setSelectedReport] = useState<any | null>(null);
+    const [isAuditing, setIsAuditing] = useState(false);
 
     useEffect(() => {
         fetchOrgs();
@@ -167,17 +168,52 @@ export default function EnrollmentAdminPanel() {
     };
 
     const handleRunAudit = async () => {
-        setAuditStatus("Triggering GitHub Action...");
+        setAuditStatus("Triggering independent governance scan...");
+        setIsAuditing(true);
+        const startTime = new Date().toISOString();
+
         try {
             const res = await fetch("/api/admin/audit/trigger", { method: "POST" });
             const data = await res.json();
             if (res.ok) {
-                setAuditStatus("Audit triggered! You will receive an email shortly once complete.");
+                setAuditStatus("Scan triggered. Evaluation in progress (usually takes 30-60s)...");
+
+                // Start polling for the new report
+                let attempts = 0;
+                const maxAttempts = 24; // 2 minutes (24 * 5s)
+
+                const pollInterval = setInterval(async () => {
+                    attempts++;
+                    const historyRes = await fetch("/api/admin/audit/history");
+                    const historyData = await historyRes.json();
+
+                    if (historyData?.reports?.length > 0) {
+                        const newestReport = historyData.reports[0];
+                        // If the newest report is newer than when we started the trigger
+                        if (new Date(newestReport.created_at) > new Date(startTime)) {
+                            setAuditHistory(historyData.reports);
+                            setAuditStatus("Success: New audit report generated and saved to history.");
+                            setIsAuditing(false);
+                            setShowHistory(true);
+                            clearInterval(pollInterval);
+                            return;
+                        }
+                    }
+
+                    if (attempts >= maxAttempts) {
+                        setAuditStatus("Scan triggered, but taking longer than expected to appear in history. Please check back in a minute.");
+                        setIsAuditing(false);
+                        clearInterval(pollInterval);
+                    }
+                }, 5000);
+
             } else {
                 setAuditStatus("Failed to trigger audit: " + data.error);
+                setIsAuditing(false);
             }
         } catch (e: any) {
             setAuditStatus("Error triggering audit.");
+            setIsAuditing(false);
         }
     };
 
@@ -478,12 +514,21 @@ export default function EnrollmentAdminPanel() {
                                 <div className="flex flex-col sm:flex-row gap-4 items-center">
                                     <button
                                         onClick={handleRunAudit}
-                                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-6 py-2.5 text-sm font-bold transition flex items-center justify-center"
+                                        disabled={isAuditing}
+                                        className={`w-full sm:w-auto ${isAuditing ? 'bg-zinc-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'} text-white rounded-lg px-6 py-2.5 text-sm font-bold transition flex items-center justify-center gap-2`}
                                     >
-                                        Run Independent Validation Scan
+                                        {isAuditing && (
+                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        )}
+                                        {isAuditing ? "Processing Governance Scan..." : "Run Independent Validation Scan"}
                                     </button>
                                     {auditStatus && (
-                                        <p className="text-zinc-300 text-sm font-medium">{auditStatus}</p>
+                                        <p className={`text-sm font-medium ${auditStatus.includes('Failed') || auditStatus.includes('Error') ? 'text-red-400' : 'text-zinc-300'}`}>
+                                            {auditStatus}
+                                        </p>
                                     )}
                                 </div>
 
@@ -522,9 +567,19 @@ export default function EnrollmentAdminPanel() {
                                 <div className="mt-8 border-t border-zinc-800 pt-6">
                                     <div className="flex items-center justify-between mb-4">
                                         <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Independent Validation History</h5>
-                                        <button onClick={() => setShowHistory(!showHistory)} className="text-xs text-blue-400 hover:text-blue-300 font-bold uppercase tracking-wider">
-                                            {showHistory ? "Hide History" : "View Recent Scans"}
-                                        </button>
+                                        <div className="flex items-center gap-4">
+                                            <button
+                                                onClick={() => fetchAuditHistory()}
+                                                disabled={isAuditing}
+                                                className="text-[10px] text-zinc-400 hover:text-zinc-200 font-bold uppercase tracking-wider flex items-center gap-1"
+                                            >
+                                                <svg className={`w-3 h-3 ${isAuditing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                                Refresh
+                                            </button>
+                                            <button onClick={() => setShowHistory(!showHistory)} className="text-xs text-blue-400 hover:text-blue-300 font-bold uppercase tracking-wider">
+                                                {showHistory ? "Hide History" : "View Recent Scans"}
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {showHistory && (

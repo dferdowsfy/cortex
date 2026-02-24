@@ -15,8 +15,9 @@ export async function sendReportEmail(params: {
     const resend = new Resend(apiKey);
 
     try {
+        const fromEmail = process.env.RESEND_FROM_EMAIL || "alerts@complyze.co";
         const data = await resend.emails.send({
-            from: "Complyze Governance <governance@complyze.co>", // Change to verified domain
+            from: `Complyze Governance <${fromEmail}>`,
             to: [params.to],
             subject: params.subject,
             html: params.html,
