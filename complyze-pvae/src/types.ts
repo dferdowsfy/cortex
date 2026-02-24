@@ -18,6 +18,7 @@ export interface SkillInput {
         platformApiBaseUrl: string;
         workspaceId?: string;
         deviceId?: string;
+        overrideEmail?: string;
     };
 }
 
