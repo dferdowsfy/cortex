@@ -10,7 +10,7 @@ export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
         return (
             <button
                 onClick={toggleTheme}
-                className="p-2 flex justify-center items-center w-full relative group hover:bg-zinc-800 transition-colors rounded-lg text-white/50 hover:text-white"
+                className="p-2 flex justify-center items-center w-full relative group hover:bg-[var(--bg-card-hover)] transition-colors rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
                 {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
@@ -21,7 +21,7 @@ export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
     return (
         <button
             onClick={toggleTheme}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/50 hover:text-white hover:bg-zinc-800 transition-all group"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] transition-all group"
         >
             {theme === "dark" ? <Sun size={18} className="shrink-0" /> : <Moon size={18} className="shrink-0" />}
             <span className="text-sm font-medium tracking-wide">
