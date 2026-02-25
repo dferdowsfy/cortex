@@ -163,6 +163,8 @@ function ScheduleModal({
   onClose: () => void;
 }) {
   const [frequency, setFrequency] = useState("Weekly");
+  const [day, setDay] = useState("1");
+  const [time, setTime] = useState("09:00");
   const [email, setEmail] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -172,71 +174,97 @@ function ScheduleModal({
     setTimeout(onClose, 1400);
   }
 
+  const DAYS = Array.from({ length: 28 }, (_, i) => String(i + 1));
+  const TIMES = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-8">
-        <div className="flex items-start justify-between mb-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+      <div className="w-full max-w-sm rounded-[2rem] bg-[#09090b] border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] p-10 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--brand-color)] to-transparent opacity-50" />
+
+        <div className="flex items-start justify-between mb-10">
           <div>
-            <h2 className="text-base font-bold text-gray-900">Schedule Report</h2>
-            <p className="text-sm text-gray-500 mt-0.5">{reportTitle}</p>
+            <h2 className="text-xl font-black text-white italic tracking-tighter uppercase leading-none">Schedule</h2>
+            <p className="text-[10px] font-black text-white/30 mt-2 uppercase tracking-[0.2em]">{reportTitle}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors -mt-0.5"
+            className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all"
           >
-            <X size={18} />
+            <X size={14} />
           </button>
         </div>
 
         {saved ? (
-          <div className="flex items-center gap-2 text-emerald-600 font-semibold text-sm py-4">
-            <span className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-xs">
-              ✓
-            </span>
-            Schedule saved
+          <div className="flex flex-col items-center justify-center py-12 animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-6 border border-emerald-500/20">
+              <span className="text-2xl text-emerald-500">✓</span>
+            </div>
+            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Lifecycle Armed</p>
           </div>
         ) : (
-          <>
+          <div className="space-y-8">
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Send this report
-                </label>
-                <select
-                  value={frequency}
-                  onChange={(e) => setFrequency(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                >
-                  <option>Weekly</option>
-                  <option>Monthly</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  To
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                />
+              <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] font-mono block">Cadence</label>
+              <div className="flex gap-2">
+                {["Weekly", "Monthly"].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFrequency(f)}
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${frequency === f
+                      ? "bg-white text-black border-white shadow-xl"
+                      : "bg-white/5 text-white/40 border-transparent hover:border-white/10"}`}
+                  >
+                    {f}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={handleSave}
-                disabled={!email.trim()}
-                className="btn-primary flex-1"
-              >
-                Save Schedule
-              </button>
-              <button onClick={onClose} className="btn-secondary">
-                Cancel
-              </button>
+
+            {frequency === "Monthly" && (
+              <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-white/20 uppercase tracking-widest font-mono block">Day of Month</label>
+                  <select
+                    value={day}
+                    onChange={(e) => setDay(e.target.value)}
+                    className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-xs font-bold text-white focus:outline-none focus:border-white/20 transition-all appearance-none"
+                  >
+                    {DAYS.map(d => <option key={d} value={d} className="bg-[#09090b]">Day {d}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-white/20 uppercase tracking-widest font-mono block">Sync Time</label>
+                  <select
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-xs font-bold text-white focus:outline-none focus:border-white/20 transition-all appearance-none"
+                  >
+                    {TIMES.map(t => <option key={t} value={t} className="bg-[#09090b]">{t} UTC</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] font-mono block">Distribution</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="STAKEHOLDER@CORP.AI"
+                className="w-full bg-white/5 border border-white/5 rounded-xl px-5 py-4 text-xs font-bold text-white focus:outline-none focus:border-[var(--brand-color)]/50 transition-all placeholder:text-white/10 uppercase tracking-widest"
+              />
             </div>
-          </>
+
+            <button
+              onClick={handleSave}
+              disabled={!email.trim()}
+              className="w-full bg-[var(--brand-color)] hover:bg-blue-500 text-white font-black uppercase tracking-[0.3em] py-5 rounded-2xl text-[10px] transition-all shadow-xl shadow-blue-900/20 active:scale-[0.98] disabled:opacity-20"
+            >
+              Initialize Schedule
+            </button>
+          </div>
         )}
       </div>
     </div>

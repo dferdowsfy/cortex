@@ -145,25 +145,25 @@ export default function EnrollmentAdminPanel() {
             <div className="card px-10 py-8 flex items-center justify-between shadow-2xl backdrop-blur-md">
                 <div className="flex items-center gap-14">
                     <div className="group">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-1 font-mono">AI Shield</p>
+                        <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">AI Shield</p>
                         <span className="text-xs font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                             Protected
                         </span>
                     </div>
                     <div className="border-l border-[var(--border-main)] pl-14">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-1 font-mono">Policy Version</p>
-                        <span className="text-sm font-black text-primary uppercase tracking-widest">v2.4.19</span>
+                        <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Policy Version</p>
+                        <span className="text-sm font-black text-white uppercase tracking-widest">v2.4.19</span>
                     </div>
                     <div className="border-l border-[var(--border-main)] pl-14">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-1 font-mono">Last Validation</p>
-                        <span className="text-sm font-black text-primary uppercase tracking-widest">{validationTimestamp}</span>
+                        <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Last Validation</p>
+                        <span className="text-sm font-black text-white uppercase tracking-widest">{validationTimestamp}</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-14">
                     <div className="text-right border-l border-[var(--border-main)] pl-14 hidden md:block">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-1 font-mono">Validation Score</p>
-                        <span className="text-4xl font-black text-primary italic tracking-tighter tabular-nums">
+                        <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Validation Score</p>
+                        <span className="text-4xl font-black text-white italic tracking-tighter tabular-nums">
                             {lastReport?.enforcementScore || 0}/100
                         </span>
                     </div>
@@ -177,10 +177,10 @@ export default function EnrollmentAdminPanel() {
                     className="w-full px-8 py-6 flex justify-between items-center transition-colors hover:bg-white/[0.02]"
                 >
                     <div className="flex items-center gap-4">
-                        <Clock className="w-5 h-5 text-secondary" />
+                        <Clock className="w-5 h-5 text-white" />
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white italic">Audit & Scheduling Preferences</h3>
                     </div>
-                    {auditCollapsed ? <ChevronRight className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-primary" />}
+                    {auditCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
                 </button>
                 {!auditCollapsed && (
                     <div className="p-10 border-t border-[var(--border-soft)] animate-in slide-in-from-top-2 duration-300">
@@ -220,10 +220,10 @@ export default function EnrollmentAdminPanel() {
                     className="w-full px-8 py-6 flex justify-between items-center transition-colors hover:bg-white/[0.02]"
                 >
                     <div className="flex items-center gap-4">
-                        <Plus className="w-5 h-5 text-secondary" />
+                        <Plus className="w-5 h-5 text-white" />
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white italic">Enrollment Provisions</h3>
                     </div>
-                    {enrollmentCollapsed ? <ChevronRight className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-primary" />}
+                    {enrollmentCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
                 </button>
                 {!enrollmentCollapsed && (
                     <div className="p-10 border-t border-[var(--border-soft)] animate-in slide-in-from-top-2 duration-300 space-y-12">
@@ -270,15 +270,18 @@ export default function EnrollmentAdminPanel() {
             </section>
 
             {/* ── ZONE 4: VALIDATION HISTORY (History Table) ── */}
-            <section className="card p-0 shadow-xl overflow-hidden border-none ring-1 ring-[var(--border-main)]">
+            <section id="history-ledger" className="card p-0 shadow-xl overflow-hidden border-none ring-1 ring-[var(--border-main)]">
                 <div className="px-10 py-8 border-b border-[var(--border-soft)] flex justify-between items-center bg-[var(--bg-sidebar)]/30">
                     <div className="flex items-center gap-4">
                         <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-primary italic">Assurance History Log</h3>
                     </div>
-                    <Link href="/dashboard/reports" className="flex items-center gap-3 text-[10px] font-black text-[var(--brand-color)] hover:underline uppercase tracking-[0.2em] decoration-2 underline-offset-4">
+                    <button
+                        onClick={() => document.getElementById('history-ledger')?.scrollIntoView({ behavior: 'smooth' })}
+                        className="flex items-center gap-3 text-[10px] font-black text-[var(--brand-color)] hover:underline uppercase tracking-[0.2em] decoration-2 underline-offset-4"
+                    >
                         <Download className="w-4 h-4" />
-                        Export Audit Ledger
-                    </Link>
+                        View Audit Ledger
+                    </button>
                 </div>
                 <div className="divide-y divide-[var(--border-soft)]">
                     {auditHistory.length === 0 ? (

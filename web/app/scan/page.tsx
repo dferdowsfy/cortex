@@ -227,9 +227,7 @@ export default function AssessPage() {
     <div className="mx-auto max-w-4xl px-6 py-10 min-h-screen">
 
       {/* Simplified Tool Evaluation Mode */}
-      <header className="mb-12 border-b border-[var(--border-main)] pb-8">
-        <h1 className="text-sm font-black text-muted uppercase tracking-[0.3em]">AI Tool Assessment</h1>
-        <p className="text-secondary text-xs font-bold mt-2 uppercase tracking-widest italic leading-relaxed">Evaluating external AI intelligence for enterprise safety alignment.</p>
+      <header className="mb-12 border-b border-[var(--border-main)]">
       </header>
 
       {/* INPUT STEP */}
@@ -325,18 +323,35 @@ export default function AssessPage() {
           </div>
 
           <div className="space-y-6">
-            {(profile.enrichment_questions as any[] || []).map(q => (
-              <div key={q.question_id} className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 space-y-4">
-                <label className="text-sm font-bold text-white/90 leading-relaxed uppercase tracking-tight">{q.question}</label>
-                <textarea
-                  className="w-full bg-white/5 border border-white/5 rounded-xl p-4 text-xs font-bold text-white/60 focus:outline-none focus:border-white/20 transition-all placeholder:text-zinc-800"
-                  rows={2}
-                  placeholder="Contextual response..."
-                  value={enrichmentAnswers[q.question_id] || ""}
-                  onChange={(e) => setEnrichmentAnswers(prev => ({ ...prev, [q.question_id]: e.target.value }))}
-                />
-              </div>
-            ))}
+            {/* Logic: Transform questions into multiple choice where possible */}
+            {(profile.enrichment_questions as any[] || []).map((q) => {
+              const options = q.question.toLowerCase().includes("percentage")
+                ? ["0-25%", "25-50%", "50-75%", "75-100%"]
+                : q.question.toLowerCase().includes("contain") || q.question.toLowerCase().includes("use")
+                  ? ["Yes", "No", "Partially", "Unsure"]
+                  : ["Minimal", "Moderate", "Extensive"];
+
+              return (
+                <div key={q.question_id} className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 space-y-6 transition-all hover:border-white/20">
+                  <label className="text-xs font-black text-white italic leading-relaxed uppercase tracking-widest block border-l-2 border-[var(--brand-color)] pl-4">
+                    {q.question}
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {options.map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setEnrichmentAnswers(prev => ({ ...prev, [q.question_id]: opt }))}
+                        className={`px-6 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${enrichmentAnswers[q.question_id] === opt
+                          ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg scale-[1.02]"
+                          : "bg-white/[0.03] text-white/40 border-transparent hover:border-white/10"}`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="flex gap-4">
