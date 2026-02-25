@@ -260,7 +260,7 @@ export default function MonitoringPage() {
                 <div className="w-16 h-16 rounded-2xl bg-zinc-800/10 dark:bg-zinc-800/50 flex items-center justify-center mb-8 border border-[var(--border-main)] shadow-xl">
                     <Activity className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-3xl font-black text-primary tracking-tighter uppercase italic">No active devices enrolled</h3>
+                <h3 className="text-3xl font-black text-white tracking-tighter uppercase italic">No active devices enrolled</h3>
                 <p className="mt-4 text-sm text-secondary max-w-sm leading-relaxed font-bold uppercase tracking-widest italic opacity-80">
                     Captured real-time AI usage data will materialize here once an agent is active on your network.
                 </p>

@@ -236,8 +236,8 @@ export default function AssessPage() {
       {step === "input" && (
         <div className="card p-12 shadow-2xl border-none ring-1 ring-[var(--border-main)]">
           <div className="flex justify-between items-center mb-12">
-            <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)]">
-              Initialize Assessment Engine
+            <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none text-white">
+              AI Tool Assessment
             </h1>
             <ShieldCheck className="w-10 h-10 text-[var(--brand-color)]" />
           </div>

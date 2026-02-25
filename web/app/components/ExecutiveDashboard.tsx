@@ -73,7 +73,7 @@ export default function ExecutiveDashboard({
             {/* Header Section */}
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 border-b border-[var(--border-main)] pb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none">
+                    <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none text-white">
                         Executive Snapshot
                     </h1>
                     <p className="text-muted text-xs font-bold mt-2 uppercase tracking-[0.2em]">Real-time security posture across all endpoints</p>

@@ -118,6 +118,29 @@ export default function EnrollmentAdminPanel() {
     return (
         <div className="mx-auto max-w-[1100px] p-8 space-y-8 font-sans antialiased text-white pb-32">
 
+            {/* ── ZONE 1: PRIMARY ACTION (Governance Assurance) ── */}
+            <section className="card flex flex-col items-center justify-center text-center shadow-xl border-none ring-1 ring-[var(--border-main)] py-16 px-12 relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-full h-2 bg-[var(--brand-color)] opacity-80" />
+
+                <div className="w-16 h-16 rounded-2xl bg-[var(--brand-color)]/10 flex items-center justify-center mb-10 shadow-sm">
+                    <Shield className="w-7 h-7 text-[var(--brand-color)]" strokeWidth={2.5} />
+                </div>
+
+                <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-6">Governance Assurance Scan</h2>
+                <p className="text-sm text-[var(--text-secondary)] font-semibold uppercase tracking-widest max-w-lg leading-relaxed mb-12">
+                    Initiate an independent validation sequence to verify current endpoint policy enforcement against organizational security standards.
+                </p>
+
+                <button
+                    onClick={handleRunAudit}
+                    disabled={auditRunning}
+                    className="btn-primary px-16 py-4 rounded-xl text-[12px] shadow-2xl transition-all active:scale-95 flex items-center gap-4"
+                >
+                    {auditRunning && <span className="animate-spin w-4 h-4 border-2 border-white/20 border-b-white rounded-full" />}
+                    Run Independent Validation Scan
+                </button>
+            </section>
+
             {/* ── Governance Summary Strip ── */}
             <div className="card px-10 py-8 flex items-center justify-between shadow-2xl backdrop-blur-md">
                 <div className="flex items-center gap-14">
@@ -146,29 +169,6 @@ export default function EnrollmentAdminPanel() {
                     </div>
                 </div>
             </div>
-
-            {/* ── ZONE 1: PRIMARY ACTION (Governance Assurance) ── */}
-            <section className="card flex flex-col items-center justify-center text-center shadow-xl border-none ring-1 ring-[var(--border-main)] py-16 px-12 relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-full h-2 bg-[var(--brand-color)] opacity-80" />
-
-                <div className="w-16 h-16 rounded-2xl bg-[var(--brand-color)]/10 flex items-center justify-center mb-8 shadow-sm">
-                    <Shield className="w-7 h-7 text-[var(--brand-color)]" strokeWidth={2.5} />
-                </div>
-
-                <h2 className="text-3xl font-black text-[var(--text-primary)] italic tracking-tighter uppercase mb-4">Governance Assurance</h2>
-                <p className="text-sm text-[var(--text-secondary)] font-semibold uppercase tracking-widest max-w-lg leading-relaxed mb-12">
-                    Verify endpoint policy enforcement against organizational security standards.
-                </p>
-
-                <button
-                    onClick={handleRunAudit}
-                    disabled={auditRunning}
-                    className="btn-primary px-16 py-4 rounded-xl text-[12px] shadow-2xl transition-all active:scale-95 flex items-center gap-4"
-                >
-                    {auditRunning && <span className="animate-spin w-4 h-4 border-2 border-white/20 border-b-white rounded-full" />}
-                    Run Independent Validation Scan
-                </button>
-            </section>
 
             {/* ── ZONE 2: AUDIT & SCHEDULING (Collapsible) ── */}
             <section className="card p-0 overflow-hidden shadow-sm transition-all hover:border-[var(--border-soft)]">
