@@ -223,7 +223,7 @@ export default function PlatformPage() {
                                 <ScrollIn>
                                     <h2 className="text-4xl font-bold text-white mb-6">Stop High-Risk Activity Automatically</h2>
                                     <p className="text-lg text-white/70 leading-relaxed mb-8">
-                                        Enable active enforcement with our network-level interceptor. Define risk thresholds that trigger automated blocking of sensitive prompts and file uploads without human intervention.
+                                        Enable active enforcement with our network-level interceptor. Define risk thresholds that trigger automated blocking of sensitive prompts and <strong>deep-scanned file uploads</strong> without human intervention.
                                     </p>
                                     <ul className="space-y-6">
                                         <li className="flex gap-4">
