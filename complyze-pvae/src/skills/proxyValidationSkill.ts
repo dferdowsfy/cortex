@@ -31,7 +31,8 @@ export async function executeProxyValidationSkill(input: SkillInput): Promise<Sk
         const thresholdStr = process.env.VALIDATION_SCORE_ALERT_THRESHOLD || "75";
         const threshold = parseInt(thresholdStr, 10);
 
-        let subject = `Complyze Enforcement Assurance – [${report.overallStatus}] Detected | Score: ${report.enforcementScore}/100`;
+        const timeStr = new Date().toISOString().replace("T", " ").substring(0, 19) + " UTC";
+        let subject = `[${timeStr}] Complyze Enforcement Assurance – [${report.overallStatus}] | Score: ${report.enforcementScore}/100`;
         if (report.enforcementScore < threshold) {
             subject = `⚠️ ALERT: ${subject}`;
         }

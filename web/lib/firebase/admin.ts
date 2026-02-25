@@ -11,14 +11,30 @@ import {
 import { getDatabase } from "firebase-admin/database";
 import { getFirestore } from "firebase-admin/firestore";
 
+const sanitizeVar = (str?: string) => {
+    if (!str) return "";
+    let clean = str.trim();
+    if (clean.startsWith('"') && clean.endsWith('"')) {
+        clean = clean.slice(1, -1);
+    }
+    // Remove stray literal \n at the very end if any
+    clean = clean.replace(/\\n$/, "").trim();
+    // Sometimes Vercel envs append a comma and newlines from a JSON copy
+    clean = clean.replace(/",?\\n?/g, "").trim();
+    // Just for privateKey we replace all \n with actual newlines
+    if (clean.includes("BEGIN PRIVATE KEY")) {
+        clean = clean.replace(/\\n/g, "\n");
+    }
+    return clean;
+};
+
+const projectId = sanitizeVar(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID);
 const RTDB_URL =
     process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL ||
-    `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseio.com`;
+    (projectId ? `https://${projectId}.firebaseio.com` : "");
 
 function getAdminApp() {
     if (getApps().length > 0) return getApp();
-
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
     // Option 1: Service account JSON string
     if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
@@ -40,17 +56,12 @@ function getAdminApp() {
     }
 
     // Option 2: Individual env vars (easier than full JSON)
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
+    const clientEmail = sanitizeVar(process.env.FIREBASE_CLIENT_EMAIL);
+    const privateKey = sanitizeVar(process.env.FIREBASE_PRIVATE_KEY);
 
-    if (clientEmail && privateKeyRaw) {
+    if (clientEmail && privateKey) {
         try {
             console.log("[firebase-admin] Initializing with clientEmail:", clientEmail);
-            let privateKey = privateKeyRaw;
-            if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-                privateKey = privateKey.slice(1, -1);
-            }
-            privateKey = privateKey.replace(/\\n/g, "\n");
 
             return initializeApp({
                 credential: cert({

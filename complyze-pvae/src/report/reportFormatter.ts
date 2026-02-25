@@ -142,6 +142,9 @@ export function generateExecutiveHTML(report: ValidationReport): string {
   <ul style="color: #475569; font-size: 14px;">
     ${conditionalValidations.map((l) => `<li><strong>${l.test}:</strong> ${l.notes}</li>`).join("")}
   </ul>
+  <div style="display:none !important; opacity:0; color:transparent; height:0; width:0; overflow:hidden; mso-hide:all;">
+    Unique Render ID: ${Date.now()}-${Math.random().toString(36).substring(2)}
+  </div>
 </body>
 </html>
   `.trim();
