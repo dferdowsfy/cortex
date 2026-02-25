@@ -172,7 +172,6 @@ export function Sidebar() {
 
             {/* Bottom Actions */}
             <div className="px-3 flex flex-col gap-2 relative mt-auto border-t border-[var(--border-main)] pt-6">
-                <ThemeToggle collapsed={collapsed} />
                 <MonitoringToggle collapsed={collapsed} />
 
                 <div className="relative mt-1 mb-1" ref={menuRef}>

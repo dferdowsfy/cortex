@@ -127,7 +127,7 @@ export default function EnrollmentAdminPanel() {
                 </div>
 
                 <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-6">Governance Assurance Scan</h2>
-                <p className="text-sm text-[var(--text-secondary)] font-semibold uppercase tracking-widest max-w-lg leading-relaxed mb-12">
+                <p className="text-sm text-secondary font-semibold uppercase tracking-widest max-w-lg leading-relaxed mb-12">
                     Initiate an independent validation sequence to verify current endpoint policy enforcement against organizational security standards.
                 </p>
 
@@ -177,8 +177,8 @@ export default function EnrollmentAdminPanel() {
                     className="w-full px-8 py-6 flex justify-between items-center transition-colors hover:bg-white/[0.02]"
                 >
                     <div className="flex items-center gap-4">
-                        <Clock className="w-5 h-5 text-primary/60" />
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary italic">Audit & Scheduling Preferences</h3>
+                        <Clock className="w-5 h-5 text-secondary" />
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white italic">Audit & Scheduling Preferences</h3>
                     </div>
                     {auditCollapsed ? <ChevronRight className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-primary" />}
                 </button>
@@ -191,7 +191,7 @@ export default function EnrollmentAdminPanel() {
                                     {(["manual", "daily", "weekly", "monthly"] as const).map(f => (
                                         <button
                                             key={f}
-                                            className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${auditConfig.frequency === f ? "bg-indigo-600 text-white border-indigo-600" : "text-secondary border-[var(--border-main)] hover:border-primary/30"}`}
+                                            className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${auditConfig.frequency === f ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)]" : "text-secondary border-[var(--border-main)] hover:border-primary/30"}`}
                                             onClick={() => setAuditConfig(prev => ({ ...prev, frequency: f }))}
                                         >
                                             {f}
@@ -202,7 +202,7 @@ export default function EnrollmentAdminPanel() {
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black text-muted uppercase tracking-widest block font-mono">Report Recipients</label>
                                 <div className="flex gap-2">
-                                    <input type="text" placeholder="Add security stakeholder email..." className="flex-1 bg-white/5 dark:bg-white/[0.03] border border-[var(--border-main)] rounded-lg px-4 py-2.5 text-xs font-bold text-primary focus:outline-none focus:border-indigo-500/50 placeholder:text-zinc-500" />
+                                    <input type="text" placeholder="Add security stakeholder email..." className="flex-1 bg-white/5 dark:bg-white/[0.03] border border-[var(--border-main)] rounded-lg px-4 py-2.5 text-xs font-bold text-primary focus:outline-none focus:border-[var(--brand-color)]/50 placeholder:text-zinc-500" />
                                     <button className="bg-white/5 dark:bg-white/[0.05] hover:bg-white/10 p-2.5 rounded-lg border border-[var(--border-main)] transition-colors">
                                         <Plus className="w-4 h-4 text-primary" />
                                     </button>
@@ -220,8 +220,8 @@ export default function EnrollmentAdminPanel() {
                     className="w-full px-8 py-6 flex justify-between items-center transition-colors hover:bg-white/[0.02]"
                 >
                     <div className="flex items-center gap-4">
-                        <Plus className="w-5 h-5 text-primary/60" />
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary italic">Enrollment Provisions</h3>
+                        <Plus className="w-5 h-5 text-secondary" />
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white italic">Enrollment Provisions</h3>
                     </div>
                     {enrollmentCollapsed ? <ChevronRight className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-primary" />}
                 </button>

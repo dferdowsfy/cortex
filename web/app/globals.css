@@ -39,8 +39,11 @@
   --bg-card: #0f172a;
   --bg-card-hover: #1e293b;
   --text-primary: #f8fafc;
-  --text-secondary: #e2e8f0;
-  --text-muted: #94a3b8;
+  /* Near white */
+  --text-secondary: #94a3b8;
+  /* Medium-light grey */
+  --text-muted: #64748b;
+  /* Readable dark grey */
   --border-main: #334155;
   --border-soft: #1e293b;
   --brand-color: #3b82f6;

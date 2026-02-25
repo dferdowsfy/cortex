@@ -244,7 +244,7 @@ export default function AssessPage() {
 
           <div className="space-y-12">
             <div>
-              <label className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-4 block font-mono">Select Target Application</label>
+              <label className="text-[12px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] mb-4 block font-mono">Select Target Application</label>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {Object.keys(POPULAR_TOOLS).map(tool => (
                   <button
@@ -262,7 +262,7 @@ export default function AssessPage() {
 
             <div className="grid md:grid-cols-2 gap-10">
               <div className="space-y-4">
-                <label className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-widest block font-mono">Tool / Service Name</label>
+                <label className="text-[12px] font-black text-[var(--text-secondary)] uppercase tracking-widest block font-mono">Tool / Service Name</label>
                 <input
                   type="text"
                   value={toolName}
@@ -272,7 +272,7 @@ export default function AssessPage() {
                 />
               </div>
               <div className="space-y-4">
-                <label className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-widest block font-mono">Authorized Vendor</label>
+                <label className="text-[12px] font-black text-[var(--text-secondary)] uppercase tracking-widest block font-mono">Authorized Vendor</label>
                 <input
                   type="text"
                   value={vendor}
@@ -284,7 +284,7 @@ export default function AssessPage() {
             </div>
 
             <div>
-              <label className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-4 block font-mono">Provisioning Tier</label>
+              <label className="text-[12px] font-black text-[var(--text-secondary)] uppercase tracking-widest mb-4 block font-mono">Provisioning Tier</label>
               <div className="flex flex-wrap gap-4">
                 {TIERS.map(t => (
                   <button

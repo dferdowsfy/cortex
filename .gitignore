@@ -12,3 +12,4 @@ web/certs/
 desktop/certs/
 desktop/logs/
 proxy.log
+web/.env.vercel.test*
