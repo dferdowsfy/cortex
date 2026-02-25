@@ -277,406 +277,330 @@ export default function EnrollmentAdminPanel() {
         return 'Active';
     };
 
-    return (
-        <section className="bg-transparent">
-            <div className="flex gap-8">
-                {/* Left Side: Orgs */}
-                <div className="w-[280px] shrink-0 border-r border-zinc-800 pr-6">
-                    <h4 className="font-bold text-zinc-400 mb-4 uppercase text-[10px] tracking-widest">Active Organizations</h4>
-                    <div className="flex gap-2 mb-4 whitespace-nowrap">
-                        <input
-                            type="text"
-                            placeholder="Org Name"
-                            value={newOrgName}
-                            onChange={(e) => setNewOrgName(e.target.value)}
-                            className="bg-black border border-zinc-800 rounded-md px-3 py-1.5 text-sm text-zinc-50 w-full placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                        />
-                        <button onClick={handleCreateOrg} className="bg-zinc-100 hover:bg-white text-zinc-900 rounded-md px-3 py-1.5 text-xs font-bold transition">
-                            Create
-                        </button>
-                    </div>
+    // Calculate Summary Metrics
+    const avgScore = auditHistory.length > 0
+        ? Math.round(auditHistory.reduce((acc, r) => acc + (r.enforcementScore || 0), 0) / auditHistory.length)
+        : 0;
+    const lastRunTime = auditHistory.length > 0
+        ? new Date(auditHistory[0].timestamp || auditHistory[0].created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+        : "Never";
 
-                    <div className="flex flex-col gap-1.5">
-                        {orgs.map((org) => (
-                            <button
-                                key={org.org_id}
-                                onClick={() => selectOrg(org)}
-                                className={`text-left px-3 py-2.5 rounded-md text-sm transition font-medium ${selectedOrg?.org_id === org.org_id ? 'bg-[#18181b] border border-[#27272a] text-zinc-50 shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 border border-transparent'}`}
-                            >
-                                {org.name}
-                            </button>
-                        ))}
+    return (
+        <div className="flex flex-col gap-6">
+            {/* Header & Org Badge */}
+            <div className="flex flex-col gap-1.5 mb-2 text-left">
+                <div className="flex items-baseline gap-3">
+                    <h2 className="text-3xl font-bold text-zinc-50 tracking-tight">Governance Console</h2>
+                    <div className="px-2.5 py-1 rounded-md bg-zinc-900 border border-white/5 flex items-center gap-2">
+                        <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Organization</span>
+                        <span className="text-xs font-semibold text-zinc-300">{selectedOrg?.name || "None Selected"}</span>
+                        {orgs.length > 1 && (
+                            <div className="ml-2 flex gap-1">
+                                {orgs.filter(o => o.org_id !== selectedOrg?.org_id).map(o => (
+                                    <button
+                                        key={o.org_id}
+                                        onClick={() => selectOrg(o)}
+                                        className="text-[10px] text-zinc-600 hover:text-zinc-400 font-bold underline"
+                                    >
+                                        Switch
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
+            </div>
 
-                {/* Right Side: details */}
-                <div className="flex-1 flex flex-col gap-6">
-                    {!selectedOrg ? (
-                        <p className="text-zinc-500 text-sm mt-4">Select or create an organization to manage policies and tokens.</p>
-                    ) : (
-                        <div className="flex flex-col gap-6">
-                            {/* Org Info */}
-                            <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-5 shadow-sm">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h4 className="font-bold text-lg text-zinc-50">
-                                            {selectedOrg.name}
-                                            <span className="text-xs ml-3 text-zinc-500 font-normal tracking-wide">
-                                                Created: {new Date(selectedOrg.created_at).toLocaleDateString()}
-                                            </span>
-                                        </h4>
-                                        <div className="flex items-center gap-3 mt-2">
-                                            <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Organization ID:</span>
-                                            <span className="text-xs font-mono text-zinc-300 bg-black/50 px-2.5 py-1 rounded border border-zinc-800 select-all">
-                                                {selectedOrg.org_id}
-                                            </span>
-                                            <button onClick={() => copyToClipboard(selectedOrg.org_id)} className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2.5 py-1 rounded transition font-medium">
-                                                Copy
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <span className="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-3.5 py-1 rounded-full font-bold uppercase tracking-wider">
-                                        v{selectedOrg.policy_version}
-                                    </span>
-                                </div>
-                            </div>
+            {/* Compact Summary Bar */}
+            <div className="flex items-center gap-8 py-3 px-1 border-y border-white/5 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                <div className="flex gap-2">
+                    <span>AI Shield:</span>
+                    <span className="text-emerald-400 font-black">Active</span>
+                </div>
+                <div className="flex gap-2 border-l border-white/10 pl-8">
+                    <span>Last Validation:</span>
+                    <span className="text-zinc-300">{lastRunTime}</span>
+                </div>
+                <div className="flex gap-2 border-l border-white/10 pl-8">
+                    <span>Avg Score:</span>
+                    <span className="text-zinc-300">{avgScore}/100</span>
+                </div>
+            </div>
 
-                            {/* Grid below Org Info */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                                {/* Left Column: Policy */}
-                                <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-5 shadow-sm flex flex-col">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h4 className="font-bold text-sm text-zinc-300 uppercase tracking-widest">Policy Configuration Tracker</h4>
-                                    </div>
-                                    <textarea
-                                        className={`w-full bg-black/50 border rounded-lg p-3 text-[13px] font-mono leading-relaxed text-zinc-300 mb-2 h-96 focus:outline-none focus:border-zinc-600 ${policyError ? 'border-red-500/50' : 'border-zinc-800'}`}
-                                        value={policyJson}
-                                        onChange={(e) => setPolicyJson(e.target.value)}
-                                        spellCheck={false}
-                                    />
-                                    {policyError && (
-                                        <p className="text-red-400 text-xs font-bold mb-3">{policyError}</p>
+            {!selectedOrg ? (
+                <div className="py-12 text-center border border-dashed border-white/5 rounded-2xl">
+                    <p className="text-zinc-500 text-sm">Select or create an organization to manage governance profiles.</p>
+                </div>
+            ) : (
+                <div className="flex flex-col gap-6">
+                    {/* ZONE 1 — Primary Action */}
+                    <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 shadow-sm text-left">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                                <button
+                                    onClick={handleRunAudit}
+                                    disabled={isAuditing}
+                                    className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-sm font-bold transition-all ${isAuditing ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20'}`}
+                                >
+                                    {isAuditing ? (
+                                        <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     )}
-                                    <div className="flex justify-end mt-2">
-                                        <button onClick={handleUpdatePolicy} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-4 py-2 text-xs font-bold transition shadow-sm">
-                                            Validate & Save Policy
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Right Column: Tokens & Devices */}
-                                <div className="flex flex-col gap-6">
-                                    {/* Tokens */}
-                                    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-5 shadow-sm">
-                                        <h4 className="font-bold text-sm text-zinc-300 uppercase tracking-widest mb-4">Enrollment Tokens</h4>
-
-                                        <div className="flex flex-col gap-3 mb-4">
-                                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-zinc-500 font-medium">Expire (hrs):</span>
-                                                    <input type="number" value={tokenExpiresIn} onChange={(e) => setTokenExpiresIn(Number(e.target.value))} className="bg-black/50 border border-zinc-800 rounded w-20 px-2 py-1.5 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600" />
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-zinc-500 font-medium">Max Uses:</span>
-                                                    <input type="number" placeholder="unlimited" value={tokenMaxUses} onChange={(e) => setTokenMaxUses(e.target.value ? Number(e.target.value) : "")} className="bg-black/50 border border-zinc-800 rounded w-28 px-2 py-1.5 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600 placeholder:text-zinc-600" />
-                                                </div>
-                                                <button onClick={handleGenerateToken} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 py-1.5 text-xs font-bold transition whitespace-nowrap">
-                                                    Generate Token
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {newlyGeneratedToken && (
-                                            <div className="mb-4 bg-orange-500/5 border border-orange-500/20 p-4 rounded-xl flex flex-col gap-4">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-orange-400 text-[10px] font-bold uppercase tracking-widest">⚠️ This token will not be shown again</span>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <input type="text" readOnly value={newlyGeneratedToken} className="flex-1 bg-black/50 border border-orange-500/20 text-zinc-50 font-mono text-sm px-3 py-2 rounded focus:outline-none select-all" />
-                                                    <button onClick={() => copyToClipboard(newlyGeneratedToken)} className="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded transition">Copy Token</button>
-                                                </div>
-
-                                                <div className="bg-black/30 border border-zinc-800 rounded-lg p-4 mt-1">
-                                                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-3">CLI Deployment Instructions</p>
-
-                                                    <div className="flex flex-col gap-4">
-                                                        <div>
-                                                            <div className="flex justify-between items-end mb-1.5">
-                                                                <span className="text-[10px] text-zinc-400 font-medium">Production Environment</span>
-                                                                <button
-                                                                    onClick={() => copyToClipboard(`node cli-agent.mjs --enroll-token ${newlyGeneratedToken} --env production --reset`)}
-                                                                    className="text-[9px] text-orange-400 hover:text-orange-300 uppercase tracking-widest font-bold select-none cursor-pointer"
-                                                                >
-                                                                    Copy Command
-                                                                </button>
-                                                            </div>
-                                                            <code className="block bg-black/80 border border-zinc-800/50 text-emerald-400 font-mono text-[11px] p-2.5 rounded-lg break-all select-all">
-                                                                node cli-agent.mjs --enroll-token {newlyGeneratedToken} --env production --reset
-                                                            </code>
-                                                        </div>
-
-                                                        <div>
-                                                            <div className="flex justify-between items-end mb-1.5">
-                                                                <span className="text-[10px] text-zinc-400 font-medium">Local Development Environment</span>
-                                                                <button
-                                                                    onClick={() => copyToClipboard(`node cli-agent.mjs --enroll-token ${newlyGeneratedToken} --env local --reset`)}
-                                                                    className="text-[9px] text-emerald-400 hover:text-emerald-300 uppercase tracking-widest font-bold select-none cursor-pointer"
-                                                                >
-                                                                    Copy Command
-                                                                </button>
-                                                            </div>
-                                                            <code className="block bg-black/80 border border-zinc-800/50 text-emerald-400 font-mono text-[11px] p-2.5 rounded-lg break-all select-all">
-                                                                node cli-agent.mjs --enroll-token {newlyGeneratedToken} --env local --reset
-                                                            </code>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="flex flex-col gap-2.5 max-h-48 overflow-y-auto pr-1">
-                                            {tokens.map(t => {
-                                                const status = getTokenStatus(t);
-                                                return (
-                                                    <div key={t.token_id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-black/20 border border-[#27272a] hover:bg-black/40 transition-colors rounded-lg p-3.5 text-xs group gap-3">
-                                                        <div className="flex flex-col gap-1.5 flex-1 min-w-0 pr-0 sm:pr-4">
-                                                            <div className="font-mono text-zinc-300 text-[11px] select-all line-clamp-1">ID: {t.token_id}</div>
-                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-0.5">
-                                                                <span className="text-[10px] text-zinc-500">Created: {new Date(t.created_at).toLocaleDateString()} | Expires: {new Date(t.expires_at).toLocaleDateString()}</span>
-                                                                <span className="text-[10px] text-zinc-500">Uses: {t.uses_count} / {t.max_uses ?? '∞'}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#27272a]">
-                                                            <span className={`px-2.5 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-widest shrink-0 w-[72px] text-center flex items-center justify-center ${status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                                                                {status}
-                                                            </span>
-                                                            {status === 'Active' ? (
-                                                                <button onClick={() => handleRevokeToken(t.token_id)} className="shrink-0 w-[84px] text-red-400 hover:text-red-300 font-bold border border-red-500/20 px-3.5 py-1.5 rounded-md transition bg-red-500/5 hover:bg-red-500/10 whitespace-nowrap opacity-100 sm:opacity-0 group-hover:opacity-100 focus:opacity-100">
-                                                                    Revoke
-                                                                </button>
-                                                            ) : (
-                                                                <div className="w-[84px] shrink-0 hidden sm:block" />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )
-                                            })}
-                                            {tokens.length === 0 && <span className="text-xs text-zinc-600 font-medium py-2">No tokens found.</span>}
-                                        </div>
-                                    </div>
-
-                                    {/* Devices */}
-                                    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-5 shadow-sm">
-                                        <h4 className="font-bold text-sm text-zinc-300 uppercase tracking-widest mb-4">Enrolled Devices</h4>
-                                        <div className="flex flex-col gap-2.5 max-h-64 overflow-y-auto pr-1">
-                                            {devices.map(d => {
-                                                const status = getDeviceStatus(d);
-                                                return (
-                                                    <div key={d.device_id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-black/20 border border-[#27272a] hover:bg-black/40 transition-colors rounded-lg p-3.5 text-xs group gap-3">
-                                                        <div className="flex flex-col gap-1.5 flex-1 min-w-0 pr-0 sm:pr-4">
-                                                            <div className="font-medium text-zinc-50 truncate">
-                                                                {d.device_name || 'Unnamed Device'}
-                                                                <span className="font-normal text-zinc-500 font-mono text-[10px] ml-2 tracking-tight">({d.device_id})</span>
-                                                            </div>
-                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-0.5">
-                                                                <span className="text-[10px] text-zinc-500">OS: <span className="text-zinc-400">{d.os_type}</span> | Agent: <span className="text-zinc-400">v{d.agent_version}</span></span>
-                                                                <span className="text-[10px] text-zinc-500">Last Heartbeat: {new Date(d.last_heartbeat).toLocaleString()}</span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#27272a]">
-                                                            <span className={`px-2.5 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-widest shrink-0 w-[72px] text-center flex items-center justify-center ${status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : status === 'Offline' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                                                                {status}
-                                                            </span>
-                                                            {status !== 'Revoked' ? (
-                                                                <button onClick={() => handleRevokeDevice(d.device_id)} className="shrink-0 w-[84px] text-red-400 hover:text-red-300 font-bold border border-red-500/20 px-3.5 py-1.5 rounded-md transition bg-red-500/5 hover:bg-red-500/10 whitespace-nowrap opacity-100 sm:opacity-0 group-hover:opacity-100 focus:opacity-100">
-                                                                    Revoke
-                                                                </button>
-                                                            ) : (
-                                                                <div className="w-[84px] shrink-0 hidden sm:block" />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )
-                                            })}
-                                            {devices.length === 0 && <span className="text-xs text-zinc-600 font-medium py-2">No active devices.</span>}
-                                        </div>
-                                    </div>
-                                </div>
+                                    {isAuditing ? "Auditing System..." : "Run Independent Validation Scan"}
+                                </button>
+                                {auditStatus && (
+                                    <p className={`text-sm font-medium ${auditStatus.includes('Failed') || auditStatus.includes('Error') ? 'text-red-400' : 'text-zinc-400'}`}>
+                                        {auditStatus}
+                                    </p>
+                                )}
                             </div>
+                        </div>
+                    </div>
 
-                            {/* Full-width Assurance Box */}
-                            <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-5 shadow-sm mt-0">
-                                <h4 className="font-bold text-sm text-zinc-300 uppercase tracking-widest mb-4">Governance Assurance & Auditing</h4>
-                                <p className="text-zinc-400 text-sm mb-4">
-                                    Trigger an independent validation of your organization's telemetry and enforcement boundaries. The PVAE engine runs externally and evaluates the structural integrity of your deployment, producing an executive-ready compliance report.
-                                </p>
-                                <div className="flex flex-col sm:flex-row gap-4 items-center">
-                                    <button
-                                        onClick={handleRunAudit}
-                                        disabled={isAuditing}
-                                        className={`w-full sm:w-auto ${isAuditing ? 'bg-zinc-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'} text-white rounded-lg px-6 py-2.5 text-sm font-bold transition flex items-center justify-center gap-2`}
+                    {/* ZONE 2 — Audit & Scheduling Preferences */}
+                    <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 shadow-sm text-left">
+                        <div className="flex items-center justify-between mb-5">
+                            <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest text-[#71717a]">Audit & Scheduling Preferences</h4>
+                            <button
+                                onClick={handleUpdateAuditConfig}
+                                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/5 rounded-lg px-4 py-1.5 text-[11px] font-bold transition"
+                            >
+                                Save Preferences
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-8">
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] text-zinc-500 font-bold uppercase tracking-wider block">Daily Audit Hour (UTC 0-23)</label>
+                                <input
+                                    type="number"
+                                    min="0" max="23"
+                                    value={auditConfig.scheduleHour}
+                                    onChange={(e) => setAuditConfig({ ...auditConfig, scheduleHour: parseInt(e.target.value) })}
+                                    className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-100 focus:outline-none focus:border-zinc-700 transition"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] text-zinc-500 font-bold uppercase tracking-wider block">Report Recipient Email</label>
+                                <input
+                                    type="email"
+                                    placeholder="compliance@enterprise.com"
+                                    value={auditConfig.emailRecipient}
+                                    onChange={(e) => setAuditConfig({ ...auditConfig, emailRecipient: e.target.value })}
+                                    className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-100 focus:outline-none focus:border-zinc-700 transition"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ZONE 3 — Independent Validation History */}
+                    <div className={`bg-[#121214] border border-white/5 rounded-2xl p-6 shadow-sm min-h-[300px] text-left`}>
+                        <div className="flex items-center justify-between mb-6">
+                            <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest text-[#71717a]">Validation History</h4>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => fetchAuditHistory()}
+                                    disabled={isAuditing}
+                                    className="text-[10px] text-zinc-500 hover:text-zinc-300 font-bold uppercase tracking-widest flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-white/5"
+                                >
+                                    <svg className={`w-3 h-3 ${isAuditing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            {auditHistory.length > 0 ? (
+                                auditHistory.map((report) => (
+                                    <div
+                                        key={report.id}
+                                        onClick={() => setSelectedReport(report)}
+                                        className="group flex items-center justify-between bg-zinc-900/40 border border-white/5 hover:bg-zinc-900/80 hover:border-white/10 rounded-xl p-4 cursor-pointer transition-all active:scale-[0.99]"
                                     >
-                                        {isAuditing && (
-                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                        )}
-                                        {isAuditing ? "Processing Governance Scan..." : "Run Independent Validation Scan"}
-                                    </button>
-                                    {auditStatus && (
-                                        <p className={`text-sm font-medium ${auditStatus.includes('Failed') || auditStatus.includes('Error') ? 'text-red-400' : 'text-zinc-300'}`}>
-                                            {auditStatus}
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div className="mt-8 border-t border-zinc-800 pt-6">
-                                    <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Audit & Scheduling Preferences</h5>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                        <div className="flex flex-col gap-2">
-                                            <span className="text-xs text-zinc-400 font-medium">Daily Audit Hour (UTC 0-23):</span>
-                                            <input
-                                                type="number"
-                                                min="0" max="23"
-                                                value={auditConfig.scheduleHour}
-                                                onChange={(e) => setAuditConfig({ ...auditConfig, scheduleHour: parseInt(e.target.value) })}
-                                                className="bg-black/50 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600"
-                                            />
+                                        <div className="flex flex-col gap-0.5 text-left">
+                                            <span className="text-sm font-bold text-zinc-100">{new Date(report.timestamp || report.created_at).toLocaleString()}</span>
+                                            <span className="text-[10px] text-zinc-500 font-mono tracking-tight uppercase">Artifact: {report.id.substring(0, 16)}</span>
                                         </div>
-                                        <div className="flex flex-col gap-2">
-                                            <span className="text-xs text-zinc-400 font-medium">Report Recipient Email:</span>
-                                            <input
-                                                type="email"
-                                                placeholder="admin@example.com"
-                                                value={auditConfig.emailRecipient}
-                                                onChange={(e) => setAuditConfig({ ...auditConfig, emailRecipient: e.target.value })}
-                                                className="bg-black/50 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-50 focus:outline-none focus:border-zinc-600"
-                                            />
+                                        <div className="flex items-center gap-6">
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className="text-2xl font-black text-zinc-50 leading-none">{report.enforcementScore}/100</span>
+                                                <span className={`text-[9px] font-black uppercase tracking-[0.15em] opacity-80 ${report.overallStatus === 'HEALTHY' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                                    {report.overallStatus}
+                                                </span>
+                                            </div>
+                                            <span className="text-zinc-700 group-hover:text-zinc-400 transition-colors">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                            </span>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={handleUpdateAuditConfig}
-                                        className="mt-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg px-4 py-2 text-xs font-bold transition"
-                                    >
-                                        Save Audit Preferences
-                                    </button>
-                                </div>
-
-                                <div className="mt-8 border-t border-zinc-800 pt-6">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Independent Validation History</h5>
-                                        <div className="flex items-center gap-4">
-                                            <button
-                                                onClick={() => fetchAuditHistory()}
-                                                disabled={isAuditing}
-                                                className="text-[10px] text-zinc-400 hover:text-zinc-200 font-bold uppercase tracking-wider flex items-center gap-1"
-                                            >
-                                                <svg className={`w-3 h-3 ${isAuditing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                                Refresh
-                                            </button>
-                                            <button onClick={() => setShowHistory(!showHistory)} className="text-xs text-blue-400 hover:text-blue-300 font-bold uppercase tracking-wider">
-                                                {showHistory ? "Hide History" : "View Recent Scans"}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {showHistory && (
-                                        <div className="flex flex-col gap-3">
-                                            {auditHistory.map((report) => (
-                                                <div
-                                                    key={report.id}
-                                                    onClick={() => setSelectedReport(report)}
-                                                    className="flex items-center justify-between bg-black/30 border border-zinc-800/50 hover:border-zinc-700 rounded-lg p-3 cursor-pointer transition"
-                                                >
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-xs font-bold text-zinc-200">{new Date(report.timestamp).toLocaleString()}</span>
-                                                        <span className="text-[10px] text-zinc-500 font-mono">ID: {report.id.substring(0, 12)}...</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="flex flex-col items-end">
-                                                            <span className="text-xs font-bold text-zinc-100">Score: {report.enforcementScore}/100</span>
-                                                            <span className={`text-[10px] font-bold uppercase ${report.overallStatus === 'HEALTHY' ? 'text-emerald-400' : report.overallStatus === 'CRITICAL' ? 'text-red-400' : 'text-amber-400'}`}>
-                                                                {report.overallStatus}
-                                                            </span>
-                                                        </div>
-                                                        <span className="text-zinc-600">→</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {auditHistory.length === 0 && <p className="text-xs text-zinc-600 italic">No audit history found.</p>}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Report viewer modal overlay if report selected */}
-                            {selectedReport && (
-                                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                                    <div className="bg-[#18181b] border border-[#27272a] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-                                        <div className="flex items-center justify-between p-5 border-b border-zinc-800 bg-zinc-900/50">
-                                            <div>
-                                                <h3 className="font-bold text-lg text-zinc-50">Validation Report Details</h3>
-                                                <p className="text-xs text-zinc-500 mt-1 uppercase tracking-widest">{new Date(selectedReport.timestamp).toLocaleString()}</p>
-                                            </div>
-                                            <button onClick={() => setSelectedReport(null)} className="text-zinc-400 hover:text-zinc-50 p-2">
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                            </button>
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8 custom-scrollbar">
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
-                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Status</p>
-                                                    <p className={`text-sm font-bold ${selectedReport.overallStatus === 'HEALTHY' ? 'text-emerald-400' : 'text-amber-400'}`}>{selectedReport.overallStatus}</p>
-                                                </div>
-                                                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
-                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Score</p>
-                                                    <p className="text-sm font-bold text-zinc-100">{selectedReport.enforcementScore}/100</p>
-                                                </div>
-                                                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
-                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">Criticals</p>
-                                                    <p className="text-sm font-bold text-zinc-100">{selectedReport.findings.filter((f: any) => f.severity === 'CRITICAL' && f.result === 'FAIL').length}</p>
-                                                </div>
-                                                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
-                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-1">High Risk</p>
-                                                    <p className="text-sm font-bold text-zinc-100">{selectedReport.findings.filter((f: any) => f.severity === 'HIGH' && f.result === 'FAIL').length}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-col gap-4">
-                                                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Findings Table</h4>
-                                                <div className="border border-zinc-800 rounded-xl overflow-hidden">
-                                                    <table className="w-full text-xs text-left">
-                                                        <thead className="bg-zinc-900 border-b border-zinc-800">
-                                                            <tr>
-                                                                <th className="p-3 font-bold text-zinc-500 uppercase tracking-widest text-[10px]">Test Case</th>
-                                                                <th className="p-3 font-bold text-zinc-500 uppercase tracking-widest text-[10px]">Severity</th>
-                                                                <th className="p-3 font-bold text-zinc-500 uppercase tracking-widest text-[10px]">Result</th>
-                                                                <th className="p-3 font-bold text-zinc-500 uppercase tracking-widest text-[10px]">Notes</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-zinc-800">
-                                                            {selectedReport.findings.map((f: any, i: number) => (
-                                                                <tr key={i} className="hover:bg-zinc-800/20">
-                                                                    <td className="p-3 text-zinc-300 font-medium">{f.test}</td>
-                                                                    <td className="p-3 font-bold">{f.severity}</td>
-                                                                    <td className={`p-3 font-bold ${f.result === 'PASS' ? 'text-emerald-400' : f.result === 'FAIL' ? 'text-red-400' : 'text-zinc-500'}`}>{f.result}</td>
-                                                                    <td className="p-3 text-zinc-500">{f.notes}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12 border border-dashed border-white/5 rounded-2xl">
+                                    <p className="text-xs text-zinc-600 font-medium tracking-wide">Artifact history clear. Generate a scan to begin validation.</p>
                                 </div>
                             )}
                         </div>
-                    )}
+                    </div>
+
+                    {/* SECONDARY — Administrative Tools */}
+                    <div className="mt-8 border-t border-white/5 pt-10 text-left">
+                        <div className="flex items-baseline gap-3 mb-8 px-1">
+                            <h4 className="text-xl font-bold text-zinc-300">Infrastructure & Enrollment</h4>
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Administrative Tools</span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-8">
+                            {/* Policy Card */}
+                            <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 shadow-sm">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Global Policy Descriptor</h4>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded-md font-bold">VER {selectedOrg.policy_version}</span>
+                                        <button onClick={handleUpdatePolicy} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-4 py-1.5 text-[11px] font-bold transition">
+                                            Apply Changes
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea
+                                    className={`w-full bg-black/40 border rounded-xl p-4 text-xs font-mono leading-relaxed text-zinc-400 h-64 focus:outline-none focus:border-zinc-700 transition ${policyError ? 'border-red-500/30' : 'border-white/5'}`}
+                                    value={policyJson}
+                                    onChange={(e) => setPolicyJson(e.target.value)}
+                                    spellCheck={false}
+                                />
+                                {policyError && (
+                                    <p className="text-red-400 text-[10px] font-bold mt-3 uppercase tracking-wider">{policyError}</p>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Tokens Card */}
+                                <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 shadow-sm">
+                                    <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-6">Enrollment Provisions</h4>
+                                    <div className="flex gap-4 mb-6 border-t border-white/5 pt-6">
+                                        <div className="flex-1 space-y-1.5">
+                                            <span className="text-[9px] text-zinc-500 font-bold uppercase block">TTL (Hrs)</span>
+                                            <input type="number" value={tokenExpiresIn} onChange={(e) => setTokenExpiresIn(Number(e.target.value))} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none" />
+                                        </div>
+                                        <div className="flex-1 space-y-1.5">
+                                            <span className="text-[9px] text-zinc-500 font-bold uppercase block">Cap</span>
+                                            <input type="number" value={tokenMaxUses} onChange={(e) => setTokenMaxUses(e.target.value ? Number(e.target.value) : "")} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none placeholder:text-zinc-800" placeholder="∞" />
+                                        </div>
+                                        <div className="flex items-end">
+                                            <button onClick={handleGenerateToken} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 py-2 text-[11px] font-bold transition">Provision</button>
+                                        </div>
+                                    </div>
+
+                                    {newlyGeneratedToken && (
+                                        <div className="mb-6 bg-blue-500/5 border border-blue-500/20 p-4 rounded-xl flex flex-col gap-4">
+                                            <p className="text-[9px] text-blue-400 font-bold uppercase tracking-widest">New Deployment Token</p>
+                                            <div className="flex gap-2">
+                                                <input type="text" readOnly value={newlyGeneratedToken} className="flex-1 bg-black/50 border border-blue-500/20 text-zinc-50 font-mono text-[10px] px-3 py-2 rounded focus:outline-none select-all" />
+                                                <button onClick={() => copyToClipboard(newlyGeneratedToken)} className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-4 py-2 rounded transition">Copy</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                                        {tokens.map(t => {
+                                            const status = getTokenStatus(t);
+                                            return (
+                                                <div key={t.token_id} className="flex items-center justify-between bg-black/20 border border-white/5 rounded-lg p-3 group">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-mono text-zinc-400">{t.token_id.substring(0, 16)}...</span>
+                                                        <span className="text-[9px] text-zinc-600 mt-0.5">Used: {t.uses_count}/{t.max_uses || '∞'} | {status}</span>
+                                                    </div>
+                                                    <button onClick={() => handleRevokeToken(t.token_id)} className="text-[9px] font-black text-red-400/50 hover:text-red-400 uppercase tracking-widest transition opacity-0 group-hover:opacity-100">Revoke</button>
+                                                </div>
+                                            )
+                                        })}
+                                        {tokens.length === 0 && <p className="text-[10px] text-zinc-700 italic">No active tokens found.</p>}
+                                    </div>
+                                </div>
+
+                                {/* Devices Card */}
+                                <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 shadow-sm">
+                                    <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-6 text-[#71717a]">Agent Constellation</h4>
+                                    <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                                        {devices.map(d => {
+                                            const status = getDeviceStatus(d);
+                                            return (
+                                                <div key={d.device_id} className="flex items-center justify-between bg-black/20 border border-white/5 rounded-lg p-3 group text-left">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[11px] font-bold text-zinc-100">{d.device_name || 'Unnamed Agent'}</span>
+                                                        <span className="text-[9px] text-zinc-500 uppercase tracking-widest">{d.os_type} — v{d.agent_version}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${status === 'Active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`} />
+                                                        <button onClick={() => handleRevokeDevice(d.device_id)} className="text-[9px] font-black text-red-400/50 hover:text-red-400 uppercase tracking-widest transition opacity-0 group-hover:opacity-100">Revoke</button>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                        {devices.length === 0 && <p className="text-[10px] text-zinc-700 italic">No agents enrolled.</p>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </section>
+            )}
+
+            {/* Modal remains same logic, just refined styles */}
+            {selectedReport && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md">
+                    <div className="bg-[#121214] border border-white/10 rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                        <div className="flex items-center justify-between p-7 border-b border-white/5 text-left">
+                            <div>
+                                <h3 className="font-black text-2xl text-zinc-50 tracking-tight">Audit Insight Report</h3>
+                                <p className="text-[10px] text-zinc-500 mt-2 font-bold uppercase tracking-[0.2em]">{new Date(selectedReport.timestamp).toLocaleString()}</p>
+                            </div>
+                            <button onClick={() => setSelectedReport(null)} className="text-zinc-500 hover:text-white p-2 bg-white/5 rounded-full transition">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-10 space-y-12 custom-scrollbar text-left">
+                            <div className="grid grid-cols-4 gap-6">
+                                <div className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl">
+                                    <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-2">Posture</p>
+                                    <p className={`text-lg font-black ${selectedReport.overallStatus === 'HEALTHY' ? 'text-emerald-400' : 'text-amber-400'}`}>{selectedReport.overallStatus}</p>
+                                </div>
+                                <div className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl text-center">
+                                    <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-2">Enforcement Score</p>
+                                    <p className="text-2xl font-black text-white">{selectedReport.enforcementScore}/100</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h4 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em]">Enforcement Findings</h4>
+                                <div className="border border-white/5 rounded-2xl overflow-hidden bg-white/[0.01]">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-white/[0.03] border-b border-white/5">
+                                            <tr>
+                                                <th className="p-4 font-black text-zinc-500 uppercase tracking-widest text-[9px]">Validation Target</th>
+                                                <th className="p-4 font-black text-zinc-500 uppercase tracking-widest text-[9px]">Criticallity</th>
+                                                <th className="p-4 font-black text-zinc-500 uppercase tracking-widest text-[9px]">Status</th>
+                                                <th className="p-4 font-black text-zinc-500 uppercase tracking-widest text-[9px]">Observations</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-white/5 text-zinc-400">
+                                            {selectedReport.findings.map((f: any, i: number) => (
+                                                <tr key={i} className="hover:bg-white/[0.02] transition">
+                                                    <td className="p-4 font-bold text-zinc-200">{f.test}</td>
+                                                    <td className="p-4 font-black text-[10px] uppercase tracking-widest">{f.severity}</td>
+                                                    <td className={`p-4 font-black ${f.result === 'PASS' ? 'text-emerald-500' : f.result === 'FAIL' ? 'text-red-500' : 'text-zinc-600'}`}>{f.result}</td>
+                                                    <td className="p-4 text-[11px] italic font-medium">{f.notes}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
