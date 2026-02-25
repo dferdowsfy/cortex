@@ -46,7 +46,12 @@ function getAdminApp() {
     if (clientEmail && privateKeyRaw) {
         try {
             console.log("[firebase-admin] Initializing with clientEmail:", clientEmail);
-            const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
+            let privateKey = privateKeyRaw;
+            if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+                privateKey = privateKey.slice(1, -1);
+            }
+            privateKey = privateKey.replace(/\\n/g, "\n");
+
             return initializeApp({
                 credential: cert({
                     projectId,

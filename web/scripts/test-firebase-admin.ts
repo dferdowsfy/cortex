@@ -36,10 +36,17 @@ async function testInit() {
         const db = getDatabase(app);
         console.log("Firebase App initialized successfully.");
 
-        // Try a simple read
-        const ref = db.ref(".info/connected");
-        const snapshot = await ref.once("value");
-        console.log("Connected to DB:", snapshot.val());
+        // Try to fetch audit reports
+        console.log("Fetching audit reports...");
+        const reportsRef = db.ref("audit_reports");
+        const reportsSnap = await reportsRef.limitToLast(5).once("value");
+
+        if (reportsSnap.exists()) {
+            console.log("Found reports:", Object.keys(reportsSnap.val()).length);
+            console.log("Latest report details:", JSON.stringify(Object.values(reportsSnap.val())[0], null, 2).substring(0, 200) + "...");
+        } else {
+            console.log("No reports found in 'audit_reports' path.");
+        }
 
         process.exit(0);
     } catch (e: any) {

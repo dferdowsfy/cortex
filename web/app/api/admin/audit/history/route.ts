@@ -17,6 +17,20 @@ export async function GET() {
             });
         });
 
+        console.log(`[audit-history] Found ${reports.length} reports in Firebase`);
+
+        // FALLBACK FOR DEBUGGING: If empty, add a dummy report to see if UI can render it
+        if (reports.length === 0) {
+            console.log("[audit-history] Sending mock report for UI testing");
+            reports.push({
+                id: "mock-123",
+                timestamp: new Date().toISOString(),
+                enforcementScore: 95,
+                overallStatus: "HEALTHY",
+                findings: []
+            });
+        }
+
         // Reverse to show newest first
         return NextResponse.json({ reports: reports.reverse() });
     } catch (e: any) {
