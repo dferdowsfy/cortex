@@ -14,8 +14,11 @@ import {
     Settings,
     UserCircle,
     ChevronRight,
-    ChevronLeft
+    ChevronLeft,
+    Sun,
+    Moon
 } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 
 function MonitoringToggle({ collapsed }: { collapsed: boolean }) {
     const { settings, saveSettings, loading, user } = useUserSettings();
@@ -68,8 +71,8 @@ function MonitoringToggle({ collapsed }: { collapsed: boolean }) {
     }
 
     return (
-        <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/50 mt-auto">
-            <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+        <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 dark:bg-zinc-800/50 border border-zinc-700/50 mt-auto">
+            <span className="text-[10px] font-bold text-secondary uppercase tracking-[0.15em]">
                 AI Shield Active
             </span>
             <div className="flex items-center gap-2">
@@ -120,7 +123,7 @@ export function Sidebar() {
 
     return (
         <div
-            className={`flex flex-col h-full bg-[#09090b] border-r border-zinc-800 transition-all duration-300 ease-in-out ${collapsed ? 'w-[64px]' : 'w-[240px]'
+            className={`flex flex-col h-full bg-[var(--bg-page)] border-r border-[var(--border-main)] transition-all duration-300 ease-in-out ${collapsed ? 'w-[64px]' : 'w-[240px]'
                 } py-6 z-50`}
         >
             {/* Logo area */}
@@ -135,7 +138,7 @@ export function Sidebar() {
                 )}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className={`p-1.5 rounded-md hover:bg-zinc-800 text-white/50 transition-colors ${collapsed && "mx-auto"}`}
+                    className={`p-1.5 rounded-md hover:bg-[var(--bg-card-hover)] text-secondary transition-colors ${collapsed && "mx-auto"}`}
                 >
                     {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                 </button>
@@ -150,13 +153,13 @@ export function Sidebar() {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? "bg-zinc-800/80 text-zinc-50" : "text-white/50 hover:text-zinc-200 hover:bg-zinc-800/50"
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? "bg-white/10 dark:bg-zinc-800/80 text-primary font-bold shadow-sm" : "text-secondary hover:text-primary hover:bg-white/5 dark:hover:bg-zinc-800/50"
                                 }`}
                             title={collapsed ? item.label : undefined}
                         >
                             <Icon size={20} className="shrink-0" strokeWidth={isActive ? 2.5 : 2} />
                             {!collapsed && (
-                                <span className={`text-sm tracking-wide ${isActive ? "font-semibold" : "font-medium"}`}>
+                                <span className={`text-sm tracking-wide ${isActive ? "font-bold" : "font-semibold"}`}>
                                     {item.label}
                                 </span>
                             )}
@@ -166,7 +169,8 @@ export function Sidebar() {
             </nav>
 
             {/* Bottom Actions */}
-            <div className="px-3 flex flex-col gap-2 relative">
+            <div className="px-3 flex flex-col gap-2 relative mt-auto border-t border-[var(--border-main)] pt-6">
+                <ThemeToggle collapsed={collapsed} />
                 <MonitoringToggle collapsed={collapsed} />
 
                 <div className="relative mt-1 mb-1" ref={menuRef}>

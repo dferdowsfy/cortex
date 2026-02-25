@@ -226,31 +226,31 @@ export default function AssessPage() {
     <div className="mx-auto max-w-4xl px-6 py-10 min-h-screen">
 
       {/* Simplified Tool Evaluation Mode */}
-      <header className="mb-12 border-b border-white/5 pb-8">
-        <h1 className="text-sm font-black text-white/30 uppercase tracking-[0.3em]">AI Tool Assessment</h1>
-        <p className="text-zinc-500 text-xs font-bold mt-2 uppercase tracking-widest italic leading-relaxed">Evaluating external AI intelligence for enterprise safety alignment.</p>
+      <header className="mb-12 border-b border-[var(--border-main)] pb-8">
+        <h1 className="text-sm font-black text-muted uppercase tracking-[0.3em]">AI Tool Assessment</h1>
+        <p className="text-secondary text-xs font-bold mt-2 uppercase tracking-widest italic leading-relaxed">Evaluating external AI intelligence for enterprise safety alignment.</p>
       </header>
 
       {/* INPUT STEP */}
       {step === "input" && (
-        <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-10 shadow-2xl">
+        <div className="card p-10 shadow-2xl">
           <div className="space-y-10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest block ml-1">Tool Designation</label>
+                <label className="text-[10px] font-black text-muted uppercase tracking-[0.15em] block ml-1">Tool Designation</label>
                 <input
                   type="text"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-sm text-white focus:outline-none focus:border-white/20 transition-all font-bold placeholder:text-zinc-800"
+                  className="w-full bg-white/5 dark:bg-white/[0.03] border border-[var(--border-main)] rounded-xl px-5 py-3 text-sm text-primary focus:outline-none focus:border-indigo-500/50 transition-all font-bold placeholder:text-zinc-500"
                   placeholder="e.g. ChatGPT, Cursor, Midjourney..."
                   value={toolName}
                   onChange={(e) => setToolName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest block ml-1">Vendor Identity</label>
+                <label className="text-[10px] font-black text-muted uppercase tracking-[0.15em] block ml-1">Vendor Identity</label>
                 <input
                   type="text"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-sm text-white focus:outline-none focus:border-white/20 transition-all font-bold placeholder:text-zinc-800"
+                  className="w-full bg-white/5 dark:bg-white/[0.03] border border-[var(--border-main)] rounded-xl px-5 py-3 text-sm text-primary focus:outline-none focus:border-indigo-500/50 transition-all font-bold placeholder:text-zinc-500"
                   placeholder="e.g. OpenAI, Anysphere, Anthropic..."
                   value={vendor}
                   onChange={(e) => setVendor(e.target.value)}
@@ -259,13 +259,13 @@ export default function AssessPage() {
             </div>
 
             <div className="space-y-5">
-              <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest block ml-1">Subscription Model</label>
+              <label className="text-[10px] font-black text-muted uppercase tracking-[0.15em] block ml-1">Subscription Model</label>
               <div className="flex flex-wrap gap-3">
                 {TIERS.map((t) => (
                   <button
                     key={t}
                     type="button"
-                    className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${tier === t ? "bg-white text-black border-white" : "bg-white/5 text-white/40 border-white/5 hover:border-white/20"}`}
+                    className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${tier === t ? "bg-indigo-600 text-white border-indigo-600" : "bg-white/5 text-muted border-[var(--border-main)] hover:border-indigo-500/30"}`}
                     onClick={() => setTier(t)}
                   >
                     {t}
@@ -275,7 +275,7 @@ export default function AssessPage() {
             </div>
 
             <button
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] py-4 rounded-xl text-xs transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 disabled:grayscale"
+              className="btn-primary w-full py-5 !text-xs !tracking-[0.25em]"
               disabled={!toolName.trim() || !vendor.trim()}
               onClick={startExtraction}
             >

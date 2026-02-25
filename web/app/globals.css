@@ -4,109 +4,157 @@
 @tailwind utilities;
 
 :root {
-  --risk-critical: #dc2626;
-  --risk-high: #ea580c;
-  --risk-moderate: #ca8a04;
-  --risk-low: #16a34a;
+  /* ── Typography Scale ── */
+  --font-size-base: 16px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+
+  /* ── Risk Colors ── */
+  --risk-critical: #ef4444;
+  --risk-high: #f97316;
+  --risk-moderate: #f59e0b;
+  --risk-low: #10b981;
+
+  /* ── Light Theme Tokens ── */
+  --bg-page: #f9fafb;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --border-main: #e5e7eb;
+  --border-soft: #f3f4f6;
+  --brand-color: #4f46e5;
+  --brand-hover: #4338ca;
+}
+
+[class~="dark"] {
+  /* ── Dark Theme Tokens ── */
+  --bg-page: #09090b;
+  --bg-card: #121214;
+  --bg-card-hover: #18181b;
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  /* Increased from 600/700 shades */
+  --text-muted: #9ca3af;
+  /* Consistent with USER request */
+  --border-main: rgba(255, 255, 255, 0.1);
+  --border-soft: rgba(255, 255, 255, 0.05);
+  --brand-color: #6366f1;
+  --brand-hover: #4f46e5;
+}
+
+html {
+  font-size: var(--font-size-base);
 }
 
 body {
-  @apply bg-gray-50 text-gray-900 dark:bg-background-dark dark:text-white antialiased;
+  @apply antialiased transition-colors duration-200;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-normal);
 }
 
-/* ── Risk Badge Styles ── */
+/* ── Typography Utilities ── */
+
+h1,
+.h1 {
+  @apply text-4xl font-bold tracking-tight;
+  font-weight: var(--font-weight-bold);
+}
+
+h2,
+.h2 {
+  @apply text-2xl font-bold tracking-tight;
+  font-weight: var(--font-weight-bold);
+}
+
+h3,
+.h3 {
+  @apply text-lg font-semibold tracking-tight;
+  font-weight: var(--font-weight-semibold);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* ── Component Styles ── */
 
 .badge {
   @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide;
 }
 
 .badge-critical {
-  @apply bg-red-100 text-red-800 ring-1 ring-red-300;
+  @apply bg-red-500/10 text-red-500 border border-red-500/20;
 }
 
 .badge-high {
-  @apply bg-orange-100 text-orange-800 ring-1 ring-orange-300;
+  @apply bg-orange-500/10 text-orange-500 border border-orange-500/20;
 }
 
 .badge-moderate {
-  @apply bg-yellow-100 text-yellow-800 ring-1 ring-yellow-300;
+  @apply bg-yellow-500/10 text-yellow-500 border border-yellow-500/20;
 }
 
 .badge-low {
-  @apply bg-green-100 text-green-800 ring-1 ring-green-300;
+  @apply bg-emerald-500/10 text-emerald-500 border border-emerald-500/20;
 }
-
-/* ── Card Styles ── */
 
 .card {
-  @apply rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-main);
+  @apply rounded-2xl p-6 shadow-sm transition-all;
 }
 
-/* ── Step Indicator ── */
-
-.step-dot {
-  @apply flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold;
-}
-
-.step-dot-active {
-  @apply bg-brand-600 text-white;
-}
-
-.step-dot-done {
-  @apply bg-green-500 text-white;
-}
-
-.step-dot-pending {
-  @apply bg-gray-200 text-gray-500;
+.card:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--border-soft);
+  @apply shadow-md;
 }
 
 /* ── Button Styles ── */
 
 .btn-primary {
-  @apply inline-flex items-center justify-center rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  background-color: var(--brand-color);
+  color: #ffffff;
+  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-bold tracking-widest uppercase transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 shadow-lg shadow-indigo-500/10;
 }
 
 .btn-secondary {
-  @apply inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  border: 1px solid var(--border-main);
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-bold tracking-widest uppercase transition-all hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95 disabled:opacity-50;
 }
 
-/* ── Pulse Animation for Loading ── */
-
-@keyframes pulse-slow {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
+/* ── Spacing ── */
+.section-gap {
+  @apply my-12;
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* ── Custom Scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
 }
 
-/* ── Print Styles ── */
-
-@media print {
-  .no-print {
-    display: none !important;
-  }
-
-  body {
-    @apply bg-white text-black;
-  }
-
-  .card {
-    @apply border-0 shadow-none p-0;
-  }
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* Fallback: force-load Material Icons font via CSS */
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: 10px;
+}
 
-/* Mobile-only fixes — does NOT affect desktop */
+/* ── Mobile-only fixes ── */
 @media (max-width: 768px) {
 
   html,
@@ -115,32 +163,7 @@ body {
     max-width: 100vw;
   }
 
-  .material-icons,
-  .material-symbols-outlined {
-    overflow: hidden;
-    max-width: 48px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  section,
-  main,
-  [class*="container"] {
-    overflow-x: hidden;
-    max-width: 100vw;
-    padding-left: 16px;
-    padding-right: 16px;
-    box-sizing: border-box;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4 {
-    overflow-wrap: break-word;
-    word-break: break-word;
-    max-width: 100%;
+  .section-gap {
+    @apply my-8;
   }
 }

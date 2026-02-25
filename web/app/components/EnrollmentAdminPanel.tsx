@@ -119,28 +119,28 @@ export default function EnrollmentAdminPanel() {
         <div className="mx-auto max-w-[1100px] p-8 space-y-8 font-sans antialiased text-white pb-32">
 
             {/* ── Governance Summary Strip ── */}
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl px-10 py-6 flex items-center justify-between shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-md">
+            <div className="card px-10 py-8 flex items-center justify-between shadow-2xl backdrop-blur-md">
                 <div className="flex items-center gap-14">
                     <div className="group">
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-1 font-mono group-hover:text-zinc-400 transition-colors">AI Shield</p>
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-1 font-mono">AI Shield</p>
                         <span className="text-xs font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                             Protected
                         </span>
                     </div>
-                    <div className="border-l border-white/5 pl-14">
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-1 font-mono">Policy Version</p>
-                        <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">v2.4.19</span>
+                    <div className="border-l border-[var(--border-main)] pl-14">
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-1 font-mono">Policy Version</p>
+                        <span className="text-sm font-black text-primary uppercase tracking-widest">v2.4.19</span>
                     </div>
-                    <div className="border-l border-white/5 pl-14">
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-1 font-mono">Last Validation</p>
-                        <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">{validationTimestamp}</span>
+                    <div className="border-l border-[var(--border-main)] pl-14">
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-1 font-mono">Last Validation</p>
+                        <span className="text-sm font-black text-primary uppercase tracking-widest">{validationTimestamp}</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-14">
-                    <div className="text-right border-l border-white/5 pl-14 hidden md:block">
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-1 font-mono">Validation Score</p>
-                        <span className="text-3xl font-black text-white italic tracking-tighter tabular-nums">
+                    <div className="text-right border-l border-[var(--border-main)] pl-14 hidden md:block">
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-1 font-mono">Validation Score</p>
+                        <span className="text-4xl font-black text-primary italic tracking-tighter tabular-nums">
                             {lastReport?.enforcementScore || 0}/100
                         </span>
                     </div>
@@ -171,27 +171,27 @@ export default function EnrollmentAdminPanel() {
             </section>
 
             {/* ── ZONE 2: AUDIT & SCHEDULING (Collapsible) ── */}
-            <section className="bg-white/[0.01] border border-white/10 rounded-2xl overflow-hidden shadow-sm transition-all hover:border-white/20">
+            <section className="card p-0 overflow-hidden shadow-sm transition-all hover:border-[var(--border-soft)]">
                 <button
                     onClick={() => setAuditCollapsed(!auditCollapsed)}
-                    className="w-full px-8 py-6 flex justify-between items-center bg-white/[0.01] hover:bg-white/[0.02] transition-colors"
+                    className="w-full px-8 py-6 flex justify-between items-center transition-colors hover:bg-white/[0.02]"
                 >
                     <div className="flex items-center gap-4">
-                        <Clock className="w-4 h-4 text-zinc-600" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 italic">Audit & Scheduling Preferences</h3>
+                        <Clock className="w-5 h-5 text-primary/60" />
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary italic">Audit & Scheduling Preferences</h3>
                     </div>
-                    {auditCollapsed ? <ChevronRight className="w-4 h-4 text-zinc-700" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                    {auditCollapsed ? <ChevronRight className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-primary" />}
                 </button>
                 {!auditCollapsed && (
-                    <div className="p-10 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
+                    <div className="p-10 border-t border-[var(--border-soft)] animate-in slide-in-from-top-2 duration-300">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                             <div className="space-y-6">
-                                <label className="text-[9px] font-black text-zinc-600 uppercase tracking-widest block font-mono">Assurance Cadence</label>
-                                <div className="flex flex-wrap gap-2">
+                                <label className="text-[10px] font-black text-muted uppercase tracking-widest block font-mono">Assurance Cadence</label>
+                                <div className="flex flex-wrap gap-3">
                                     {(["manual", "daily", "weekly", "monthly"] as const).map(f => (
                                         <button
                                             key={f}
-                                            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${auditConfig.frequency === f ? "bg-white text-black border-white" : "text-zinc-500 border-white/5 hover:border-white/10"}`}
+                                            className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${auditConfig.frequency === f ? "bg-indigo-600 text-white border-indigo-600" : "text-secondary border-[var(--border-main)] hover:border-primary/30"}`}
                                             onClick={() => setAuditConfig(prev => ({ ...prev, frequency: f }))}
                                         >
                                             {f}
@@ -200,11 +200,11 @@ export default function EnrollmentAdminPanel() {
                                 </div>
                             </div>
                             <div className="space-y-4">
-                                <label className="text-[9px] font-black text-zinc-600 uppercase tracking-widest block font-mono">Report Recipients</label>
+                                <label className="text-[10px] font-black text-muted uppercase tracking-widest block font-mono">Report Recipients</label>
                                 <div className="flex gap-2">
-                                    <input type="text" placeholder="Add security stakeholder email..." className="flex-1 bg-white/5 border border-white/5 rounded-lg px-4 py-2.5 text-xs font-bold text-zinc-400 focus:outline-none focus:border-white/20 placeholder:text-zinc-800" />
-                                    <button className="bg-white/5 hover:bg-white/10 p-2.5 rounded-lg border border-white/5">
-                                        <Plus className="w-4 h-4 text-zinc-400" />
+                                    <input type="text" placeholder="Add security stakeholder email..." className="flex-1 bg-white/5 dark:bg-white/[0.03] border border-[var(--border-main)] rounded-lg px-4 py-2.5 text-xs font-bold text-primary focus:outline-none focus:border-indigo-500/50 placeholder:text-zinc-500" />
+                                    <button className="bg-white/5 dark:bg-white/[0.05] hover:bg-white/10 p-2.5 rounded-lg border border-[var(--border-main)] transition-colors">
+                                        <Plus className="w-4 h-4 text-primary" />
                                     </button>
                                 </div>
                             </div>

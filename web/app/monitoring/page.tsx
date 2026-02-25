@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
+import { Activity, Clock } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
    Types (mirrors server types)
@@ -255,19 +256,17 @@ export default function MonitoringPage() {
     /* ── Minimal Empty State ── */
     if (agents.length === 0 && events.length === 0) {
         return (
-            <div className="mx-auto max-w-2xl py-24 flex flex-col items-center text-center">
-                <h3 className="text-2xl font-black text-white/90 tracking-tight">No active devices enrolled.</h3>
-                <p className="mt-3 text-sm text-white/40 max-w-sm leading-relaxed">
-                    Captured real-time AI usage data requires at least one monitoring agent to be active on your endpoint infrastructure.
-                </p>
-                <div className="mt-10 flex items-center gap-6">
-                    <Link href="/governance" className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-black text-xs transition-all uppercase tracking-widest shadow-xl shadow-blue-900/20">
-                        Enroll Device
-                    </Link>
-                    <Link href="https://docs.complyze.ai" className="text-white/40 hover:text-white/70 text-xs font-bold uppercase tracking-widest underline transition-colors">
-                        View Installation Guide
-                    </Link>
+            <div className="mx-auto max-w-2xl py-32 flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-2xl bg-zinc-800/10 dark:bg-zinc-800/50 flex items-center justify-center mb-8 border border-[var(--border-main)] shadow-xl">
+                    <Activity className="w-8 h-8 text-primary" />
                 </div>
+                <h3 className="text-3xl font-black text-primary tracking-tighter uppercase italic">No active devices enrolled</h3>
+                <p className="mt-4 text-sm text-secondary max-w-sm leading-relaxed font-bold uppercase tracking-widest italic opacity-80">
+                    Captured real-time AI usage data will materialize here once an agent is active on your network.
+                </p>
+                <Link href="/governance" className="btn-primary mt-12">
+                    Manage Enrollment Provisions
+                </Link>
             </div>
         );
     }
@@ -300,44 +299,51 @@ export default function MonitoringPage() {
             </div>
 
             {/* ── Device Constellation ── */}
-            <section className="bg-white/[0.01] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="px-6 py-4 bg-white/[0.01] border-b border-white/5 flex justify-between items-center">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Active Device Constellation</h3>
+            <section className="card p-0 overflow-hidden shadow-2xl">
+                <div className="px-8 py-6 border-b border-[var(--border-soft)] bg-white/[0.01] flex justify-between items-center">
+                    <h2 className="text-[11px] font-black text-muted uppercase tracking-[0.3em] font-mono italic">Active Device Constellation</h2>
+                    <span className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live Operational Stream
+                    </span>
                 </div>
-                <div className="overflow-x-auto overflow-y-hidden">
+                <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] border-b border-white/5">
-                                <th className="px-6 py-4">Node Identity</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4">Last Pulse</th>
-                                <th className="px-6 py-4">Agent vX</th>
-                                <th className="px-6 py-4">24h Risk Signals</th>
+                            <tr className="border-b border-[var(--border-soft)] text-[10px] uppercase tracking-widest font-black text-muted bg-white/[0.02]">
+                                <th className="px-8 py-4">Endpoint Identity</th>
+                                <th className="px-8 py-4">OS Status</th>
+                                <th className="px-8 py-4">Agent Version</th>
+                                <th className="px-8 py-4">Last Sync Pulse</th>
+                                <th className="px-8 py-4 text-right">Protection</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {agents.map((agent) => (
-                                <tr key={agent.device_id} className="hover:bg-white/[0.01] transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <span className="font-black text-white/80 text-sm tracking-tight">{agent.device_name || agent.hostname}</span>
-                                            <span className="text-[9px] text-white/20 font-mono uppercase tracking-tighter">{agent.device_id.substring(0, 16)}</span>
+                        <tbody className="divide-y divide-[var(--border-soft)]">
+                            {agents.map(agent => (
+                                <tr key={agent.device_id} className="hover:bg-white/[0.02] transition-colors group">
+                                    <td className="px-8 py-5">
+                                        <p className="text-sm font-black text-primary uppercase tracking-tight">{agent.hostname}</p>
+                                        <p className="text-[9px] text-muted font-bold font-mono uppercase mt-0.5">{agent.device_id.substring(0, 12)}</p>
+                                    </td>
+                                    <td className="px-8 py-5">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`w-1.5 h-1.5 rounded-full ${agent.status === 'Online' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                            <span className="text-xs font-black text-secondary uppercase italic">{agent.os_type}</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${agent.status === 'Healthy' ? 'bg-emerald-500/5 text-emerald-400 border border-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,0.05)]' : 'bg-red-500/5 text-red-500 border border-red-500/10'}`}>
-                                            <span className={`w-1 h-1 rounded-full ${agent.status === 'Healthy' ? 'bg-emerald-400' : 'bg-red-500'}`} />
-                                            {agent.status === 'Healthy' ? 'ONLINE' : 'OFFLINE'}
+                                    <td className="px-8 py-5">
+                                        <span className="text-xs font-black text-muted font-mono">v{agent.agent_version}</span>
+                                    </td>
+                                    <td className="px-8 py-5">
+                                        <div className="flex items-center gap-2 text-muted">
+                                            <Clock className="w-3 h-3" />
+                                            <span className="text-xs font-bold uppercase tracking-tight">{new Date(agent.last_sync).toLocaleTimeString()}</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-xs font-bold text-white/40">
-                                        {new Date(agent.last_sync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="bg-white/5 px-2.5 py-1 rounded text-[9px] font-black text-blue-400/80 border border-blue-500/10 uppercase font-mono">v{agent.agent_version || '1.0.0'}</span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-sm font-black text-white/60 tabular-nums">0</span>
+                                    <td className="px-8 py-5 text-right">
+                                        <span className="px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm">
+                                            Fail-Closed Active
+                                        </span>
                                     </td>
                                 </tr>
                             ))}
