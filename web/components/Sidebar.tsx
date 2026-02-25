@@ -98,7 +98,7 @@ const NAV_ITEMS = [
     { label: "Home", href: "/dashboard", icon: LayoutDashboard },
     { label: "Monitor", href: "/monitoring", icon: Activity },
     { label: "Scan", href: "/scan", icon: ShieldCheck },
-    { label: "Reports", href: "/report", icon: FileBarChart },
+    { label: "Reports", href: "/dashboard/reports", icon: FileBarChart },
     { label: "Governance", href: "/governance", icon: Users },
 ];
 
