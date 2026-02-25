@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { ShieldCheck } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
    Types & Consts
@@ -142,11 +143,11 @@ function ResultsView({ data }: { data: Record<string, unknown> }) {
       )}
 
       {/* Action Hub */}
-      <div className="flex items-center justify-between pt-10 border-t border-white/5">
-        <Link href="/dashboard" className="text-[10px] font-black text-white/30 uppercase tracking-widest hover:text-white/60 transition-colors">
+      <div className="flex items-center justify-between pt-10 border-t border-[var(--border-main)]">
+        <Link href="/dashboard" className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest hover:text-[var(--text-primary)] transition-colors">
           ← Operational Dashboard
         </Link>
-        <button className="bg-white hover:bg-zinc-200 text-black px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-2xl">
+        <button className="btn-secondary px-10">
           Export Audit Payload
         </button>
       </div>
@@ -233,40 +234,65 @@ export default function AssessPage() {
 
       {/* INPUT STEP */}
       {step === "input" && (
-        <div className="card p-10 shadow-2xl">
-          <div className="space-y-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted uppercase tracking-[0.15em] block ml-1">Tool Designation</label>
+        <div className="card p-12 shadow-2xl border-none ring-1 ring-[var(--border-main)]">
+          <div className="flex justify-between items-center mb-12">
+            <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none text-[var(--text-primary)]">
+              Initialize Assessment Engine
+            </h1>
+            <ShieldCheck className="w-10 h-10 text-[var(--brand-color)]" />
+          </div>
+
+          <div className="space-y-12">
+            <div>
+              <label className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-4 block font-mono">Select Target Application</label>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {Object.keys(POPULAR_TOOLS).map(tool => (
+                  <button
+                    key={tool}
+                    onClick={() => { setToolName(tool); setVendor(POPULAR_TOOLS[tool]); }}
+                    className={`px-6 py-4 rounded-xl text-[12px] font-bold uppercase tracking-tight text-left transition-all border ${toolName === tool
+                      ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg"
+                      : "bg-[var(--bg-card-hover)] text-[var(--text-secondary)] border-transparent hover:border-[var(--border-main)]"}`}
+                  >
+                    {tool}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-10">
+              <div className="space-y-4">
+                <label className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-widest block font-mono">Tool / Service Name</label>
                 <input
                   type="text"
-                  className="w-full bg-white/5 dark:bg-white/[0.03] border border-[var(--border-main)] rounded-xl px-5 py-3 text-sm text-primary focus:outline-none focus:border-indigo-500/50 transition-all font-bold placeholder:text-zinc-500"
-                  placeholder="e.g. ChatGPT, Cursor, Midjourney..."
                   value={toolName}
-                  onChange={(e) => setToolName(e.target.value)}
+                  onChange={e => setToolName(e.target.value)}
+                  placeholder="e.g. OpenAI o3-mini"
+                  className="w-full bg-[var(--bg-card-hover)] border border-[var(--border-main)] rounded-xl px-6 py-4 text-base font-bold text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]/20 transition-all placeholder:text-[var(--text-muted)]/50"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted uppercase tracking-[0.15em] block ml-1">Vendor Identity</label>
+              <div className="space-y-4">
+                <label className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-widest block font-mono">Authorized Vendor</label>
                 <input
                   type="text"
-                  className="w-full bg-white/5 dark:bg-white/[0.03] border border-[var(--border-main)] rounded-xl px-5 py-3 text-sm text-primary focus:outline-none focus:border-indigo-500/50 transition-all font-bold placeholder:text-zinc-500"
-                  placeholder="e.g. OpenAI, Anysphere, Anthropic..."
                   value={vendor}
-                  onChange={(e) => setVendor(e.target.value)}
+                  onChange={e => setVendor(e.target.value)}
+                  placeholder="e.g. Anthropic"
+                  className="w-full bg-[var(--bg-card-hover)] border border-[var(--border-main)] rounded-xl px-6 py-4 text-base font-bold text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]/20 transition-all placeholder:text-[var(--text-muted)]/50"
                 />
               </div>
             </div>
 
-            <div className="space-y-5">
-              <label className="text-[10px] font-black text-muted uppercase tracking-[0.15em] block ml-1">Subscription Model</label>
-              <div className="flex flex-wrap gap-3">
-                {TIERS.map((t) => (
+            <div>
+              <label className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-4 block font-mono">Provisioning Tier</label>
+              <div className="flex flex-wrap gap-4">
+                {TIERS.map(t => (
                   <button
                     key={t}
-                    type="button"
-                    className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${tier === t ? "bg-indigo-600 text-white border-indigo-600" : "bg-white/5 text-muted border-[var(--border-main)] hover:border-indigo-500/30"}`}
                     onClick={() => setTier(t)}
+                    className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.1em] transition-all border ${tier === t
+                      ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-xl"
+                      : "bg-[var(--bg-card-hover)] text-[var(--text-muted)] border-transparent hover:border-[var(--border-main)]"}`}
                   >
                     {t}
                   </button>
@@ -274,13 +300,15 @@ export default function AssessPage() {
               </div>
             </div>
 
-            <button
-              className="btn-primary w-full py-5 !text-xs !tracking-[0.25em]"
-              disabled={!toolName.trim() || !vendor.trim()}
-              onClick={startExtraction}
-            >
-              Initialize Assessment Engine
-            </button>
+            <div className="pt-8 border-t border-[var(--border-soft)]">
+              <button
+                onClick={startExtraction}
+                disabled={!toolName || !vendor}
+                className="btn-primary w-full py-6 text-lg shadow-2xl active:scale-[0.98]"
+              >
+                Scan Tool & Analyze Risk Profile
+              </button>
+            </div>
           </div>
         </div>
       )}

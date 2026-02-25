@@ -64,10 +64,8 @@ export default function ExecutiveDashboard({
 
     const riskTheme = {
         color: riskScore >= 60 ? "text-red-500" : riskScore >= 30 ? "text-amber-500" : "text-emerald-500",
-        badge: riskScore >= 60 ? "text-red-400 border-red-500/20 bg-red-500/5" :
-            riskScore >= 30 ? "text-amber-400 border-amber-500/20 bg-amber-500/5" :
-                "text-emerald-400 border-emerald-500/20 bg-emerald-500/5",
-        label: riskScore >= 60 ? "High" : riskScore >= 30 ? "Moderate" : "Low",
+        badge: riskScore >= 60 ? "bg-red-600 text-white" : riskScore >= 30 ? "bg-amber-500 text-white" : "bg-emerald-600 text-white",
+        label: riskScore >= 60 ? "HIGH" : riskScore >= 30 ? "MODERATE" : "LOW",
     };
 
     return (
@@ -102,19 +100,19 @@ export default function ExecutiveDashboard({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
 
                 {/* AI Risk Score (Primary focus) */}
-                <section className="lg:col-span-5 card flex flex-col items-center justify-center relative overflow-hidden group shadow-2xl">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                    <header className="mb-6 text-center">
-                        <h2 className="text-[11px] font-black text-muted uppercase tracking-[0.4em] mb-2 font-mono italic">Aggregate AI Risk Score</h2>
+                <section className="lg:col-span-5 card flex flex-col items-center justify-center relative overflow-hidden group shadow-2xl border-none ring-1 ring-[var(--border-main)] py-12">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-[var(--brand-color)] opacity-80" />
+                    <header className="mb-10 text-center">
+                        <h2 className="text-[13px] font-black text-[var(--text-primary)] uppercase tracking-[0.4em] mb-2 font-mono">Current AI Risk</h2>
                     </header>
                     <div className="relative">
-                        <svg className="w-56 h-56 transform -rotate-90">
-                            <circle cx="112" cy="112" r="100" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-[var(--border-soft)]" />
+                        <svg className="w-64 h-64 transform -rotate-90">
+                            <circle cx="128" cy="128" r="116" stroke="currentColor" strokeWidth="16" fill="transparent" className="text-[var(--border-soft)]" />
                             <motion.circle
-                                cx="112" cy="112" r="100" stroke="currentColor" strokeWidth="12" fill="transparent"
-                                strokeDasharray={2 * Math.PI * 100}
-                                initial={{ strokeDashoffset: 2 * Math.PI * 100 }}
-                                animate={{ strokeDashoffset: (2 * Math.PI * 100) * (1 - riskScore / 100) }}
+                                cx="128" cy="128" r="116" stroke="currentColor" strokeWidth="16" fill="transparent"
+                                strokeDasharray={2 * Math.PI * 116}
+                                initial={{ strokeDashoffset: 2 * Math.PI * 116 }}
+                                animate={{ strokeDashoffset: (2 * Math.PI * 116) * (1 - riskScore / 100) }}
                                 transition={{ duration: 1.5, ease: "easeOut" }}
                                 className={riskTheme.color}
                             />
@@ -124,16 +122,15 @@ export default function ExecutiveDashboard({
                                 key={riskScore}
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="text-7xl font-black italic tracking-tighter tabular-nums text-primary"
+                                className="text-[96px] font-black italic tracking-tighter tabular-nums text-[var(--text-primary)] leading-none"
                             >
                                 {riskScore}
                             </motion.span>
-                            <span className="text-[10px] font-black text-muted uppercase tracking-widest">Aggregate</span>
                         </div>
                     </div>
-                    <div className="mt-8 text-center">
-                        <div className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border ${riskTheme.badge}`}>
-                            {riskTheme.label} Risk Exposure
+                    <div className="mt-12 text-center">
+                        <div className={`px-10 py-3 rounded-xl text-[12px] font-black uppercase tracking-[0.2em] shadow-xl ${riskTheme.badge} border-none`}>
+                            {riskTheme.label} Risk Posture
                         </div>
                     </div>
                 </section>
@@ -172,32 +169,17 @@ export default function ExecutiveDashboard({
                                     </span>
                                 </div>
                                 <div className="space-y-1 overflow-y-auto pr-2 -mr-2">
-                                    {recentActivity?.slice(0, 5).map((e) => (
-                                        <div key={e.id} className="flex items-center justify-between py-4 border-b border-[var(--border-soft)] last:border-0 group hover:bg-white/[0.01] px-2 rounded-lg transition-colors">
-                                            <div className="flex items-center gap-5">
-                                                <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[11px] font-black text-primary shadow-sm transition-transform group-hover:scale-105 ${e.sensitivity_score >= 60 ? "bg-red-500/80" :
-                                                    e.sensitivity_score >= 30 ? "bg-amber-500/80" :
-                                                        "bg-emerald-500/80"
-                                                    }`}>
-                                                    {e.sensitivity_score}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="font-bold text-primary text-sm truncate">{e.tool}</p>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <span className="text-[9px] text-muted font-bold font-mono tracking-tighter uppercase">{e.user_hash}</span>
-                                                        <span className="text-zinc-800 font-black text-[9px]">/</span>
-                                                        <span className="text-[9px] text-muted font-bold uppercase tracking-wider">{new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    </div>
-                                                </div>
+                                    {(recentActivity || []).slice(0, 5).map((event) => (
+                                        <div key={event.id} className="flex items-center justify-between group/item py-2 border-b border-[var(--border-soft)] last:border-0 pb-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-tight">{event.tool_domain?.split('.')[0] || "Unknown Tool"}</span>
+                                                <span className="text-[11px] text-[var(--text-secondary)] font-bold uppercase tracking-wider mt-0.5">{event.risk_category || "General Activity"}</span>
                                             </div>
                                             <div className="text-right">
-                                                <div className="flex gap-1 justify-end">
-                                                    {e.sensitivity_categories.filter(c => c !== 'none').slice(0, 1).map(cat => (
-                                                        <span key={cat} className="text-[9px] font-black text-indigo-400/80 uppercase tracking-tighter bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded">
-                                                            {cat}
-                                                        </span>
-                                                    ))}
+                                                <div className={`text-[10px] font-black px-3 py-1 rounded bg-[var(--bg-page)] border uppercase tracking-widest ${event.policy_violation_flag ? 'text-red-600 border-red-200 dark:border-red-900/50' : 'text-[var(--text-muted)] border-[var(--border-main)]'}`}>
+                                                    {event.policy_violation_flag ? 'Blocked' : 'Monitored'}
                                                 </div>
+                                                <div className="text-[10px] text-[var(--text-muted)] font-black mt-2 font-mono">{new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                                             </div>
                                         </div>
                                     ))}

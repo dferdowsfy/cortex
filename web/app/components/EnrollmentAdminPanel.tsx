@@ -148,24 +148,24 @@ export default function EnrollmentAdminPanel() {
             </div>
 
             {/* ── ZONE 1: PRIMARY ACTION (Governance Assurance) ── */}
-            <section className="bg-gradient-to-br from-white/[0.03] to-transparent border border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/0 via-blue-500/40 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+            <section className="card flex flex-col items-center justify-center text-center shadow-xl border-none ring-1 ring-[var(--border-main)] py-16 px-12 relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-full h-2 bg-[var(--brand-color)] opacity-80" />
 
-                <div className="w-12 h-12 rounded-full border border-blue-500/20 bg-blue-500/5 flex items-center justify-center mb-6 shadow-2xl transition-transform group-hover:scale-110">
-                    <Shield className="w-5 h-5 text-blue-400/80" />
+                <div className="w-16 h-16 rounded-2xl bg-[var(--brand-color)]/10 flex items-center justify-center mb-8 shadow-sm">
+                    <Shield className="w-7 h-7 text-[var(--brand-color)]" strokeWidth={2.5} />
                 </div>
 
-                <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase mb-4">Governance Assurance Scan</h2>
-                <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest max-w-lg leading-relaxed mb-10">
-                    Initiate an independent validation sequence to verify current endpoint policy enforcement against organizational security standards.
+                <h2 className="text-3xl font-black text-[var(--text-primary)] italic tracking-tighter uppercase mb-4">Governance Assurance</h2>
+                <p className="text-sm text-[var(--text-secondary)] font-semibold uppercase tracking-widest max-w-lg leading-relaxed mb-12">
+                    Verify endpoint policy enforcement against organizational security standards.
                 </p>
 
                 <button
                     onClick={handleRunAudit}
                     disabled={auditRunning}
-                    className="bg-white hover:bg-zinc-200 disabled:opacity-30 disabled:grayscale text-black px-12 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-2xl active:scale-95 flex items-center gap-3"
+                    className="btn-primary px-16 py-4 rounded-xl text-[12px] shadow-2xl transition-all active:scale-95 flex items-center gap-4"
                 >
-                    {auditRunning ? <span className="animate-spin w-3 h-3 border-2 border-black/20 border-b-black rounded-full" /> : null}
+                    {auditRunning && <span className="animate-spin w-4 h-4 border-2 border-white/20 border-b-white rounded-full" />}
                     Run Independent Validation Scan
                 </button>
             </section>
@@ -214,50 +214,52 @@ export default function EnrollmentAdminPanel() {
             </section>
 
             {/* ── ZONE 3: ENROLLMENT PROVISIONS (Collapsible) ── */}
-            <section className="bg-white/[0.01] border border-white/10 rounded-2xl overflow-hidden shadow-sm transition-all hover:border-white/20">
+            <section className="card p-0 overflow-hidden shadow-sm transition-all hover:border-[var(--border-soft)]">
                 <button
                     onClick={() => setEnrollmentCollapsed(!enrollmentCollapsed)}
-                    className="w-full px-8 py-6 flex justify-between items-center bg-white/[0.01] hover:bg-white/[0.02] transition-colors"
+                    className="w-full px-8 py-6 flex justify-between items-center transition-colors hover:bg-white/[0.02]"
                 >
                     <div className="flex items-center gap-4">
-                        <Plus className="w-4 h-4 text-zinc-600" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 italic">Enrollment Provisions</h3>
+                        <Plus className="w-5 h-5 text-primary/60" />
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary italic">Enrollment Provisions</h3>
                     </div>
-                    {enrollmentCollapsed ? <ChevronRight className="w-4 h-4 text-zinc-700" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                    {enrollmentCollapsed ? <ChevronRight className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-primary" />}
                 </button>
                 {!enrollmentCollapsed && (
-                    <div className="p-10 border-t border-white/5 animate-in slide-in-from-top-2 duration-300 space-y-12">
+                    <div className="p-10 border-t border-[var(--border-soft)] animate-in slide-in-from-top-2 duration-300 space-y-12">
                         {/* Organization Selection */}
-                        <div className="flex items-center gap-4 border-b border-white/5 pb-8 overflow-x-auto pb-4">
+                        <div className="flex items-center gap-4 border-b border-[var(--border-soft)] pb-8 overflow-x-auto">
                             {organizations.map(org => (
                                 <button
                                     key={org.id}
                                     onClick={() => setActiveOrgId(org.id)}
-                                    className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${activeOrgId === org.id ? "bg-white text-black border-white" : "bg-white/5 text-zinc-500 border-transparent hover:border-white/10"}`}
+                                    className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${activeOrgId === org.id
+                                        ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg"
+                                        : "bg-[var(--bg-card-hover)] text-[var(--text-muted)] border-transparent hover:border-[var(--border-main)]"}`}
                                 >
                                     {org.name}
                                 </button>
                             ))}
-                            <button className="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-600 hover:text-zinc-400 hover:bg-white/10 transition-all">
-                                <Plus className="w-4 h-4" />
+                            <button className="flex-shrink-0 w-10 h-10 rounded-xl bg-[var(--bg-card-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)] border border-transparent transition-all">
+                                <Plus className="w-5 h-5" />
                             </button>
                         </div>
 
                         {/* Token List */}
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             <div className="flex justify-between items-center">
-                                <h4 className="text-[9px] font-black text-zinc-600 uppercase tracking-widest font-mono">Provisioning Tokens</h4>
-                                <button className="text-[9px] font-black text-blue-400 uppercase tracking-widest hover:text-blue-300">Generate New Token</button>
+                                <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest font-mono">Provisioning Tokens</h4>
+                                <button className="text-[10px] font-black text-[var(--brand-color)] uppercase tracking-widest hover:underline decoration-2 underline-offset-4">Generate New Token</button>
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 {tokens.map(token => (
-                                    <div key={token.id} className="bg-white/[0.02] border border-white/5 rounded-xl px-6 py-4 flex items-center justify-between group">
-                                        <div className="flex items-center gap-6">
-                                            <span className="text-[10px] font-mono text-zinc-500 group-hover:text-zinc-300 transition-colors uppercase">{token.token}</span>
-                                            <span className="text-[9px] text-zinc-700 font-black uppercase tracking-widest">{token.os_target || "Global"}</span>
+                                    <div key={token.id} className="bg-[var(--bg-card-hover)] border border-[var(--border-soft)] rounded-xl px-8 py-5 flex items-center justify-between group transition-all hover:border-[var(--border-main)] shadow-sm">
+                                        <div className="flex items-center gap-10">
+                                            <span className="text-[11px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-tight">{token.token}</span>
+                                            <span className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest bg-[var(--bg-page)] px-3 py-1 rounded-md">{token.os_target || "Global"}</span>
                                         </div>
-                                        <button className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-900 hover:text-red-500">
-                                            <Trash2 className="w-3.5 h-3.5" />
+                                        <button className="opacity-0 group-hover:opacity-100 transition-opacity p-2.5 text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-950/30">
+                                            <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
                                 ))}
@@ -268,47 +270,47 @@ export default function EnrollmentAdminPanel() {
             </section>
 
             {/* ── ZONE 4: VALIDATION HISTORY (History Table) ── */}
-            <section className="bg-white/[0.01] border border-white/10 rounded-2xl shadow-xl overflow-hidden">
-                <div className="px-10 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+            <section className="card p-0 shadow-xl overflow-hidden border-none ring-1 ring-[var(--border-main)]">
+                <div className="px-10 py-8 border-b border-[var(--border-soft)] flex justify-between items-center bg-[var(--bg-sidebar)]/30">
                     <div className="flex items-center gap-4">
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30 italic">Assurance History Log</h3>
+                        <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-primary italic">Assurance History Log</h3>
                     </div>
-                    <Link href="/dashboard/reports" className="flex items-center gap-2 text-[10px] font-black text-zinc-500 hover:text-zinc-200 transition-colors uppercase tracking-[0.2em]">
-                        <Download className="w-3.5 h-3.5" />
-                        Export Validation Report
+                    <Link href="/dashboard/reports" className="flex items-center gap-3 text-[10px] font-black text-[var(--brand-color)] hover:underline uppercase tracking-[0.2em] decoration-2 underline-offset-4">
+                        <Download className="w-4 h-4" />
+                        Export Audit Ledger
                     </Link>
                 </div>
-                <div className="divide-y divide-white/[0.03]">
+                <div className="divide-y divide-[var(--border-soft)]">
                     {auditHistory.length === 0 ? (
-                        <div className="p-20 text-center">
-                            <p className="text-[10px] font-black text-zinc-700 uppercase tracking-[0.4em]">Historical Ledger Empty</p>
+                        <div className="p-24 text-center">
+                            <p className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-[0.4em]">Historical Ledger Empty</p>
                         </div>
                     ) : (
                         auditHistory.map((report) => (
-                            <div key={report.id} className="px-10 py-6 hover:bg-white/[0.01] transition-all flex items-center justify-between group cursor-default">
-                                <div className="flex items-center gap-10">
+                            <div key={report.id} className="px-10 py-7 hover:bg-[var(--bg-card-hover)] transition-all flex items-center justify-between group cursor-default">
+                                <div className="flex items-center gap-12">
                                     <div className="flex flex-col">
-                                        <span className="text-sm font-black text-white/80 tabular-nums">SCAN_{report.id.substring(0, 8).toUpperCase()}</span>
-                                        <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">
+                                        <span className="text-base font-black text-[var(--text-primary)] tabular-nums tracking-tight">SIG_{report.id.substring(0, 8).toUpperCase()}</span>
+                                        <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider mt-1.5 font-mono">
                                             {new Date(report.timestamp).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                                         </span>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-wrap gap-2.5">
                                         {report.findings?.slice(0, 2).map((f: any, i: number) => (
-                                            <span key={i} className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-zinc-900 text-zinc-600 border border-white/5">
+                                            <span key={i} className="px-3 py-1 rounded-md text-[9px] font-black uppercase bg-[var(--bg-page)] text-[var(--text-secondary)] border border-[var(--border-main)]">
                                                 {f.title}
                                             </span>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-10">
+                                <div className="flex items-center gap-12">
                                     <div className="text-right">
-                                        <span className={`text-xl font-black italic tracking-tighter ${report.enforcementScore >= 80 ? 'text-emerald-500' : report.enforcementScore >= 50 ? 'text-amber-500' : 'text-red-500'}`}>
+                                        <span className={`text-2xl font-black italic tracking-tighter ${report.enforcementScore >= 80 ? 'text-emerald-500' : report.enforcementScore >= 50 ? 'text-amber-500' : 'text-red-500'}`}>
                                             {report.enforcementScore}/100
                                         </span>
-                                        <p className="text-[8px] font-black text-zinc-700 uppercase tracking-widest mt-0.5">Assured Score</p>
+                                        <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">Audit Score</p>
                                     </div>
-                                    <div className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${report.overallStatus === 'HEALTHY' ? 'bg-emerald-500/5 text-emerald-400 border border-emerald-500/10' : 'bg-amber-500/5 text-amber-500 border border-amber-500/10'}`}>
+                                    <div className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] shadow-sm ${report.overallStatus === 'HEALTHY' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}>
                                         {report.overallStatus}
                                     </div>
                                 </div>

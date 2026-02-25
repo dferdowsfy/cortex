@@ -18,7 +18,7 @@ interface ActivitySummary {
     top_tools: { tool: string; count: number; avg_sensitivity: number }[];
     risk_trend: { date: string; score: number; requests: number }[];
     activity_score: number;
-    period: "7d" | "30d";
+    period: "24h" | "7d" | "30d";
 }
 
 interface ActivityEvent {
@@ -187,7 +187,7 @@ export default function MonitoringPage() {
     const [toolRisks, setToolRisks] = useState<DynamicToolRisk[]>([]);
     const [alerts, setAlerts] = useState<ProxyAlert[]>([]);
     const [agents, setAgents] = useState<Agent[]>([]);
-    const [period, setPeriod] = useState<"7d" | "30d">("7d");
+    const [period, setPeriod] = useState<"24h" | "7d" | "30d">("7d");
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"overview" | "events" | "tools" | "alerts">("overview");
 
@@ -282,15 +282,21 @@ export default function MonitoringPage() {
                         <span className="text-[10px] font-black text-emerald-500/80 uppercase tracking-[0.2em]">Operational Pulse Active (5s)</span>
                     </div>
                 </div>
-                <div className="flex rounded-lg border border-white/5 bg-white/[0.02] p-0.5 shadow-inner">
+                <div className="flex gap-2">
                     <button
-                        className={`rounded-md px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${period === "7d" ? "bg-white/10 text-white shadow-lg" : "text-white/30 hover:text-white/50"}`}
+                        className={`rounded-lg px-6 py-2 text-[11px] font-black uppercase tracking-widest transition-all border ${period === "24h" ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg" : "text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-secondary)]"}`}
+                        onClick={() => setPeriod("24h")}
+                    >
+                        24 Hours
+                    </button>
+                    <button
+                        className={`rounded-lg px-6 py-2 text-[11px] font-black uppercase tracking-widest transition-all border ${period === "7d" ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg" : "text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-secondary)]"}`}
                         onClick={() => setPeriod("7d")}
                     >
                         7 Days
                     </button>
                     <button
-                        className={`rounded-md px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${period === "30d" ? "bg-white/10 text-white shadow-lg" : "text-white/30 hover:text-white/50"}`}
+                        className={`rounded-lg px-6 py-2 text-[11px] font-black uppercase tracking-widest transition-all border ${period === "30d" ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg" : "text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-secondary)]"}`}
                         onClick={() => setPeriod("30d")}
                     >
                         30 Days
@@ -310,12 +316,12 @@ export default function MonitoringPage() {
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="border-b border-[var(--border-soft)] text-[10px] uppercase tracking-widest font-black text-muted bg-white/[0.02]">
-                                <th className="px-8 py-4">Endpoint Identity</th>
-                                <th className="px-8 py-4">OS Status</th>
-                                <th className="px-8 py-4">Agent Version</th>
-                                <th className="px-8 py-4">Last Sync Pulse</th>
-                                <th className="px-8 py-4 text-right">Protection</th>
+                            <tr className="border-b border-[var(--border-soft)] text-[11px] uppercase tracking-[0.15em] font-black text-[var(--text-primary)] bg-[var(--bg-card-hover)]">
+                                <th className="px-8 py-5">Endpoint Identity</th>
+                                <th className="px-8 py-5">OS Status</th>
+                                <th className="px-8 py-5">Agent Version</th>
+                                <th className="px-8 py-5">Last Sync Pulse</th>
+                                <th className="px-8 py-5 text-right">Protection</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--border-soft)]">

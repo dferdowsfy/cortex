@@ -19,32 +19,32 @@
   --risk-low: #10b981;
 
   /* ── Light Theme Tokens ── */
-  --bg-page: #f9fafb;
+  --bg-page: #ffffff;
+  --bg-sidebar: #f8fafc;
   --bg-card: #ffffff;
-  --bg-card-hover: #f3f4f6;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #6b7280;
-  --border-main: #e5e7eb;
-  --border-soft: #f3f4f6;
-  --brand-color: #4f46e5;
-  --brand-hover: #4338ca;
+  --bg-card-hover: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --border-main: #e2e8f0;
+  --border-soft: #f1f5f9;
+  --brand-color: #2563eb;
+  --brand-hover: #1d4ed8;
 }
 
 [class~="dark"] {
   /* ── Dark Theme Tokens ── */
-  --bg-page: #09090b;
-  --bg-card: #121214;
-  --bg-card-hover: #18181b;
-  --text-primary: #f9fafb;
-  --text-secondary: #d1d5db;
-  /* Increased from 600/700 shades */
-  --text-muted: #9ca3af;
-  /* Consistent with USER request */
-  --border-main: rgba(255, 255, 255, 0.1);
-  --border-soft: rgba(255, 255, 255, 0.05);
-  --brand-color: #6366f1;
-  --brand-hover: #4f46e5;
+  --bg-page: #020617;
+  --bg-sidebar: #0f172a;
+  --bg-card: #0f172a;
+  --bg-card-hover: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --border-main: #334155;
+  --border-soft: #1e293b;
+  --brand-color: #3b82f6;
+  --brand-hover: #2563eb;
 }
 
 html {
@@ -125,14 +125,19 @@ h3,
 .btn-primary {
   background-color: var(--brand-color);
   color: #ffffff;
-  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-bold tracking-widest uppercase transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 shadow-lg shadow-indigo-500/10;
+  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold tracking-wide uppercase transition-all hover:bg-[var(--brand-hover)] active:scale-95 disabled:opacity-50;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
 .btn-secondary {
-  border: 1px solid var(--border-main);
+  border: 1.5px solid var(--brand-color);
+  background-color: transparent;
+  color: var(--brand-color);
+  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold tracking-wide uppercase transition-all hover:bg-[var(--brand-color)] hover:text-white active:scale-95 disabled:opacity-50;
+}
+
+[class~="dark"] .btn-secondary {
   background-color: var(--bg-card);
-  color: var(--text-primary);
-  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-bold tracking-widest uppercase transition-all hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95 disabled:opacity-50;
 }
 
 /* ── Spacing ── */

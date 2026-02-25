@@ -123,29 +123,29 @@ export function Sidebar() {
 
     return (
         <div
-            className={`flex flex-col h-full bg-[var(--bg-page)] border-r border-[var(--border-main)] transition-all duration-300 ease-in-out ${collapsed ? 'w-[64px]' : 'w-[240px]'
-                } py-6 z-50`}
+            className={`flex flex-col h-full bg-[var(--bg-sidebar)] border-r border-[var(--border-main)] transition-all duration-300 ease-in-out ${collapsed ? 'w-[72px]' : 'w-[260px]'
+                } py-8 z-50`}
         >
             {/* Logo area */}
-            <div className="flex items-center justify-between px-4 mb-10">
+            <div className="flex items-center justify-between px-6 mb-12">
                 {!collapsed && (
-                    <div className="flex items-center gap-2.5 overflow-hidden">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-800 text-zinc-100 shrink-0">
-                            <ShieldCheck size={16} />
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-color)] text-white shadow-lg shadow-blue-500/20 shrink-0">
+                            <ShieldCheck size={20} strokeWidth={2.5} />
                         </div>
-                        <span className="text-lg font-bold text-zinc-50 tracking-tight whitespace-nowrap">Complyze</span>
+                        <span className="text-xl font-bold text-[var(--text-primary)] tracking-tight whitespace-nowrap">Complyze</span>
                     </div>
                 )}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className={`p-1.5 rounded-md hover:bg-[var(--bg-card-hover)] text-secondary transition-colors ${collapsed && "mx-auto"}`}
+                    className={`p-2 rounded-lg hover:bg-[var(--bg-card-hover)] text-[var(--text-secondary)] transition-colors ${collapsed && "mx-auto"}`}
                 >
-                    {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                    {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
                 </button>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 flex flex-col gap-1.5 px-3">
+            <nav className="flex-1 flex flex-col gap-2 px-4">
                 {NAV_ITEMS.map((item) => {
                     const isActive = pathname === item.href;
                     const Icon = item.icon;
@@ -153,13 +153,15 @@ export function Sidebar() {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? "bg-white/10 dark:bg-zinc-800/80 text-primary font-bold shadow-sm" : "text-secondary hover:text-primary hover:bg-white/5 dark:hover:bg-zinc-800/50"
+                            className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
+                                ? "bg-white dark:bg-slate-800 text-[var(--brand-color)] shadow-sm border border-[var(--border-main)]"
+                                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]"
                                 }`}
                             title={collapsed ? item.label : undefined}
                         >
-                            <Icon size={20} className="shrink-0" strokeWidth={isActive ? 2.5 : 2} />
+                            <Icon size={22} className="shrink-0" strokeWidth={isActive ? 2.5 : 2} />
                             {!collapsed && (
-                                <span className={`text-sm tracking-wide ${isActive ? "font-bold" : "font-semibold"}`}>
+                                <span className={`text-[15px] tracking-tight ${isActive ? "font-bold" : "font-semibold"}`}>
                                     {item.label}
                                 </span>
                             )}
