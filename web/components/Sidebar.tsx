@@ -69,7 +69,7 @@ function MonitoringToggle({ collapsed }: { collapsed: boolean }) {
 
     return (
         <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/50 mt-auto">
-            <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">
+            <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
                 AI Shield Active
             </span>
             <div className="flex items-center gap-2">
@@ -97,8 +97,7 @@ function MonitoringToggle({ collapsed }: { collapsed: boolean }) {
 const NAV_ITEMS = [
     { label: "Home", href: "/dashboard", icon: LayoutDashboard },
     { label: "Monitor", href: "/monitoring", icon: Activity },
-    { label: "Scan", href: "/scan", icon: ShieldCheck },
-    { label: "Reports", href: "/dashboard/reports", icon: FileBarChart },
+    { label: "Assess", href: "/scan", icon: ShieldCheck },
     { label: "Governance", href: "/governance", icon: Users },
 ];
 
@@ -136,7 +135,7 @@ export function Sidebar() {
                 )}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className={`p-1.5 rounded-md hover:bg-zinc-800 text-zinc-400 transition-colors ${collapsed && "mx-auto"}`}
+                    className={`p-1.5 rounded-md hover:bg-zinc-800 text-white/50 transition-colors ${collapsed && "mx-auto"}`}
                 >
                     {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                 </button>
@@ -151,7 +150,7 @@ export function Sidebar() {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? "bg-zinc-800/80 text-zinc-50" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? "bg-zinc-800/80 text-zinc-50" : "text-white/50 hover:text-zinc-200 hover:bg-zinc-800/50"
                                 }`}
                             title={collapsed ? item.label : undefined}
                         >
@@ -172,14 +171,14 @@ export function Sidebar() {
 
                 <div className="relative mt-1 mb-1" ref={menuRef}>
                     <div
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer ${userMenuOpen ? 'bg-zinc-800/80 text-zinc-200' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'}`}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer ${userMenuOpen ? 'bg-zinc-800/80 text-zinc-200' : 'text-white/50 hover:text-zinc-200 hover:bg-zinc-800/50'}`}
                         title={collapsed ? "User Menu" : undefined}
                         onClick={() => setUserMenuOpen(!userMenuOpen)}
                     >
                         <UserCircle size={20} className="shrink-0" strokeWidth={2} />
                         {!collapsed && (
                             <div className="flex flex-col flex-1 overflow-hidden opacity-100 transition-opacity">
-                                <span className="text-sm tracking-wide font-medium text-zinc-300 group-hover:text-zinc-200 truncate">
+                                <span className="text-sm tracking-wide font-medium text-white/70 group-hover:text-zinc-200 truncate">
                                     {user?.email?.split('@')[0] || "Profile"}
                                 </span>
                             </div>
@@ -190,7 +189,7 @@ export function Sidebar() {
                         <div className={`absolute mb-2 w-48 rounded-xl bg-[#18181b] border border-[#27272a] shadow-xl py-1 z-50 overflow-hidden ${collapsed ? 'bottom-0 left-16' : 'bottom-full left-0'}`}>
                             <Link
                                 href="/settings"
-                                className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800/50 hover:text-zinc-100 transition-colors"
+                                className="flex items-center gap-2 px-4 py-2 text-sm text-white/70 hover:bg-zinc-800/50 hover:text-zinc-100 transition-colors"
                                 onClick={() => setUserMenuOpen(false)}
                             >
                                 <Settings size={14} className="shrink-0" />

@@ -260,14 +260,14 @@ function ExecutiveSummaryModal({
     data.trend === "Down"
       ? "text-emerald-600"
       : data.trend === "Up"
-      ? "text-red-600"
-      : "text-gray-500";
+        ? "text-red-600"
+        : "text-gray-500";
   const scoreColor =
     data.riskScore >= 70
       ? "text-red-600"
       : data.riskScore >= 40
-      ? "text-amber-600"
-      : "text-emerald-600";
+        ? "text-amber-600"
+        : "text-emerald-600";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -405,15 +405,14 @@ function EnforcementAssuranceModal({
                 <div className="flex items-center gap-2.5">
                   <StatusDot status={row.status} />
                   <span
-                    className={`text-sm font-semibold ${
-                      row.status === "green"
-                        ? "text-emerald-700"
-                        : row.status === "amber"
+                    className={`text-sm font-semibold ${row.status === "green"
+                      ? "text-emerald-700"
+                      : row.status === "amber"
                         ? "text-amber-700"
                         : row.status === "red"
-                        ? "text-red-700"
-                        : "text-gray-500 font-mono text-xs"
-                    }`}
+                          ? "text-red-700"
+                          : "text-gray-500 font-mono text-xs"
+                      }`}
                   >
                     {row.value}
                   </span>
@@ -556,27 +555,27 @@ function ReportCard({
   onSchedule: () => void;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-7 py-6 flex items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-[#121214] rounded-2xl border border-white/5 px-5 py-6 sm:px-7 flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 shadow-sm hover:shadow-md transition-shadow">
       <div className="min-w-0">
-        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-        <p className="text-sm text-gray-500 mt-0.5">{description}</p>
+        <h3 className="text-base font-semibold text-zinc-50">{title}</h3>
+        <p className="text-sm text-white/60 mt-1 sm:mt-0.5">{description}</p>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 sm:shrink-0 text-left">
         <button
           onClick={onView}
-          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+          className="flex-1 sm:flex-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
         >
           View
         </button>
         <button
           onClick={onExport}
-          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+          className="flex-1 sm:flex-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
         >
           Export
         </button>
         <button
           onClick={onSchedule}
-          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+          className="flex-1 sm:flex-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
         >
           Schedule
         </button>
@@ -641,8 +640,8 @@ export default function ReportsPage() {
           score >= 70
             ? "Elevated AI risk detected. Review enforcement logs and apply additional restrictions."
             : score >= 40
-            ? "Moderate AI risk posture. Enforcement is active with some anomalies noted."
-            : "AI usage is controlled. Enforcement active. No critical exposure events detected.";
+              ? "Moderate AI risk posture. Enforcement is active with some anomalies noted."
+              : "AI usage is controlled. Enforcement active. No critical exposure events detected.";
 
         setExecData({
           riskScore: score,
@@ -676,8 +675,8 @@ export default function ReportsPage() {
               actionTaken: e.policy_violation_flag
                 ? "Blocked"
                 : e.sensitivity_score > 30
-                ? "Redacted"
-                : "Allowed",
+                  ? "Redacted"
+                  : "Allowed",
               policyVersion: "v2.4.1",
               endpointId:
                 e.tool_domain?.split(".")[0] || "ep_unknown",
@@ -685,7 +684,7 @@ export default function ReportsPage() {
           );
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // Enforcement data from settings + heartbeat
     Promise.all([
@@ -736,7 +735,7 @@ export default function ReportsPage() {
           },
         ]);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [user?.uid]);
 
   const close = () => setActiveModal(null);
@@ -747,8 +746,8 @@ export default function ReportsPage() {
     <div className="max-w-2xl mx-auto">
       {/* Page Header */}
       <div className="mb-10">
-        <h1 className="text-2xl font-bold text-white/90">Reports</h1>
-        <p className="mt-1 text-sm text-white/50">
+        <h1 className="text-2xl font-bold text-white/95">Reports</h1>
+        <p className="mt-1 text-sm text-white/70">
           Last 30 days · Three pre-built reports, ready to share.
         </p>
       </div>
