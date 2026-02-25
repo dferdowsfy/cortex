@@ -144,6 +144,7 @@ export default function PlatformPage() {
                                     <div className="space-y-4">
                                         {[
                                             "Monitor desktop + browser AI tools",
+                                            "Deep Attachment Inspection (Industry First)",
                                             "Real-time endpoint coverage status",
                                             "Automated app classification",
                                             "Zero-latency detection engine"
@@ -183,7 +184,7 @@ export default function PlatformPage() {
                                 <ScrollIn>
                                     <h2 className="text-4xl font-bold text-white mb-6">Understand Your AI Exposure in One Number</h2>
                                     <p className="text-lg text-white/70 leading-relaxed mb-8">
-                                        Our AI Risk Score aggregates sensitive data hits, prompt severity, and attachment risks into a single, board-ready metric. Track trends and identify outliers before they become incidents.
+                                        Our AI Risk Score aggregates sensitive data hits, prompt severity, and industry-first <strong>attachment deep-scanning</strong> into a single, board-ready metric. Complyze is the only platform that provides full visibility into the contents of files uploaded to AI models.
                                     </p>
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="p-4 rounded-lg bg-white/5 border border-white/10">
