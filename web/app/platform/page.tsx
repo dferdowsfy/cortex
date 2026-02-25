@@ -110,20 +110,7 @@ export default function PlatformPage() {
                                 <p className="text-xl text-white/70 max-w-xl mb-10 leading-relaxed">
                                     Complyze detects AI usage across desktop and browser apps, scores exposure risk, and optionally blocks high-risk activity — without slowing teams down.
                                 </p>
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <Link
-                                        href="/request-demo"
-                                        className="inline-flex justify-center items-center px-8 py-4 bg-[#3B36DB] text-white font-bold rounded-lg hover:bg-[#4d48ef] transition-all text-lg"
-                                    >
-                                        Request Demo
-                                    </Link>
-                                    <button
-                                        onClick={() => document.getElementById('detect')?.scrollIntoView({ behavior: 'smooth' })}
-                                        className="inline-flex justify-center items-center px-8 py-4 bg-white/5 border border-white/10 text-white font-bold rounded-lg hover:bg-white/10 transition-all text-lg"
-                                    >
-                                        See Platform Overview
-                                    </button>
-                                </div>
+
                             </ScrollIn>
 
                             <ScrollIn delay={200}>
