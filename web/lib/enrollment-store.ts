@@ -292,6 +292,17 @@ class EnrollmentStore {
         return devices;
     }
 
+    async listAllDevices(workspaceId: string = "default"): Promise<Device[]> {
+        if (adminDb && adminDb.app.options.databaseURL) {
+            const snap = await adminDb.ref(DEVICES_PATH).get();
+            if (snap.exists()) return Object.values(snap.val());
+        } else {
+            const allDevices = localStorage.getWorkspaceData(workspaceId, "devices", {}) as Record<string, Device>;
+            return Object.values(allDevices);
+        }
+        return [];
+    }
+
     async updateHeartbeat(device_id: string, status: 'active' | 'revoked', agent_version: string, workspaceId?: string): Promise<void> {
         const resolvedWorkspaceId = workspaceId || localStorage.findWorkspaceForDevice(device_id) || "default";
         const device = await this.getDevice(device_id, resolvedWorkspaceId);
