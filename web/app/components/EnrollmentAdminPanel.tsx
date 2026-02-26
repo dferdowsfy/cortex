@@ -58,7 +58,7 @@ export default function EnrollmentAdminPanel() {
     // ── UI STATE ─────────────────────────────────────────────
     const [loading, setLoading] = useState(true);
     const [auditCollapsed, setAuditCollapsed] = useState(true);
-    const [enrollmentCollapsed, setEnrollmentCollapsed] = useState(true);
+    const [enrollmentCollapsed, setEnrollmentCollapsed] = useState(false); // Expanded by default for better visibility
     const [auditRunning, setAuditRunning] = useState(false);
 
     const { settings: userSettings, loading: settingsLoading } = useUserSettings();
@@ -174,17 +174,17 @@ export default function EnrollmentAdminPanel() {
             </div>
 
             {/* ── ZONE 2: AUDIT & SCHEDULING (Collapsible) ── */}
-            <section className="card p-0 overflow-hidden shadow-sm transition-all hover:border-[var(--border-soft)]">
-                <button
-                    onClick={() => setAuditCollapsed(!auditCollapsed)}
-                    className="w-full px-8 py-6 flex justify-between items-center transition-colors hover:bg-white/[0.02]"
+            <section className="card p-0 shadow-sm transition-all hover:border-[var(--border-soft)]">
+                <div
+                    onClick={() => setAuditCollapsed(prev => !prev)}
+                    className="w-full px-8 py-6 flex justify-between items-center cursor-pointer transition-colors hover:bg-white/[0.02]"
                 >
                     <div className="flex items-center gap-4">
                         <Clock className="w-5 h-5 text-white" />
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white italic">Audit & Scheduling Preferences</h3>
                     </div>
                     {auditCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
-                </button>
+                </div>
                 {!auditCollapsed && (
                     <div className="p-10 border-t border-[var(--border-soft)] animate-in slide-in-from-top-2 duration-300">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -195,7 +195,10 @@ export default function EnrollmentAdminPanel() {
                                         <button
                                             key={f}
                                             className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${auditConfig.frequency === f ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)]" : "text-secondary border-[var(--border-main)] hover:border-primary/30"}`}
-                                            onClick={() => setAuditConfig(prev => ({ ...prev, frequency: f }))}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAuditConfig(prev => ({ ...prev, frequency: f }));
+                                            }}
                                         >
                                             {f}
                                         </button>
@@ -205,8 +208,16 @@ export default function EnrollmentAdminPanel() {
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black text-muted uppercase tracking-widest block font-mono">Report Recipients</label>
                                 <div className="flex gap-2">
-                                    <input type="text" placeholder="Add security stakeholder email..." className="flex-1 bg-white/5 dark:bg-white/[0.03] border border-[var(--border-main)] rounded-lg px-4 py-2.5 text-xs font-bold text-primary focus:outline-none focus:border-[var(--brand-color)]/50 placeholder:text-zinc-500" />
-                                    <button className="bg-white/5 dark:bg-white/[0.05] hover:bg-white/10 p-2.5 rounded-lg border border-[var(--border-main)] transition-colors">
+                                    <input
+                                        type="text"
+                                        onClick={(e) => e.stopPropagation()}
+                                        placeholder="Add security stakeholder email..."
+                                        className="flex-1 bg-white/5 dark:bg-white/[0.03] border border-[var(--border-main)] rounded-lg px-4 py-2.5 text-xs font-bold text-primary focus:outline-none focus:border-[var(--brand-color)]/50 placeholder:text-zinc-500"
+                                    />
+                                    <button
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="bg-white/5 dark:bg-white/[0.05] hover:bg-white/10 p-2.5 rounded-lg border border-[var(--border-main)] transition-colors"
+                                    >
                                         <Plus className="w-4 h-4 text-primary" />
                                     </button>
                                 </div>
@@ -217,25 +228,28 @@ export default function EnrollmentAdminPanel() {
             </section>
 
             {/* ── ZONE 3: ENROLLMENT PROVISIONS (Collapsible) ── */}
-            <section className="card p-0 overflow-hidden shadow-sm transition-all hover:border-[var(--border-soft)]">
-                <button
-                    onClick={() => setEnrollmentCollapsed(!enrollmentCollapsed)}
-                    className="w-full px-8 py-6 flex justify-between items-center transition-colors hover:bg-white/[0.02]"
+            <section className="card p-0 shadow-sm transition-all hover:border-[var(--border-soft)]">
+                <div
+                    onClick={() => setEnrollmentCollapsed(prev => !prev)}
+                    className="w-full px-8 py-6 flex justify-between items-center cursor-pointer transition-colors hover:bg-white/[0.02]"
                 >
                     <div className="flex items-center gap-4">
                         <Plus className="w-5 h-5 text-white" />
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white italic">Enrollment Provisions</h3>
                     </div>
                     {enrollmentCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
-                </button>
+                </div>
                 {!enrollmentCollapsed && (
                     <div className="p-10 border-t border-[var(--border-soft)] animate-in slide-in-from-top-2 duration-300 space-y-12">
                         {/* Organization Selection */}
-                        <div className="flex items-center gap-4 border-b border-[var(--border-soft)] pb-8 overflow-x-auto">
+                        <div className="flex items-center gap-4 border-b border-[var(--border-soft)] pb-8 overflow-x-auto custom-scrollbar">
                             {organizations.map(org => (
                                 <button
                                     key={org.id}
-                                    onClick={() => setActiveOrgId(org.id)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveOrgId(org.id);
+                                    }}
                                     className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${activeOrgId === org.id
                                         ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg"
                                         : "bg-[var(--bg-card-hover)] text-[var(--text-muted)] border-transparent hover:border-[var(--border-main)]"}`}
@@ -243,7 +257,10 @@ export default function EnrollmentAdminPanel() {
                                     {org.name}
                                 </button>
                             ))}
-                            <button className="flex-shrink-0 w-10 h-10 rounded-xl bg-[var(--bg-card-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)] border border-transparent transition-all">
+                            <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex-shrink-0 w-10 h-10 rounded-xl bg-[var(--bg-card-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)] border border-transparent transition-all"
+                            >
                                 <Plus className="w-5 h-5" />
                             </button>
                         </div>
@@ -255,17 +272,21 @@ export default function EnrollmentAdminPanel() {
                                 <button className="text-[10px] font-black text-[var(--brand-color)] uppercase tracking-widest hover:underline decoration-2 underline-offset-4">Generate New Token</button>
                             </div>
                             <div className="space-y-3">
-                                {tokens.map(token => (
-                                    <div key={token.id} className="bg-[var(--bg-card-hover)] border border-[var(--border-soft)] rounded-xl px-8 py-5 flex items-center justify-between group transition-all hover:border-[var(--border-main)] shadow-sm">
-                                        <div className="flex items-center gap-10">
-                                            <span className="text-[11px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-tight">{token.token}</span>
-                                            <span className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest bg-[var(--bg-page)] px-3 py-1 rounded-md">{token.os_target || "Global"}</span>
+                                {tokens.length === 0 ? (
+                                    <p className="text-[10px] text-[var(--text-muted)] uppercase font-black tracking-widest py-4">No active tokens found for this workspace.</p>
+                                ) : (
+                                    tokens.map(token => (
+                                        <div key={token.id} className="bg-[var(--bg-card-hover)] border border-[var(--border-soft)] rounded-xl px-8 py-5 flex items-center justify-between group transition-all hover:border-[var(--border-main)] shadow-sm">
+                                            <div className="flex items-center gap-10">
+                                                <span className="text-[11px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-tight">{token.token}</span>
+                                                <span className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest bg-[var(--bg-page)] px-3 py-1 rounded-md">{token.os_target || "Global"}</span>
+                                            </div>
+                                            <button className="opacity-0 group-hover:opacity-100 transition-opacity p-2.5 text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-950/30">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                        <button className="opacity-0 group-hover:opacity-100 transition-opacity p-2.5 text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-950/30">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>

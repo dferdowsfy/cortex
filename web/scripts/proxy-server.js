@@ -296,15 +296,25 @@ function isBrowserRequest(req) {
 
 function shouldDeepInspect(hostname, req) {
     if (!hostname) return false;
-    if (!proxyEnabled) return false; // Inactive mode: no deep inspection
+    // Follow the rules only if shield is ACTIVE
+    if (!proxyEnabled) return false;
+
     // Safety: never inspect loopback or local dashboard
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local')) return false;
+
+    // Safety: never inspect domains specifically marked for passthrough (e.g. system updates)
     if (isPassthroughDomain(hostname)) return false;
-    // Only MITM pure API domains — web UI domains (chatgpt.com, claude.ai)
-    // are Cloudflare-protected and break under HTTP/1.1 downgrade.
-    if (!isAPIDomain(hostname)) return false;
-    if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) return false;
-    return true;
+
+    // Follow rules for ALL AI domains (websites + APIs)
+    if (isAIDomain(hostname)) {
+        // Desktop bypass still respected if explicitly enabled in settings for non-browser apps
+        if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) {
+            return false;
+        }
+        return true;
+    }
+
+    return false;
 }
 
 function shouldLogMetadata(hostname, req) {
