@@ -176,14 +176,14 @@ export function Sidebar() {
 
                 <div className="relative mt-1 mb-1" ref={menuRef}>
                     <div
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer ${userMenuOpen ? 'bg-zinc-800/80 text-zinc-200' : 'text-white/50 hover:text-zinc-200 hover:bg-zinc-800/50'}`}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer ${userMenuOpen ? 'bg-[var(--bg-card-hover)] text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]'}`}
                         title={collapsed ? "User Menu" : undefined}
                         onClick={() => setUserMenuOpen(!userMenuOpen)}
                     >
                         <UserCircle size={20} className="shrink-0" strokeWidth={2} />
                         {!collapsed && (
                             <div className="flex flex-col flex-1 overflow-hidden opacity-100 transition-opacity">
-                                <span className="text-sm tracking-wide font-medium text-white/70 group-hover:text-zinc-200 truncate">
+                                <span className="text-sm tracking-wide font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate">
                                     {user?.email?.split('@')[0] || "Profile"}
                                 </span>
                             </div>
@@ -191,10 +191,10 @@ export function Sidebar() {
                     </div>
 
                     {userMenuOpen && (
-                        <div className={`absolute mb-2 w-48 rounded-xl bg-[#18181b] border border-[#27272a] shadow-xl py-1 z-50 overflow-hidden ${collapsed ? 'bottom-0 left-16' : 'bottom-full left-0'}`}>
+                        <div className={`absolute mb-2 w-48 rounded-xl bg-[var(--bg-card)] border border-[var(--border-main)] shadow-xl py-1 z-50 overflow-hidden ${collapsed ? 'bottom-0 left-16' : 'bottom-full left-0'}`}>
                             <Link
                                 href="/settings"
-                                className="flex items-center gap-2 px-4 py-2 text-sm text-white/70 hover:bg-zinc-800/50 hover:text-zinc-100 transition-colors"
+                                className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)] transition-colors"
                                 onClick={() => setUserMenuOpen(false)}
                             >
                                 <Settings size={14} className="shrink-0" />

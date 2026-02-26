@@ -19,9 +19,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const savedTheme = localStorage.getItem("theme") as Theme | null;
         if (savedTheme) {
             setTheme(savedTheme);
-        } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-            setTheme("light");
         }
+        // Default to dark mode; do not follow system preference since
+        // light mode has incomplete styling across many components.
         setMounted(true);
     }, []);
 

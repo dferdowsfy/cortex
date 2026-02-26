@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-[#09090b]">
+        <div className="flex h-screen overflow-hidden bg-[var(--bg-page)]">
             {/* ── Sidebar ── */}
             <Sidebar />
 
