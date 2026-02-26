@@ -72,8 +72,8 @@ function MonitoringToggle({ collapsed }: { collapsed: boolean }) {
 
     return (
         <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 dark:bg-zinc-800/50 border border-zinc-700/50 mt-auto">
-            <span className="text-[10px] font-bold text-secondary uppercase tracking-[0.15em]">
-                AI Shield Active
+            <span className={`text-[10px] font-bold uppercase tracking-[0.15em] ${enabled ? "text-emerald-500" : "text-zinc-500"}`}>
+                AI Shield {enabled ? "Active" : "Inactive"}
             </span>
             <div className="flex items-center gap-2">
                 <button

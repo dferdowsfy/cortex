@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2, Send, CheckCircle, AlertTriangle, Shield, Clock, Search, ChevronDown, ChevronRight, Download } from "lucide-react";
 import Link from "next/link";
+import { useUserSettings } from "@/lib/hooks/use-user-settings";
 
 interface Organization {
     id: string;
@@ -60,6 +61,8 @@ export default function EnrollmentAdminPanel() {
     const [enrollmentCollapsed, setEnrollmentCollapsed] = useState(true);
     const [auditRunning, setAuditRunning] = useState(false);
 
+    const { settings: userSettings, loading: settingsLoading } = useUserSettings();
+
     const fetchData = useCallback(async () => {
         try {
             const [orgRes, tokenRes, agentRes, auditRes, configRes] = await Promise.all([
@@ -104,7 +107,7 @@ export default function EnrollmentAdminPanel() {
     const lastReport = auditHistory[0];
     const validationTimestamp = lastReport ? new Date(lastReport.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Never';
 
-    if (loading) {
+    if (loading || settingsLoading) {
         return (
             <div className="flex items-center justify-center py-20 min-h-[60vh]">
                 <div className="text-center">
@@ -146,9 +149,9 @@ export default function EnrollmentAdminPanel() {
                 <div className="flex items-center gap-14">
                     <div className="group">
                         <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">AI Shield</p>
-                        <span className="text-xs font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                            Protected
+                        <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-2 ${userSettings.proxyEnabled ? "text-emerald-500" : "text-red-500"}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)] ${userSettings.proxyEnabled ? "bg-emerald-500 shadow-emerald-500/50" : "bg-red-500 shadow-red-500/50"}`} />
+                            {userSettings.proxyEnabled ? "Protected" : "Inactive"}
                         </span>
                     </div>
                     <div className="border-l border-[var(--border-main)] pl-14">

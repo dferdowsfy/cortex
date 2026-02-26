@@ -51,6 +51,8 @@ const API_DOMAINS = [
     'api.groq.com',
     'api.fireworks.ai',
     'api.replicate.com',
+    'api.deepseek.com',
+    'api.x.ai',
     'generativelanguage.googleapis.com',
 ];
 
@@ -64,6 +66,12 @@ const WEB_UI_DOMAINS = [
     'www.perplexity.ai',
     'ios.chat.openai.com',
     'ws.chatgpt.com',
+    'gemini.google.com',
+    'poe.com',
+    'deepseek.com',
+    'www.deepseek.com',
+    'grok.com',
+    'x.ai'
 ];
 
 // Combined list for quick "is this an AI domain?" checks
@@ -301,11 +309,15 @@ function shouldDeepInspect(hostname, req) {
 
 function shouldLogMetadata(hostname, req) {
     if (!hostname) return false;
-    // Web UI AI domains: transparent tunnel + metadata-only logging
-    if (proxyEnabled && isWebUIDomain(hostname)) return true;
-    // Log metadata for AI domains even if deep inspection is disabled (Passive Mode)
-    if (!proxyEnabled && isAIDomain(hostname)) return true;
+    // Only track metadata if shield is ACTIVE
+    if (!proxyEnabled) return false;
+
+    // Track metadata for Web UI domains (which aren't MITM'd)
+    if (isWebUIDomain(hostname)) return true;
+
+    // Also log metadata for desktop apps if bypass is specifically targetting content only
     if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) return true;
+
     return false;
 }
 
