@@ -106,7 +106,7 @@ export default function PricingPage() {
                                     }`}
                             >
                                 {tier.featured && (
-                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3B36DB] text-white text-[10px] font-bold tracking-widest px-3 py-1 rounded-full uppercase">
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[white] text-white text-[10px] font-bold tracking-widest px-3 py-1 rounded-full uppercase">
                                         Most Popular
                                     </div>
                                 )}
@@ -135,7 +135,7 @@ export default function PricingPage() {
                                 <ul className="space-y-3 mb-8 flex-grow border-t border-white/5 pt-5">
                                     {tier.features.map((feature) => (
                                         <li key={feature} className="flex items-start gap-3 text-sm text-white/80">
-                                            <svg className="w-5 h-5 text-[#3B36DB] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg className="w-5 h-5 text-[white] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                             </svg>
                                             <span>{feature}</span>
@@ -145,7 +145,7 @@ export default function PricingPage() {
 
                                 <Link
                                     href={tier.href}
-                                    className="w-full py-3 px-6 rounded-lg text-center font-bold tracking-wide bg-[#3B36DB] text-white hover:bg-[#4d48ef] transition-all duration-200"
+                                    className="w-full py-3 px-6 rounded-lg text-center font-bold tracking-wide bg-[white] text-white hover:bg-[#4d48ef] transition-all duration-200"
                                 >
                                     {tier.cta}
                                 </Link>

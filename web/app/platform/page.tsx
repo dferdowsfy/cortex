@@ -64,7 +64,7 @@ function StatCounter({ value, label, startAnimation }: { value: number; label: s
 
     return (
         <div className="text-center p-6 border border-white/10 rounded-xl bg-white/[0.02]">
-            <div className="text-4xl font-bold text-[#3B36DB] mb-2">{count}</div>
+            <div className="text-4xl font-bold text-[white] mb-2">{count}</div>
             <div className="text-sm text-white/50 uppercase tracking-widest">{label}</div>
         </div>
     );
@@ -105,7 +105,7 @@ export default function PlatformPage() {
                                 <h1 className="text-5xl lg:text-6xl font-bold tracking-tight text-white mb-8 leading-tight">
                                     AI Usage Monitoring <br />
                                     and Risk Control — <br />
-                                    <span className="text-[#3B36DB]">In Real Time</span>
+                                    <span className="text-[white]">In Real Time</span>
                                 </h1>
                                 <p className="text-xl text-white/70 max-w-xl mb-10 leading-relaxed">
                                     Complyze detects AI usage across desktop and browser apps, scores exposure risk, and optionally blocks high-risk activity — without slowing teams down.
@@ -115,7 +115,7 @@ export default function PlatformPage() {
 
                             <ScrollIn delay={200}>
                                 <div className="relative group">
-                                    <div className="absolute -inset-1 bg-[#3B36DB]/20 rounded-2xl blur-2xl group-hover:bg-[#3B36DB]/30 transition duration-1000"></div>
+                                    <div className="absolute -inset-1 bg-[white]/20 rounded-2xl blur-2xl group-hover:bg-[white]/30 transition duration-1000"></div>
                                     <div className="relative rounded-2xl border border-white/10 bg-[#111121] shadow-2xl overflow-hidden">
                                         <Image
                                             src="/assets/platform_hero_dashboard.png"
@@ -150,8 +150,8 @@ export default function PlatformPage() {
                                             "Zero-latency detection engine"
                                         ].map((item, i) => (
                                             <div key={i} className="flex items-center gap-3">
-                                                <div className="w-5 h-5 rounded-full bg-[#3B36DB]/20 flex items-center justify-center">
-                                                    <div className="w-2 h-2 rounded-full bg-[#3B36DB]"></div>
+                                                <div className="w-5 h-5 rounded-full bg-[white]/20 flex items-center justify-center">
+                                                    <div className="w-2 h-2 rounded-full bg-[white]"></div>
                                                 </div>
                                                 <span className="text-white/80">{item}</span>
                                             </div>
@@ -189,7 +189,7 @@ export default function PlatformPage() {
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="p-4 rounded-lg bg-white/5 border border-white/10">
                                             <div className="text-sm text-white/50 mb-1">Exposure Level</div>
-                                            <div className="text-2xl font-bold text-[#3B36DB]">High Risk</div>
+                                            <div className="text-2xl font-bold text-[white]">High Risk</div>
                                         </div>
                                         <div className="p-4 rounded-lg bg-white/5 border border-white/10">
                                             <div className="text-sm text-white/50 mb-1">Trend</div>
@@ -227,8 +227,8 @@ export default function PlatformPage() {
                                     </p>
                                     <ul className="space-y-6">
                                         <li className="flex gap-4">
-                                            <div className="shrink-0 w-12 h-12 bg-[#3B36DB]/10 rounded-lg flex items-center justify-center">
-                                                <svg className="w-6 h-6 text-[#3B36DB]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <div className="shrink-0 w-12 h-12 bg-[white]/10 rounded-lg flex items-center justify-center">
+                                                <svg className="w-6 h-6 text-[white]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                                 </svg>
                                             </div>
@@ -238,8 +238,8 @@ export default function PlatformPage() {
                                             </div>
                                         </li>
                                         <li className="flex gap-4">
-                                            <div className="shrink-0 w-12 h-12 bg-[#3B36DB]/10 rounded-lg flex items-center justify-center">
-                                                <svg className="w-6 h-6 text-[#3B36DB]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <div className="shrink-0 w-12 h-12 bg-[white]/10 rounded-lg flex items-center justify-center">
+                                                <svg className="w-6 h-6 text-[white]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                                 </svg>
                                             </div>
@@ -311,7 +311,7 @@ export default function PlatformPage() {
                             </p>
                             <Link
                                 href="/request-demo"
-                                className="inline-flex px-10 py-5 bg-[#3B36DB] text-white font-bold rounded-xl hover:bg-[#4d48ef] transition-all text-xl shadow-lg shadow-[#3B36DB]/20"
+                                className="inline-flex px-10 py-5 bg-[white] text-white font-bold rounded-xl hover:bg-[#4d48ef] transition-all text-xl shadow-lg shadow-[white]/20"
                             >
                                 Get Started Today
                             </Link>

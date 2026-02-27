@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import {
     Plus, Trash2, CheckCircle, Shield, Clock,
-    ChevronDown, ChevronRight, Download, Copy, Eye, EyeOff, RefreshCw, ToggleLeft, ToggleRight
+    ChevronDown, ChevronRight, Download, Copy, Eye, EyeOff, RefreshCw, ToggleLeft, ToggleRight, X, ExternalLink
 } from "lucide-react";
+import Link from "next/link";
 import { useUserSettings } from "@/lib/hooks/use-user-settings";
 import { useAuth } from "@/lib/auth-context";
 
@@ -15,6 +16,11 @@ interface Organization {
     name: string;
     created_at: string;
     policy_version?: number;
+}
+
+interface AuditConfig {
+    scheduleHour: number;
+    emailRecipient: string;
 }
 
 interface EnrollmentToken {
@@ -55,10 +61,10 @@ interface AuditReport {
 
 function tokenStatusBadge(status: string) {
     switch (status) {
-        case "active":   return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-        case "revoked":  return "bg-red-500/10 text-red-400 border border-red-500/20";
-        case "expired":  return "bg-zinc-700/50 text-zinc-400 border border-zinc-600/30";
-        default:         return "bg-zinc-700/50 text-zinc-400 border border-zinc-600/30";
+        case "active": return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        case "revoked": return "bg-red-500/10 text-red-400 border border-red-500/20";
+        case "expired": return "bg-zinc-700/50 text-zinc-400 border border-zinc-600/30";
+        default: return "bg-zinc-700/50 text-zinc-400 border border-zinc-600/30";
     }
 }
 
@@ -88,6 +94,14 @@ export default function EnrollmentAdminPanel() {
     const [enrollmentCollapsed, setEnrollmentCollapsed] = useState(false);
     const [auditRunning, setAuditRunning] = useState(false);
     const [shieldToggling, setShieldToggling] = useState(false);
+    const [savingConfig, setSavingConfig] = useState(false);
+    const [selectedReport, setSelectedReport] = useState<AuditReport | null>(null);
+    const [showEnrollGuide, setShowEnrollGuide] = useState(false);
+    const [latestToken, setLatestToken] = useState<string | null>(null);
+    const [auditConfig, setAuditConfig] = useState<AuditConfig>({
+        scheduleHour: 13,
+        emailRecipient: ""
+    });
 
     // Token generation
     const [generatedToken, setGeneratedToken] = useState<GeneratedToken | null>(null);
@@ -104,10 +118,11 @@ export default function EnrollmentAdminPanel() {
 
     const fetchData = useCallback(async () => {
         try {
-            const [orgRes, agentRes, auditRes] = await Promise.all([
+            const [orgRes, agentRes, auditRes, configRes] = await Promise.all([
                 fetch(`/api/admin/organizations?workspaceId=${workspaceId}`),
                 fetch(`/api/agent/heartbeat?workspaceId=${workspaceId}`),
                 fetch("/api/admin/audit/history").catch(() => null),
+                fetch("/api/admin/audit/config").catch(() => null),
             ]);
 
             if (orgRes.ok) {
@@ -122,6 +137,13 @@ export default function EnrollmentAdminPanel() {
             if (auditRes?.ok) {
                 const data = await auditRes.json();
                 setAuditHistory(data.reports || []);
+            }
+            if (configRes?.ok) {
+                const config = await configRes.json();
+                setAuditConfig({
+                    scheduleHour: config.scheduleHour ?? 13,
+                    emailRecipient: config.emailRecipient ?? ""
+                });
             }
         } catch (err) {
             console.error("Governance fetch error:", err);
@@ -167,6 +189,8 @@ export default function EnrollmentAdminPanel() {
             if (res.ok) {
                 const data = await res.json();
                 setGeneratedToken({ id: data.id, plain_token: data.plain_token, expires_at: data.expires_at });
+                setLatestToken(data.plain_token);
+                setShowEnrollGuide(true);
                 setTokenVisible(true);
                 setTokenCopied(false);
                 await fetchTokens();
@@ -178,6 +202,26 @@ export default function EnrollmentAdminPanel() {
             alert("Network error generating token.");
         } finally {
             setGeneratingToken(false);
+        }
+    };
+
+    const saveConfig = async () => {
+        setSavingConfig(true);
+        try {
+            const res = await fetch("/api/admin/audit/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(auditConfig)
+            });
+            if (res.ok) {
+                // Flash success or handle accordingly
+            } else {
+                alert("Failed to save configuration.");
+            }
+        } catch {
+            alert("Network error saving configuration.");
+        } finally {
+            setSavingConfig(false);
         }
     };
 
@@ -293,7 +337,7 @@ export default function EnrollmentAdminPanel() {
                     <Shield className="w-7 h-7 text-[var(--brand-color)]" strokeWidth={2.5} />
                 </div>
                 <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-6">Governance Assurance Scan</h2>
-                <p className="text-sm text-secondary font-semibold uppercase tracking-widest max-w-lg leading-relaxed mb-12">
+                <p className="text-sm text-zinc-400 font-semibold uppercase tracking-widest max-w-lg leading-relaxed mb-12">
                     Initiate an independent validation sequence to verify current endpoint policy enforcement against organizational security standards.
                 </p>
                 <button
@@ -379,9 +423,48 @@ export default function EnrollmentAdminPanel() {
                 </div>
                 {!auditCollapsed && (
                     <div className="p-10 border-t border-[var(--border-soft)] animate-in slide-in-from-top-2 duration-300">
-                        <p className="text-[11px] text-white/40 uppercase tracking-widest font-black">
-                            Audit scheduling is managed via GitHub Actions workflow (daily-audit.yml). Schedule and email recipients are configured in the repository settings.
-                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                            <div className="space-y-6">
+                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block font-mono">Scheduled Hour (UTC)</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {[0, 4, 8, 12, 13, 16, 20].map(h => (
+                                        <button
+                                            key={h}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAuditConfig(prev => ({ ...prev, scheduleHour: h }));
+                                            }}
+                                            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase border transition-all ${auditConfig.scheduleHour === h ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)]" : "text-zinc-400 border-[var(--border-main)] hover:border-white/30"}`}
+                                        >
+                                            {h}:00
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest italic">
+                                    Audits are executed daily at the specified UTC hour via GitHub Actions.
+                                </p>
+                            </div>
+                            <div className="space-y-6">
+                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block font-mono">Report Email Recipient</label>
+                                <div className="space-y-4">
+                                    <input
+                                        type="email"
+                                        value={auditConfig.emailRecipient}
+                                        onChange={(e) => setAuditConfig(prev => ({ ...prev, emailRecipient: e.target.value }))}
+                                        placeholder="security@organization.com"
+                                        className="w-full bg-white/5 border border-[var(--border-main)] rounded-lg px-4 py-3 text-xs font-bold text-white focus:outline-none focus:border-[var(--brand-color)]/50"
+                                    />
+                                    <button
+                                        onClick={saveConfig}
+                                        disabled={savingConfig}
+                                        className="w-full py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3"
+                                    >
+                                        {savingConfig ? <span className="animate-spin w-3 h-3 border-2 border-white/20 border-b-white rounded-full" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                                        {savingConfig ? "Syncing..." : "Update Preferences"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </section>
@@ -400,7 +483,50 @@ export default function EnrollmentAdminPanel() {
                 </div>
 
                 {!enrollmentCollapsed && (
-                    <div className="p-10 border-t border-[var(--border-soft)] animate-in slide-in-from-top-2 duration-300 space-y-10">
+                    <div className="p-10 border-t border-[var(--border-soft)] animate-in slide-in-from-top-2 duration-300 space-y-12">
+                        {/* Enrollment Guide (Next Step) */}
+                        {(showEnrollGuide || latestToken) && (
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-8 relative overflow-hidden">
+                                <button
+                                    onClick={() => setShowEnrollGuide(false)}
+                                    className="absolute top-4 right-4 text-emerald-500/50 hover:text-emerald-500 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-500">Provisioning Signal Captured</h4>
+                                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Deploy the following to your target endpoint:</p>
+                                    </div>
+                                </div>
+                                <div className="bg-black/40 rounded-xl p-5 font-mono text-[11px] group relative border border-white/5">
+                                    <code className="text-emerald-400 break-all leading-relaxed">
+                                        curl -sL https://complyze.co/install.sh | sh -s -- --token={latestToken || "YOUR_TOKEN"} --org={activeOrgId}
+                                    </code>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`curl -sL https://complyze.co/install.sh | sh -s -- --token=${latestToken} --org=${activeOrgId}`);
+                                            alert("Enrollment command copied to clipboard.");
+                                        }}
+                                        className="absolute right-4 top-4 p-2 bg-white/10 hover:bg-white/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-xl"
+                                    >
+                                        <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                                <div className="mt-6 flex items-center gap-6">
+                                    <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        Awaiting Endpoint Heartbeat...
+                                    </p>
+                                    <Link href="/docs/enrollment" className="text-[9px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center gap-2 transition-colors">
+                                        View Enrollment Docs <ExternalLink className="w-3 h-3" />
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Organization Selector */}
                         <div className="flex items-center gap-3 border-b border-[var(--border-soft)] pb-6 overflow-x-auto custom-scrollbar flex-wrap">
@@ -410,7 +536,7 @@ export default function EnrollmentAdminPanel() {
                                     onClick={(e) => { e.stopPropagation(); setActiveOrgId(org.id); }}
                                     className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${activeOrgId === org.id
                                         ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg"
-                                        : "bg-[var(--bg-card-hover)] text-[var(--text-muted)] border-transparent hover:border-[var(--border-main)]"}`}
+                                        : "bg-white/5 text-zinc-400 border-transparent hover:border-white/20"}`}
                                 >
                                     {org.name}
                                 </button>
@@ -523,12 +649,18 @@ export default function EnrollmentAdminPanel() {
                                 <div className="space-y-2">
                                     {tokens.map(token => (
                                         <div key={token.id} className="bg-[var(--bg-card-hover)] border border-[var(--border-soft)] rounded-xl px-6 py-4 flex items-center justify-between group hover:border-[var(--border-main)] transition-all">
-                                            <div className="flex items-center gap-5 min-w-0">
+                                            <div
+                                                className="flex items-center gap-5 min-w-0"
+                                                onClick={() => {
+                                                    setLatestToken(token.token);
+                                                    setShowEnrollGuide(true);
+                                                }}
+                                            >
                                                 <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest flex-shrink-0 ${tokenStatusBadge(token.status)}`}>
                                                     {token.status}
                                                 </span>
-                                                <span className="text-[11px] font-mono font-bold text-[var(--text-secondary)] truncate">{token.token}</span>
-                                                <span className="text-[9px] text-white/30 font-black uppercase tracking-widest flex-shrink-0">
+                                                <span className="text-[11px] font-mono font-bold text-zinc-300 truncate">{token.token}</span>
+                                                <span className="text-[9px] text-zinc-500 font-black uppercase tracking-widest flex-shrink-0">
                                                     {token.uses_count} enrolled{token.max_uses ? ` / ${token.max_uses} max` : ""}
                                                 </span>
                                             </div>
@@ -627,8 +759,8 @@ export default function EnrollmentAdminPanel() {
 
             {/* ZONE 4: Assurance History Log */}
             <section id="history-ledger" className="card p-0 shadow-xl overflow-hidden border-none ring-1 ring-[var(--border-main)]">
-                <div className="px-10 py-8 border-b border-[var(--border-soft)] flex justify-between items-center bg-[var(--bg-sidebar)]/30">
-                    <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-primary italic">Assurance History Log</h3>
+                <div className="px-10 py-8 border-b border-[var(--border-soft)] flex justify-between items-center bg-white/[0.02]">
+                    <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-white italic">Assurance History Log</h3>
                     <button
                         onClick={() => document.getElementById("history-ledger")?.scrollIntoView({ behavior: "smooth" })}
                         className="flex items-center gap-3 text-[10px] font-black text-[var(--brand-color)] hover:underline uppercase tracking-[0.2em] decoration-2 underline-offset-4"
@@ -637,24 +769,28 @@ export default function EnrollmentAdminPanel() {
                         View Audit Ledger
                     </button>
                 </div>
-                <div className="divide-y divide-[var(--border-soft)]">
+                <div className="divide-y divide-white/5">
                     {auditHistory.length === 0 ? (
                         <div className="p-24 text-center">
-                            <p className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-[0.4em]">Historical Ledger Empty</p>
+                            <p className="text-[11px] font-black text-zinc-700 uppercase tracking-[0.4em]">Historical Ledger Empty</p>
                         </div>
                     ) : (
                         auditHistory.map((report) => (
-                            <div key={report.id} className="px-10 py-7 hover:bg-[var(--bg-card-hover)] transition-all flex items-center justify-between cursor-default">
+                            <div
+                                key={report.id}
+                                onClick={() => setSelectedReport(report)}
+                                className="px-10 py-7 hover:bg-white/[0.03] transition-all flex items-center justify-between group cursor-pointer"
+                            >
                                 <div className="flex items-center gap-12">
                                     <div className="flex flex-col">
-                                        <span className="text-base font-black text-[var(--text-primary)] tabular-nums tracking-tight">SIG_{report.id.substring(0, 8).toUpperCase()}</span>
-                                        <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider mt-1.5 font-mono">
+                                        <span className="text-base font-black text-white tabular-nums tracking-tight group-hover:text-[var(--brand-color)] transition-colors">SIG_{report.id.substring(0, 8).toUpperCase()}</span>
+                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mt-1.5 font-mono">
                                             {new Date(report.timestamp).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
                                         </span>
                                     </div>
                                     <div className="flex flex-wrap gap-2.5">
                                         {report.findings?.slice(0, 2).map((f: any, i: number) => (
-                                            <span key={i} className="px-3 py-1 rounded-md text-[9px] font-black uppercase bg-[var(--bg-page)] text-[var(--text-secondary)] border border-[var(--border-main)]">
+                                            <span key={i} className="px-3 py-1 rounded-md text-[9px] font-black uppercase bg-black/40 text-zinc-400 border border-white/5">
                                                 {f.title}
                                             </span>
                                         ))}
@@ -665,7 +801,7 @@ export default function EnrollmentAdminPanel() {
                                         <span className={`text-2xl font-black italic tracking-tighter ${report.enforcementScore >= 80 ? "text-emerald-500" : report.enforcementScore >= 50 ? "text-amber-500" : "text-red-500"}`}>
                                             {report.enforcementScore}/100
                                         </span>
-                                        <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">Audit Score</p>
+                                        <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mt-1">Audit Score</p>
                                     </div>
                                     <div className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] shadow-sm ${report.overallStatus === "HEALTHY" ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"}`}>
                                         {report.overallStatus}
@@ -676,6 +812,80 @@ export default function EnrollmentAdminPanel() {
                     )}
                 </div>
             </section>
+
+            {/* ── REPORT DETAIL MODAL ── */}
+            {selectedReport && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="card w-full max-w-4xl bg-[#0c0c0e] border border-white/10 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+                        <div className="px-10 py-8 border-b border-white/10 flex justify-between items-center bg-white/[0.02]">
+                            <div>
+                                <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">Validation Signal Details</h3>
+                                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-2">UUID: {selectedReport.id}</p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedReport(null)}
+                                className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-zinc-400 hover:text-white"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-12">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
+                                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 font-mono">Assurance Score</p>
+                                    <span className={`text-4xl font-black italic tracking-tighter ${selectedReport.enforcementScore >= 80 ? "text-emerald-500" : "text-red-500"}`}>
+                                        {selectedReport.enforcementScore}/100
+                                    </span>
+                                </div>
+                                <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
+                                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 font-mono">Validation Pulse</p>
+                                    <span className={`text-xl font-black uppercase tracking-widest ${selectedReport.overallStatus === "HEALTHY" ? "text-emerald-500" : "text-amber-500"}`}>
+                                        {selectedReport.overallStatus}
+                                    </span>
+                                </div>
+                                <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
+                                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 font-mono">Timestamp</p>
+                                    <span className="text-sm font-black text-white uppercase tracking-widest">
+                                        {new Date(selectedReport.timestamp).toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white italic border-b border-white/10 pb-4">Engine Findings & Interceptions</h4>
+                                {selectedReport.findings.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-20 text-center bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
+                                        <CheckCircle className="w-10 h-10 text-emerald-500 mb-4 opacity-50" />
+                                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">No policy violations or enforcement gaps detected for this sequence.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {selectedReport.findings.map((f: any, i: number) => (
+                                            <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <h5 className="text-[11px] font-black text-white uppercase tracking-widest">{f.title}</h5>
+                                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${f.severity === "CRITICAL" ? "bg-red-500 text-white" : "bg-zinc-700 text-zinc-300"}`}>
+                                                        {f.severity}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-zinc-400 leading-relaxed italic">{f.description}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="px-10 py-6 border-t border-white/10 bg-white/[0.02] flex justify-end">
+                            <button
+                                onClick={() => setSelectedReport(null)}
+                                className="px-8 py-3 rounded-xl bg-[var(--brand-color)] text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
+                            >
+                                Acknowledge Signal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
