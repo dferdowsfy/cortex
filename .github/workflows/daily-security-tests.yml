@@ -426,24 +426,17 @@ jobs:
     name: Notify on Failure
     runs-on: ubuntu-latest
     needs: aggregate-and-report
-    if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+    if: failure()
     steps:
-      - name: Send Slack notification
-        uses: slackapi/slack-github-action@v1.27.0
-        with:
-          payload: |
-            {
-              "text": ":red_circle: *Complyze Proxy Validation FAILED*",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": ":red_circle: *Complyze Proxy Validation Tests Failed*\n\n*Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Results>\n*Branch:* `${{ github.ref_name }}`\n*Triggered by:* `${{ github.event_name }}`"
-                  }
-                }
-              ]
-            }
+      - name: Notify Slack on failure
+        if: failure()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL not set; skipping Slack notification."
+            exit 0
+          fi
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"Daily Proxy Security Tests failed. Check GitHub Actions logs."}' \
+            "$SLACK_WEBHOOK_URL"
