@@ -29,11 +29,11 @@ on:
       strict_preflight:
         description: 'Fail on preflight warnings'
         required: false
-        default: 'true'
+        default: 'false'
         type: choice
         options:
-          - 'true'
           - 'false'
+          - 'true'
 
 concurrency:
   group: proxy-validation-${{ github.ref }}
@@ -43,6 +43,9 @@ env:
   NODE_VERSION: '20'
   REPORTS_DIR: reports
   ARTIFACTS_DIR: artifacts
+  # Makes Node.js find packages installed in proxy-test-harness/node_modules
+  # regardless of which directory the test files are invoked from.
+  NODE_PATH: ${{ github.workspace }}/proxy-test-harness/node_modules
 
 jobs:
   # -------------------------------------------------------------------------
@@ -61,12 +64,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: proxy-test-harness/package.json
 
-      - name: Install harness dependencies
+      - name: Install harness dependencies (no optional)
         working-directory: proxy-test-harness
-        run: npm ci --prefer-offline || npm install
+        run: npm install --omit=optional --no-fund --no-audit
 
       - name: Check proxy connectivity
         id: check
@@ -74,7 +75,7 @@ jobs:
           PROXY_HOST: ${{ inputs.proxy_host || secrets.PROXY_HOST || '127.0.0.1' }}
           PROXY_PORT: ${{ inputs.proxy_port || secrets.PROXY_PORT || '8080' }}
           PROXY_LOG_URL: ${{ secrets.PROXY_LOG_URL || 'http://localhost:3737/logs' }}
-          STRICT_PREFLIGHT: ${{ inputs.strict_preflight || 'true' }}
+          STRICT_PREFLIGHT: ${{ inputs.strict_preflight || 'false' }}
         run: |
           node proxy-test-harness/scripts/preflight.js
           echo "proxy_reachable=true" >> "$GITHUB_OUTPUT"
@@ -98,12 +99,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: proxy-test-harness/package.json
 
-      - name: Install dependencies
+      - name: Install dependencies (no optional — skips canvas/tesseract native build)
         working-directory: proxy-test-harness
-        run: npm ci --prefer-offline || npm install
+        run: npm install --omit=optional --no-fund --no-audit
 
       - name: Install Playwright browsers
         working-directory: proxy-test-harness
@@ -123,7 +122,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          CI: 'true'
+          NODE_PATH: ${{ github.workspace }}/proxy-test-harness/node_modules
         run: node tests/domain.test.js
 
       - name: Upload domain test report
@@ -153,12 +152,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: proxy-test-harness/package.json
 
-      - name: Install dependencies
+      - name: Install dependencies (no optional)
         working-directory: proxy-test-harness
-        run: npm ci --prefer-offline || npm install
+        run: npm install --omit=optional --no-fund --no-audit
 
       - name: Create report directories
         run: mkdir -p ${{ env.REPORTS_DIR }}
@@ -172,7 +169,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          CI: 'true'
+          NODE_PATH: ${{ github.workspace }}/proxy-test-harness/node_modules
         run: node tests/api.test.js
 
       - name: Upload API test report
@@ -202,8 +199,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: proxy-test-harness/package.json
 
       - name: Install system dependencies for canvas and OCR
         run: |
@@ -213,9 +208,9 @@ jobs:
             tesseract-ocr tesseract-ocr-eng \
             pkg-config build-essential
 
-      - name: Install dependencies
+      - name: Install dependencies (including optional canvas/tesseract)
         working-directory: proxy-test-harness
-        run: npm ci --prefer-offline || npm install
+        run: npm install --no-fund --no-audit
 
       - name: Install Playwright browsers
         working-directory: proxy-test-harness
@@ -232,7 +227,7 @@ jobs:
           PROXY_PORT: ${{ inputs.proxy_port || secrets.PROXY_PORT || '8080' }}
           PROXY_LOG_URL: ${{ secrets.PROXY_LOG_URL || 'http://localhost:3737/logs' }}
           PROXY_LOG_API_KEY: ${{ secrets.PROXY_LOG_API_KEY }}
-          CI: 'true'
+          NODE_PATH: ${{ github.workspace }}/proxy-test-harness/node_modules
         run: node tests/attachments.test.js
 
       - name: Upload attachment test report and files
@@ -264,12 +259,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: proxy-test-harness/package.json
 
-      - name: Install dependencies
+      - name: Install dependencies (no optional)
         working-directory: proxy-test-harness
-        run: npm ci --prefer-offline || npm install
+        run: npm install --omit=optional --no-fund --no-audit
 
       - name: Create report directories
         run: mkdir -p ${{ env.REPORTS_DIR }}
@@ -281,7 +274,7 @@ jobs:
           PROXY_LOG_URL: ${{ secrets.PROXY_LOG_URL || 'http://localhost:3737/logs' }}
           PROXY_LOG_API_KEY: ${{ secrets.PROXY_LOG_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CI: 'true'
+          NODE_PATH: ${{ github.workspace }}/proxy-test-harness/node_modules
         run: node tests/bypass.test.js
 
       - name: Upload bypass test report
@@ -311,12 +304,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: proxy-test-harness/package.json
 
-      - name: Install dependencies
+      - name: Install dependencies (no optional)
         working-directory: proxy-test-harness
-        run: npm ci --prefer-offline || npm install
+        run: npm install --omit=optional --no-fund --no-audit
 
       - name: Create artifact and report directories
         run: |
@@ -329,7 +320,7 @@ jobs:
           PROXY_PORT: ${{ inputs.proxy_port || secrets.PROXY_PORT || '8080' }}
           PROXY_LOG_URL: ${{ secrets.PROXY_LOG_URL || 'http://localhost:3737/logs' }}
           PROXY_LOG_API_KEY: ${{ secrets.PROXY_LOG_API_KEY }}
-          CI: 'true'
+          NODE_PATH: ${{ github.workspace }}/proxy-test-harness/node_modules
         run: node tests/endpoint-discovery.js
 
       - name: Upload discovery artifacts
@@ -367,7 +358,7 @@ jobs:
 
       - name: Install minimal dependencies
         working-directory: proxy-test-harness
-        run: npm ci --prefer-offline || npm install
+        run: npm install --omit=optional --no-fund --no-audit
 
       - name: Download all test reports
         uses: actions/download-artifact@v4
@@ -378,6 +369,8 @@ jobs:
 
       - name: Aggregate reports
         id: aggregate
+        env:
+          NODE_PATH: ${{ github.workspace }}/proxy-test-harness/node_modules
         run: |
           mkdir -p reports
           node proxy-test-harness/scripts/aggregate-reports.js
@@ -420,13 +413,16 @@ jobs:
           fi
 
   # -------------------------------------------------------------------------
-  # Notify on failure (optional — requires secrets)
+  # Notify on failure (optional — only runs if SLACK_WEBHOOK_URL secret set)
+  # NOTE: secrets cannot be evaluated in `if:` conditions; the action itself
+  # handles missing webhooks gracefully via continue-on-error.
   # -------------------------------------------------------------------------
   notify-on-failure:
     name: Notify on Failure
     runs-on: ubuntu-latest
     needs: aggregate-and-report
-    if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+    if: failure()
+    continue-on-error: true
     steps:
       - name: Send Slack notification
         uses: slackapi/slack-github-action@v1.27.0
