@@ -9,7 +9,10 @@
 const axios = require('axios');
 require('dotenv').config();
 
-const PROXY_LOG_URL = process.env.PROXY_LOG_URL || 'http://localhost:3737/logs';
+// PROXY_URL is the base URL of the proxy log API (e.g. http://localhost:3737).
+// PROXY_LOG_URL overrides the full endpoint path when set explicitly.
+const _PROXY_BASE   = process.env.PROXY_URL || 'http://localhost:3737';
+const PROXY_LOG_URL = process.env.PROXY_LOG_URL || `${_PROXY_BASE}/logs`;
 const PROXY_LOG_API_KEY = process.env.PROXY_LOG_API_KEY || '';
 
 /**

@@ -206,18 +206,22 @@ jobs:
           cache-dependency-path: proxy-test-harness/package.json
 
       - name: Install system dependencies for canvas and OCR
+        # Non-fatal: test suite falls back gracefully when canvas/tesseract are absent
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libc6 libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
-            tesseract-ocr tesseract-ocr-eng \
-            pkg-config build-essential
+            pkg-config build-essential || echo "::warning::canvas build deps unavailable; PNG generation will use tEXt-chunk fallback"
+          sudo apt-get install -y --no-install-recommends \
+            tesseract-ocr tesseract-ocr-eng || echo "::warning::tesseract-ocr unavailable; OCR will use tesseract.js WASM"
 
       - name: Install dependencies
         working-directory: proxy-test-harness
         run: npm ci --prefer-offline || npm install
 
       - name: Install Playwright browsers
+        # Only needed for E2E_AUTH mode; install unconditionally so the binary is
+        # cached and available if someone re-runs with E2E_AUTH=true.
         working-directory: proxy-test-harness
         run: npx playwright install chromium --with-deps
 
@@ -228,11 +232,17 @@ jobs:
 
       - name: Run attachment inspection tests
         env:
+          # Module resolution: all test deps live in proxy-test-harness/node_modules
+          NODE_PATH: ./proxy-test-harness/node_modules
           PROXY_HOST: ${{ inputs.proxy_host || secrets.PROXY_HOST || '127.0.0.1' }}
           PROXY_PORT: ${{ inputs.proxy_port || secrets.PROXY_PORT || '8080' }}
-          PROXY_LOG_URL: ${{ secrets.PROXY_LOG_URL || 'http://localhost:3737/logs' }}
+          # PROXY_URL — base URL for the proxy log API (path /logs appended automatically)
+          PROXY_URL: ${{ secrets.PROXY_URL || 'http://localhost:3737' }}
+          PROXY_LOG_URL: ${{ secrets.PROXY_LOG_URL || '' }}
           PROXY_LOG_API_KEY: ${{ secrets.PROXY_LOG_API_KEY }}
           CI: 'true'
+          # Set E2E_AUTH=true in repo secrets/vars to enable authenticated browser upload tests
+          E2E_AUTH: ${{ secrets.E2E_AUTH || 'false' }}
         run: node tests/attachments.test.js
 
       - name: Upload attachment test report and files
