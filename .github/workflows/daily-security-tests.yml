@@ -105,9 +105,11 @@ jobs:
         working-directory: proxy-test-harness
         run: npm ci --prefer-offline || npm install
 
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+
       - name: Install Playwright browsers
-        working-directory: proxy-test-harness
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install --with-deps
 
       - name: Create report directories
         run: |
