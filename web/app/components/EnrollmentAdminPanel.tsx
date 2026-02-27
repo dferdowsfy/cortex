@@ -21,6 +21,7 @@ interface Organization {
 interface AuditConfig {
     scheduleHour: number;
     emailRecipient: string;
+    daysOfWeek: string[];
 }
 
 interface EnrollmentToken {
@@ -100,7 +101,8 @@ export default function EnrollmentAdminPanel() {
     const [latestToken, setLatestToken] = useState<string | null>(null);
     const [auditConfig, setAuditConfig] = useState<AuditConfig>({
         scheduleHour: 13,
-        emailRecipient: ""
+        emailRecipient: "",
+        daysOfWeek: ["Mon", "Tue", "Wed", "Thu", "Fri"]
     });
 
     // Token generation
@@ -142,7 +144,8 @@ export default function EnrollmentAdminPanel() {
                 const config = await configRes.json();
                 setAuditConfig({
                     scheduleHour: config.scheduleHour ?? 13,
-                    emailRecipient: config.emailRecipient ?? ""
+                    emailRecipient: config.emailRecipient ?? "",
+                    daysOfWeek: config.daysOfWeek ?? ["Mon", "Tue", "Wed", "Thu", "Fri"]
                 });
             }
         } catch (err) {
@@ -440,30 +443,51 @@ export default function EnrollmentAdminPanel() {
                                         </button>
                                     ))}
                                 </div>
-                                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest italic">
-                                    Audits are executed daily at the specified UTC hour via GitHub Actions.
+                                <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest italic">
+                                    Audits are executed at the specified UTC hour via GitHub Actions.
                                 </p>
                             </div>
                             <div className="space-y-6">
-                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block font-mono">Report Email Recipient</label>
-                                <div className="space-y-4">
-                                    <input
-                                        type="email"
-                                        value={auditConfig.emailRecipient}
-                                        onChange={(e) => setAuditConfig(prev => ({ ...prev, emailRecipient: e.target.value }))}
-                                        placeholder="security@organization.com"
-                                        className="w-full bg-white/5 border border-[var(--border-main)] rounded-lg px-4 py-3 text-xs font-bold text-white focus:outline-none focus:border-[var(--brand-color)]/50"
-                                    />
-                                    <button
-                                        onClick={saveConfig}
-                                        disabled={savingConfig}
-                                        className="w-full py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3"
-                                    >
-                                        {savingConfig ? <span className="animate-spin w-3 h-3 border-2 border-white/20 border-b-white rounded-full" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                                        {savingConfig ? "Syncing..." : "Update Preferences"}
-                                    </button>
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block font-mono">Repeat Strategy</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => (
+                                        <button
+                                            key={day}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const current = auditConfig.daysOfWeek;
+                                                const next = current.includes(day)
+                                                    ? current.filter(d => d !== day)
+                                                    : [...current, day];
+                                                setAuditConfig(prev => ({ ...prev, daysOfWeek: next }));
+                                            }}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border transition-all ${auditConfig.daysOfWeek.includes(day) ? "bg-white text-black border-white" : "text-white/40 border-white/10 hover:border-white/30"}`}
+                                        >
+                                            {day}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
+                        </div>
+                        <div className="space-y-8">
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block font-mono">Report Email Recipient</label>
+                                <input
+                                    type="email"
+                                    value={auditConfig.emailRecipient}
+                                    onChange={(e) => setAuditConfig(prev => ({ ...prev, emailRecipient: e.target.value }))}
+                                    placeholder="security@organization.com"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white focus:outline-none focus:border-white/30"
+                                />
+                            </div>
+                            <button
+                                onClick={saveConfig}
+                                disabled={savingConfig}
+                                className="w-full py-4 rounded-xl bg-white text-black hover:bg-zinc-200 transition-all text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                            >
+                                {savingConfig ? <span className="animate-spin w-3 h-3 border-2 border-black/20 border-b-black rounded-full" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                                {savingConfig ? "Syncing..." : "Update Preferences"}
+                            </button>
                         </div>
                     </div>
                 )}
@@ -516,14 +540,29 @@ export default function EnrollmentAdminPanel() {
                                         <Copy className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
-                                <div className="mt-6 flex items-center gap-6">
-                                    <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                        Awaiting Endpoint Heartbeat...
-                                    </p>
-                                    <Link href="/docs/enrollment" className="text-[9px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center gap-2 transition-colors">
-                                        View Enrollment Docs <ExternalLink className="w-3 h-3" />
-                                    </Link>
+                                <div className="mt-8 pt-8 border-t border-white/5">
+                                    <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-white italic mb-6">Deployment Protocol</h5>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">Step 1: Execute Signal</p>
+                                            <p className="text-[11px] text-zinc-400 leading-relaxed font-bold uppercase">Run the pre-configured CURL command on your target machines (macOS/Linux). This initializes the agent and registers it with your workspace.</p>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">Step 2: Signal Broadcast</p>
+                                            <p className="text-[11px] text-zinc-400 leading-relaxed font-bold uppercase">Once deployed, the device will appear in the enrollment table below. Policy enforcement begins within 60 seconds.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between bg-white/[0.03] p-6 rounded-2xl border border-white/5 mt-4">
+                                        <div className="flex items-center gap-6">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                <p className="text-[9px] font-black text-emerald-500/80 uppercase tracking-[0.3em]">Awaiting Heartbeat...</p>
+                                            </div>
+                                        </div>
+                                        <Link href="/docs/enrollment" className="flex items-center gap-3 px-6 py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)]">
+                                            Expand Enrollment Documentation <ExternalLink className="w-4 h-4" />
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -820,7 +859,7 @@ export default function EnrollmentAdminPanel() {
                         <div className="px-10 py-8 border-b border-white/10 flex justify-between items-center bg-white/[0.02]">
                             <div>
                                 <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">Validation Signal Details</h3>
-                                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-2">UUID: {selectedReport.id}</p>
+                                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mt-2">UUID: {selectedReport.id}</p>
                             </div>
                             <button
                                 onClick={() => setSelectedReport(null)}
@@ -832,19 +871,19 @@ export default function EnrollmentAdminPanel() {
                         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-12">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                 <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 font-mono">Assurance Score</p>
+                                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2 font-mono">Assurance Score</p>
                                     <span className={`text-4xl font-black italic tracking-tighter ${selectedReport.enforcementScore >= 80 ? "text-emerald-500" : "text-red-500"}`}>
                                         {selectedReport.enforcementScore}/100
                                     </span>
                                 </div>
                                 <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 font-mono">Validation Pulse</p>
+                                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2 font-mono">Validation Pulse</p>
                                     <span className={`text-xl font-black uppercase tracking-widest ${selectedReport.overallStatus === "HEALTHY" ? "text-emerald-500" : "text-amber-500"}`}>
                                         {selectedReport.overallStatus}
                                     </span>
                                 </div>
                                 <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 font-mono">Timestamp</p>
+                                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2 font-mono">Timestamp</p>
                                     <span className="text-sm font-black text-white uppercase tracking-widest">
                                         {new Date(selectedReport.timestamp).toLocaleString()}
                                     </span>
@@ -861,14 +900,22 @@ export default function EnrollmentAdminPanel() {
                                 ) : (
                                     <div className="space-y-4">
                                         {selectedReport.findings.map((f: any, i: number) => (
-                                            <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <h5 className="text-[11px] font-black text-white uppercase tracking-widest">{f.title}</h5>
-                                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${f.severity === "CRITICAL" ? "bg-red-500 text-white" : "bg-zinc-700 text-zinc-300"}`}>
+                                            <div key={i} className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group shadow-[0_0_15px_rgba(255,255,255,0.02)]">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-1 font-mono">{f.category || "General Compliance"}</p>
+                                                        <h5 className="text-[11px] font-black text-white uppercase tracking-widest group-hover:text-[var(--brand-color)] transition-colors">{f.test || "Unauthorized Signal Detected"}</h5>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-md text-[9px] font-black uppercase ${f.severity === "CRITICAL" ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-zinc-800 text-zinc-400"}`}>
                                                         {f.severity}
                                                     </span>
                                                 </div>
-                                                <p className="text-xs text-zinc-400 leading-relaxed italic">{f.description}</p>
+                                                <p className="text-xs text-zinc-400 leading-relaxed italic font-bold uppercase tracking-tight">{f.notes || "System intercepted anomalous behavior; no further artifacts preserved."}</p>
+                                                <div className="mt-4 flex items-center gap-4">
+                                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${f.result === "PASS" ? "text-emerald-500 bg-emerald-500/10" : "text-amber-500 bg-amber-500/10"}`}>
+                                                        {f.result}
+                                                    </span>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

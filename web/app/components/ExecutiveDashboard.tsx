@@ -80,17 +80,17 @@ export default function ExecutiveDashboard({
                 </div>
                 <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
                     <div className="text-right">
-                        <div className="text-[10px] text-muted uppercase tracking-widest mb-1 font-bold font-mono">AI Shield Status</div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-widest mb-1 font-bold font-mono">AI Shield Status</div>
                         <div className="flex items-center gap-2 justify-end">
                             <span className={`w-2 h-2 rounded-full ${aiShieldActive ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] animate-pulse" : "bg-zinc-600"}`} />
-                            <span className="text-[11px] font-bold text-primary">{aiShieldActive ? "ACTIVE" : "INACTIVE"}</span>
+                            <span className="text-[11px] font-bold text-white">{aiShieldActive ? "ACTIVE" : "INACTIVE"}</span>
                         </div>
                     </div>
                     <div className="text-right border-l border-[var(--border-main)] pl-6">
-                        <div className="text-[10px] text-muted uppercase tracking-widest mb-1 font-bold font-mono">Last Policy Validation</div>
-                        <span className="text-[11px] font-bold text-primary">{lastPolicyValidation || "Never"}</span>
+                        <div className="text-[10px] text-white/40 uppercase tracking-widest mb-1 font-bold font-mono">Last Policy Validation</div>
+                        <span className="text-[11px] font-bold text-white">{lastPolicyValidation || "Never"}</span>
                     </div>
-                    <Link href="/dashboard/reports" className="bg-[var(--card-bg)] hover:bg-white/10 text-primary text-[11px] font-bold py-2.5 px-5 rounded-lg border border-[var(--border-main)] transition-all uppercase tracking-[0.15em] ml-2">
+                    <Link href="/dashboard/reports" className="bg-white/5 hover:bg-white/10 text-white text-[11px] font-black py-2.5 px-6 rounded-lg border border-white/10 transition-all uppercase tracking-[0.2em] ml-2">
                         View Executive Report
                     </Link>
                 </div>
