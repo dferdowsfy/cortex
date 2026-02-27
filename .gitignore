@@ -13,3 +13,12 @@ desktop/certs/
 desktop/logs/
 proxy.log
 web/.env.vercel.test*
+
+# Generated test artifacts and reports
+artifacts/test-files/
+reports/attachments-test-*.json
+reports/domain-test-*.json
+reports/api-test-*.json
+reports/bypass-test-*.json
+reports/endpoint-discovery-*.json
+reports/aggregate-*.json
