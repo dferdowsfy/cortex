@@ -437,30 +437,41 @@ function sanitizeHeaders(headers) {
     return safe;
 }
 
-// Log metadata for cert-pinned domains (connection-level, no content)
+// Log metadata for Web UI domains (transparent tunnel — no content inspection possible)
+// Deduplicates per-hostname with a 30s cooldown to avoid dashboard flooding.
+const _metadataLastLogged = new Map();
 async function logMetadata(hostname) {
     eventCount++;
+
+    // Throttle: log at most once per 30s per hostname
+    const now = Date.now();
+    const lastLogged = _metadataLastLogged.get(hostname) || 0;
+    if (now - lastLogged < 30_000) return;
+    _metadataLastLogged.set(hostname, now);
+
+    // Derive a human-readable tool name from the hostname
+    const toolName = hostname.replace(/^www\./, '').split('.')[0].toUpperCase();
+
     try {
         const payload = {
             target_url: `https://${hostname}/`,
             method: 'CONNECT',
             headers: {},
-            body: `[metadata-only: connection to ${hostname}]`,
+            // Body text that classifyContent can pick up as AI activity
+            body: `[AI session detected: ${toolName} (${hostname}) — transparent tunnel, prompt content not available via proxy]`,
             user_id: 'local-user',
             log_only: true,
-            dlp: null
+            dlp: null,
+            tool_hint: toolName,
         };
         await fetch(COMPLYZE_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ...payload,
-                workspace_id: WORKSPACE_ID
-            }),
+            body: JSON.stringify({ ...payload, workspace_id: WORKSPACE_ID }),
         });
-        console.log(`      📊 Metadata logged #${eventCount}`);
+        if (TRACE_MODE) console.log(`📊 Metadata logged for ${hostname} #${eventCount}`);
     } catch {
-        // Silent fail for metadata — non-critical
+        // Silent fail — non-critical
     }
 }
 
@@ -961,9 +972,9 @@ function startProxy() {
                 });
             } else if (shouldLogMetadata(hostname, req)) {
                 // Web UI / Desktop bypass: transparent tunnel + metadata-only logging
-                console.log(`[METADATA] Transparent tunnel for ${hostname}:${port}`);
-                // Log the connection as metadata so it still appears in the dashboard
-                logToComplyze(`https://${hostname}/`, 'CONNECT', {}, `[metadata-only: transparent tunnel to ${hostname}]`, null).catch(() => { });
+                if (TRACE_MODE) console.log(`[METADATA] Transparent tunnel for ${hostname}:${port}`);
+                // Log the connection so it appears in the dashboard (throttled per hostname)
+                logMetadata(hostname).catch(() => { });
                 handleTunnel(hostname, port, clientSocket, head);
             } else {
                 handleTunnel(hostname, port, clientSocket, head);
