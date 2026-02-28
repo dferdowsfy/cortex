@@ -8,7 +8,9 @@
     "start": "next start -p 3737",
     "proxy": "node scripts/proxy-server.js",
     "proxy:test": "node scripts/proxy-test.js",
-    "diagnose": "node scripts/diagnose.js"
+    "diagnose": "node scripts/diagnose.js",
+    "shield:start": "bash scripts/start-shield.sh",
+    "shield:stop": "bash scripts/stop-shield.sh"
   },
   "dependencies": {
     "autoprefixer": "^10.4.0",

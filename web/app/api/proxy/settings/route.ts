@@ -17,13 +17,54 @@ export async function GET(req: NextRequest) {
     // DO NOT overwrite proxy_enabled based on OS state — the user's toggle
     // in the dashboard is the source of truth for the proxy's monitoring mode.
     let osProxyActive = false;
+    let proxyRunning = false;
     try {
-        const { getProxyState } = await import("@/lib/system-proxy-manager");
-        const osState = await getProxyState();
+        const { getProxyState, isPortReachable } = await import("@/lib/system-proxy-manager");
+        const [osState, portOk] = await Promise.all([
+            getProxyState(),
+            isPortReachable("127.0.0.1", 8080),
+        ]);
         osProxyActive = osState.enabled;
+        proxyRunning = portOk;
     } catch { }
 
-    return NextResponse.json({ ...settings, workspaceId, os_proxy_active: osProxyActive });
+    return NextResponse.json({
+        ...settings,
+        workspaceId,
+        os_proxy_active: osProxyActive,
+        proxy_server_running: proxyRunning,
+    });
+}
+
+/**
+ * Determine if this request is being served from a local machine.
+ * We check both the standard env vars AND the Host header since
+ * the app may run locally in production mode (e.g. `next start`).
+ */
+function detectIsLocal(req: NextRequest): boolean {
+    // Explicit env overrides
+    if (process.env.ELECTRON === "true") return true;
+    if (process.env.IS_LOCAL === "true") return true;
+
+    // Running on Vercel cloud → NOT local
+    if (process.env.VERCEL === "1" || process.env.VERCEL_ENV) return false;
+
+    // Standard dev mode
+    if (process.env.NODE_ENV === "development") return true;
+
+    // Check request Host header — localhost / 127.x means running locally
+    const host = req.headers.get("host") || "";
+    if (
+        host.startsWith("localhost") ||
+        host.startsWith("127.") ||
+        host.startsWith("0.0.0.0")
+    ) return true;
+
+    // Check NEXT_PUBLIC_APP_URL if set
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+    if (appUrl.includes("localhost") || appUrl.includes("127.")) return true;
+
+    return false;
 }
 
 export async function POST(req: NextRequest) {
@@ -33,30 +74,33 @@ export async function POST(req: NextRequest) {
 
         // ── System Proxy Control ──
         if ("proxy_enabled" in body) {
-            // Only attempt local system proxy control if running in an environment that supports it
-            // (e.g., local development or within the Electron desktop app).
-            // Cloud environments (Vercel/Production) should only update the data store.
-            const isLocal = process.env.NODE_ENV === "development" || process.env.ELECTRON === "true" || process.env.IS_LOCAL === "true" || workspaceId === "default";
+            const isLocal = detectIsLocal(req);
 
             if (isLocal) {
                 try {
                     const { startProxy, stopProxy } = await import("@/lib/proxy-manager");
                     const { enableProxy, disableProxy } = await import("@/lib/system-proxy-manager");
+
                     if (body.proxy_enabled) {
                         const proxyStart = await startProxy(workspaceId);
-                        // If proxy starts (or is already running), enable system proxy
+                        console.log(`[api/proxy/settings] Proxy start result:`, proxyStart);
                         if (proxyStart.ok) {
                             await enableProxy(8080);
+                            console.log(`[api/proxy/settings] System proxy enabled on port 8080`);
+                        } else {
+                            console.warn(`[api/proxy/settings] Proxy failed to start: ${proxyStart.message}`);
                         }
                     } else {
                         await disableProxy();
                         await stopProxy();
+                        console.log(`[api/proxy/settings] Proxy stopped and system proxy disabled`);
                     }
                 } catch (err: any) {
-                    console.warn("[api/proxy/settings] Local system proxy update failed (expected in cloud):", err.message);
-                    // We don't return 500 here anymore because the Firestore update (the source of truth) 
-                    // should still succeed even if the local OS commands fail remotely.
+                    console.warn("[api/proxy/settings] Local system proxy update failed:", err.message);
+                    // Continue — the store update below should still succeed
                 }
+            } else {
+                console.log(`[api/proxy/settings] Cloud deployment detected — skipping local proxy control`);
             }
         }
 

@@ -302,12 +302,18 @@ function shouldDeepInspect(hostname, req) {
     // Safety: never inspect loopback or local dashboard
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local')) return false;
 
-    // Safety: never inspect domains specifically marked for passthrough (e.g. system updates)
+    // Safety: never inspect domains specifically marked for passthrough
     if (isPassthroughDomain(hostname)) return false;
 
-    // Follow rules for ALL AI domains (websites + APIs)
-    if (isAIDomain(hostname)) {
-        // Desktop bypass still respected if explicitly enabled in settings for non-browser apps
+    // CRITICAL: Web UI domains (chatgpt.com, claude.ai, etc.) are Cloudflare-protected.
+    // Attempting MITM on these breaks TLS negotiation and blocks the user entirely.
+    // These are handled by shouldLogMetadata() as transparent tunnels instead.
+    if (isWebUIDomain(hostname)) return false;
+
+    // Only deep-inspect API domains (api.openai.com, api.anthropic.com, etc.)
+    // where MITM is safe and we can see actual prompt payloads.
+    if (isAPIDomain(hostname)) {
+        // Desktop bypass: skip deep inspect for non-browser apps if explicitly enabled
         if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) {
             return false;
         }
@@ -322,10 +328,11 @@ function shouldLogMetadata(hostname, req) {
     // Only track metadata if shield is ACTIVE
     if (!proxyEnabled) return false;
 
-    // Track metadata for Web UI domains (which aren't MITM'd)
+    // Transparently tunnel Web UI domains (chatgpt.com, claude.ai, etc.)
+    // Log connection metadata so activity still shows in the dashboard.
     if (isWebUIDomain(hostname)) return true;
 
-    // Also log metadata for desktop apps if bypass is specifically targetting content only
+    // Log metadata for desktop app domains when desktop bypass is on
     if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) return true;
 
     return false;
