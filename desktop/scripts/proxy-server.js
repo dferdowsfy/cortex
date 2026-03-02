@@ -227,18 +227,23 @@ function isBrowserRequest(req) {
 
 function shouldDeepInspect(hostname, req) {
     if (!hostname) return false;
-    if (!proxyEnabled) return false; // Inactive mode: no deep inspection
+    if (!proxyEnabled) return false;
     if (isPassthroughDomain(hostname)) return false;
-    if (!isAIDomain(hostname)) return false;
+    // Web UI domains (chatgpt.com, claude.ai, etc.) are Cloudflare-protected
+    // and MUST NOT be MITMed — they use HTTP/2 and cert pinning which breaks with MITM.
+    // Only raw API endpoints are safe to deep-inspect.
+    if (WEB_UI_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))) return false;
+    if (!API_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))) return false;
     if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) return false;
     return true;
 }
 
-function shouldLogMetadata(hostname, req) {
+function shouldLogMetadata(hostname) {
     if (!hostname) return false;
-    // Log metadata for AI domains even if deep inspection is disabled (Passive Mode)
-    if (!proxyEnabled && isAIDomain(hostname)) return true;
-    if (desktopBypassEnabled && isDesktopAppDomain(hostname) && !isBrowserRequest(req)) return true;
+    // Always log metadata for Web UI domains (transparent tunnel, no MITM)
+    if (WEB_UI_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))) return true;
+    // Log metadata in passive mode for API domains too
+    if (!proxyEnabled && API_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))) return true;
     return false;
 }
 
@@ -810,17 +815,22 @@ function startProxy() {
         if (isPassthroughDomain(hostname)) {
             // Infrastructure domains — always transparent, never inspect
             handleTunnel(hostname, port, clientSocket, head);
+        } else if (WEB_UI_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))) {
+            // Web UI domains (chatgpt.com, claude.ai, etc.) — transparent tunnel + metadata log.
+            // NEVER MITM: these use Cloudflare, HTTP/2, and cert pinning.
+            console.log(`\n📊 [#${id}] WEB UI (observe) → ${hostname}:${port}`);
+            logMetadata(hostname);
+            handleTunnel(hostname, port, clientSocket, head);
         } else if (shouldDeepInspect(hostname, req)) {
-            // Deep inspection: MITM to read full prompt content
-            console.log(`\n🔍 [#${id}] INTERCEPTING → ${hostname}:${port}`);
+            // API endpoints only — safe to MITM (no Cloudflare, plain HTTPS)
+            console.log(`\n🔍 [#${id}] INTERCEPTING API → ${hostname}:${port}`);
             handleMITM(hostname, port, clientSocket, head, ca, id);
-        } else if (shouldLogMetadata(hostname, req)) {
-            // Desktop bypass mode: metadata-only logging
-            console.log(`\n📊 [#${id}] METADATA (desktop bypass) → ${hostname}:${port}`);
+        } else if (shouldLogMetadata(hostname)) {
+            // Unknown AI-adjacent domain — metadata only
             logMetadata(hostname);
             handleTunnel(hostname, port, clientSocket, head);
         } else {
-            // Transparent pass-through for non-AI domains
+            // All other traffic — fully transparent
             handleTunnel(hostname, port, clientSocket, head);
         }
     });
