@@ -1,8 +1,6 @@
-const { app, Tray, Menu, shell, Notification, ipcMain, BrowserWindow, nativeImage } = require('electron');
+#!/usr/bin/env node
 const path = require('path');
 const fs = require('fs');
-const { fork, exec, execSync } = require('child_process');
-const sudo = require('sudo-prompt');
 const os = require('os');
 const crypto = require('crypto');
 
@@ -12,35 +10,25 @@ const { FirebaseSettingsSync } = require('./lib/firebase-settings');
 const { ProxyController } = require('./lib/proxy-controller');
 
 // ─── Configuration ───────────────────────────────────────────────────────────
-const AGENT_VERSION = '1.2.0';
+const AGENT_VERSION = '1.3.0 (Headless Node.js)';
 const PROXY_PORT = 8080;
 const PROXY_SCRIPT_PATH = path.join(__dirname, 'scripts', 'proxy-server.js');
 const DASHBOARD_URL = process.env.COMPLYZE_DASHBOARD || 'https://complyze.co';
-const ADMIN_HUB_URL = `${DASHBOARD_URL}/admin`;
 
-const sudoOptions = {
-    name: 'Complyze Monitoring Agent',
-};
-
-// ─── Headless Daemon Mode ────────────────────────────────────────────────────
-// Hide from Dock so agent runs as a tray-only background service.
-// Users should never see this in their Dock or App Switcher.
-app.dock?.hide();
+// Use a unified config directory
+const CONFIG_DIR = path.join(os.homedir(), '.complyze');
+if (!fs.existsSync(CONFIG_DIR)) {
+    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+}
 
 // ─── State ──────────────────────────────────────────────────────────────────
-let tray = null;
-let mainWindow = null;
 let proxyController = null;
 let isMonitoringEnabled = true;
-let heartbeatInterval = null;
-let deviceId = null;
-let lastSyncTime = 'Never';
 
 // Firebase state
 let firebaseUid = null;
 const settingsSync = new FirebaseSettingsSync();
 
-// Current settings from RTDB (cached for offline fallback)
 let currentSettings = {
     blockEnabled: true,
     interceptEnabled: true,
@@ -56,9 +44,10 @@ let currentSettings = {
 };
 
 // ─── Initialize Device ID ────────────────────────────────────────────────────
+let deviceId = null;
 function getDeviceId() {
     if (deviceId) return deviceId;
-    const configPath = path.join(app.getPath('userData'), 'device.json');
+    const configPath = path.join(CONFIG_DIR, 'device.json');
     if (fs.existsSync(configPath)) {
         try {
             const data = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -68,7 +57,6 @@ function getDeviceId() {
     }
 
     deviceId = `dev_${crypto.randomBytes(8).toString('hex')}`;
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({ id: deviceId }));
     return deviceId;
 }
@@ -78,18 +66,17 @@ function initializeFirebaseAuth() {
     const { auth, db } = initFirebase();
 
     if (!auth || !db) {
-        console.warn('[firebase] Auth or DB not available, falling back to API sync');
-        startLegacyLifecycle();
+        console.warn('[firebase] Auth or DB not available, checking for auto-enrollment token');
+        checkAutoEnrollment();
         return;
     }
 
     onAuthStateChanged(auth, async (user) => {
         if (!user) {
-            console.log('[firebase] No authenticated user — waiting for login');
+            console.log('[firebase] No authenticated user — checking for auto-enrollment token');
             firebaseUid = null;
             settingsSync.unsubscribe();
-            // Fall back to API-based sync until user logs in
-            startLegacyLifecycle();
+            checkAutoEnrollment();
             return;
         }
 
@@ -100,484 +87,146 @@ function initializeFirebaseAuth() {
         settingsSync.subscribe(db, user.uid, (settings) => {
             applyInterceptorSettings(settings);
         });
-
-        // Stop legacy polling if it was running
-        stopLegacyLifecycle();
-
-        // Continue heartbeat for agent registration (but not settings sync)
-        startHeartbeatOnly();
     });
+}
 
-    // Attempt to sign in with stored token
-    const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
-    if (fs.existsSync(tokenPath)) {
+function checkAutoEnrollment() {
+    // Priority 1: token passed as environment variable (MDM/install script)
+    let token = process.env.COMPLYZE_ENROLL_TOKEN;
+
+    // Priority 2: token file written by admin install script
+    const tokenPath = path.join(CONFIG_DIR, 'auth-token.json');
+    if (!token && fs.existsSync(tokenPath)) {
         try {
-            const { customToken } = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
-            if (customToken) {
-                signInWithCustomToken(auth, customToken).catch((err) => {
-                    console.warn('[firebase] Stored token expired or invalid:', err.message);
-                });
-            }
-        } catch (e) {
-            console.warn('[firebase] Failed to read stored token:', e.message);
-        }
+            const data = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
+            token = data.customToken;
+        } catch (e) { }
+    }
+
+    if (token) {
+        applyEnrollmentToken(token);
+    } else {
+        console.log('[enroll] No enrollment token found.');
+        console.log('[enroll] To enroll this device, run:');
+        console.log(`[enroll]   echo \'{"customToken":"YOUR_TOKEN"}\' > ${tokenPath}`);
+        console.log('[enroll] The agent will pick it up automatically within 5 seconds.');
+        // Start proxy in standalone observe-only mode without authentication
+        startStandaloneProxyFallback();
+        // Then watch for a token to be placed
+        watchForEnrollmentToken(tokenPath);
     }
 }
 
-// ─── Apply Settings from RTDB (realtime) ───────────────────────────────
-function applyInterceptorSettings(settings) {
-    currentSettings = { ...currentSettings, ...settings };
-    console.log('[settings] Processing:', JSON.stringify(currentSettings));
+// Polls for a new enrollment token file every 5 seconds.
+// When found, enrolls the device without requiring any user action or restart.
+function watchForEnrollmentToken(tokenPath) {
+    const watcher = setInterval(() => {
+        if (!fs.existsSync(tokenPath)) return;
+        try {
+            const data = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
+            if (data.customToken) {
+                console.log('[enroll] Token file detected — enrolling device...');
+                clearInterval(watcher);
+                applyEnrollmentToken(data.customToken);
+            }
+        } catch (e) { }
+    }, 5000);
+}
 
-    isMonitoringEnabled = currentSettings.proxyEnabled !== false;
-    const wsId = firebaseUid || 'default';
+function applyEnrollmentToken(token) {
+    console.log('[enroll] Applying enrollment token...');
+    const { auth } = initFirebase();
+    if (auth) {
+        signInWithCustomToken(auth, token)
+            .then(() => {
+                console.log('[enroll] ✅ Device enrolled and managed from', DASHBOARD_URL);
+            })
+            .catch((err) => {
+                console.error('[enroll] ❌ Token sign-in failed:', err.message);
+                console.error('[enroll]    The token may be expired. Generate a new one from the Admin Hub.');
+                startStandaloneProxyFallback();
+            });
+    }
+}
 
-    // Initialize proxyController if not exists
+
+function startStandaloneProxyFallback() {
     if (!proxyController) {
-        proxyController = new ProxyController(app, PROXY_SCRIPT_PATH, () => {
-            updateTray();
-            syncStatusToWindow();
-        });
+        proxyController = new ProxyController(null, PROXY_SCRIPT_PATH, () => { });
+    }
+    proxyController.syncState(true, { ...currentSettings, proxyEnabled: true });
+}
+
+// ─── Apply Configuration ─────────────────────────────────────────────────────
+function applyInterceptorSettings(settings) {
+    if (!settings) return;
+
+    currentSettings = { ...currentSettings, ...settings };
+
+    // Default monitoring to true unless explicitly disabled in settings
+    isMonitoringEnabled = currentSettings.proxyEnabled !== false;
+    console.log(`[sync] Applying settings. Monitoring enabled: ${isMonitoringEnabled}`);
+
+    if (!proxyController) {
+        proxyController = new ProxyController(null, PROXY_SCRIPT_PATH, () => { });
     }
 
-    // Sync state: The first argument controls if the system proxy is enabled/disabled.
     proxyController.syncState(isMonitoringEnabled, {
         ...currentSettings,
         uid: firebaseUid
     });
-
-    lastSyncTime = new Date().toLocaleTimeString();
-    updateTray();
-    syncStatusToWindow();
 }
 
-// ─── Heartbeat (registration only — settings come from Firestore) ───────────
-async function sendHeartbeat() {
-    const proxyRunning = proxyController ? !!proxyController.proxyProcess : false;
-    const status = isMonitoringEnabled ? (proxyRunning ? 'Healthy' : 'Connecting') : 'Offline';
-    const wsId = firebaseUid || 'default';
+// ─── Heartbeat Mechanism ─────────────────────────────────────────────────────
+function sendHeartbeat() {
+    if (!firebaseUid) return;
 
-    try {
-        const res = await fetch(`${DASHBOARD_URL}/api/agent/heartbeat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                device_id: getDeviceId(),
-                version: AGENT_VERSION,
-                hostname: os.hostname(),
-                os: process.platform === 'darwin' ? 'macOS' : 'Windows',
-                status: status,
-                service_connectivity: true,
-                traffic_routing: isMonitoringEnabled && proxyRunning,
-                os_integration: true,
-                workspace_id: wsId,
-                firebase_synced: !!firebaseUid,
-            }),
-        });
+    const payload = {
+        agent_version: AGENT_VERSION,
+        device_id: getDeviceId(),
+        proxy_running: proxyController ? !!proxyController.proxyProcess : false,
+        proxy_enabled: isMonitoringEnabled,
+        last_seen: new Date().toISOString(),
+        hostname: os.hostname(),
+        platform: os.platform(),
+    };
 
-        if (res.ok) {
-            lastSyncTime = new Date().toLocaleTimeString();
-            updateTray();
-            syncStatusToWindow();
-        }
-    } catch (err) {
-        console.warn('[heartbeat] failed:', err.message);
-    }
+    fetch(`${DASHBOARD_URL}/api/proxy/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    }).catch(err => {
+        console.warn('[heartbeat] Failed to send status:', err.message);
+    });
 }
 
-function syncStatusToWindow() {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        const proxyRunning = proxyController ? !!proxyController.proxyProcess : false;
-        mainWindow.webContents.send('status-update', {
-            status: isMonitoringEnabled ? (proxyRunning ? 'Healthy' : 'Connecting') : 'Offline',
-            deviceId: getDeviceId(),
-            lastSync: lastSyncTime,
-            isMonitoringEnabled: isMonitoringEnabled,
-            firebaseSynced: !!firebaseUid,
-            settings: currentSettings,
-        });
-    }
-}
+setInterval(sendHeartbeat, 60000); // 1 min
 
-// ─── Heartbeat-only loop (when Firebase is active) ───────────────────────────
-function startHeartbeatOnly() {
-    stopLegacyLifecycle();
-    sendHeartbeat();
-    heartbeatInterval = setInterval(() => {
-        sendHeartbeat();
-    }, 30000);
-}
+// ─── Run ─────────────────────────────────────────────────────────────────────
+console.log('');
+console.log('===================================================');
+console.log(`= Complyze Headless Shield v${AGENT_VERSION} =`);
+console.log('===================================================');
+console.log(`Dashboard: ${DASHBOARD_URL}`);
+console.log(`Device ID: ${getDeviceId()}`);
+console.log('Running seamlessly in the background.');
+console.log('');
 
-// ─── Legacy API-based sync (fallback when Firebase isn't available) ──────────
-let legacyInterval = null;
+initializeFirebaseAuth();
 
-function startLegacyLifecycle() {
-    if (legacyInterval) return;
-    sendHeartbeat();
-    syncGlobalSettingsLegacy();
-    legacyInterval = setInterval(() => {
-        sendHeartbeat();
-        syncGlobalSettingsLegacy();
-    }, 30000);
-}
-
-function stopLegacyLifecycle() {
-    if (legacyInterval) {
-        clearInterval(legacyInterval);
-        legacyInterval = null;
-    }
-    if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-    }
-}
-
-async function syncGlobalSettingsLegacy() {
-    try {
-        const res = await fetch(`${DASHBOARD_URL}/api/proxy/settings`);
-        if (res.ok) {
-            const data = await res.json();
-
-            // Re-sync if state changed OR if proxy isn't running yet but requested
-            const needsSync = data.proxy_enabled !== isMonitoringEnabled || (!proxyController?.proxyProcess);
-
-            if (needsSync) {
-                console.log(`[sync-legacy] Syncing monitoring state to ${data.proxy_enabled}`);
-                isMonitoringEnabled = data.proxy_enabled;
-
-                // Initialize proxyController if needed
-                if (!proxyController) {
-                    proxyController = new ProxyController(app, PROXY_SCRIPT_PATH, () => {
-                        updateTray();
-                        syncStatusToWindow();
-                    });
-                }
-
-                // Sync the state
-                proxyController.syncState(isMonitoringEnabled, {
-                    ...currentSettings,
-                    proxyEnabled: isMonitoringEnabled,
-                    uid: firebaseUid
-                });
-
-                updateTray();
-                syncStatusToWindow();
-            }
-        }
-    } catch (err) {
-        console.warn('[sync-legacy] settings failed:', err.message);
-    }
-}
-
-// Proxy management moved to ProxyController
-
-// ─── UI / Tray ───────────────────────────────────────────────────────────────
-function getStatusLabel() {
-    if (!isMonitoringEnabled) return 'Monitoring Disabled';
-    const proxyRunning = proxyController ? !!proxyController.proxyProcess : false;
-    if (proxyRunning) return 'Monitoring Active';
-    return 'Initializing...';
-}
-
-function getSyncLabel() {
-    if (firebaseUid) return 'Realtime Sync (Firebase)';
-    return 'API Sync (Legacy)';
-}
-
-function getStatusIcon() {
-    // Use pre-generated colored PNG icons (green = active, gray = inactive).
-    // Electron's nativeImage.createFromDataURL does NOT support SVG, only raster.
-    // Do NOT use setTemplateImage — that forces macOS monochrome rendering.
-    const iconFile = isMonitoringEnabled ? 'tray-active.png' : 'tray-inactive.png';
-    const iconPath = path.join(__dirname, iconFile);
-    const img = nativeImage.createFromPath(iconPath);
-    const resized = img.resize({ width: 18, height: 18 });
-    resized.setTemplateImage(false);
-    return resized;
-}
-
-function getEnrollmentLabel() {
-    if (firebaseUid) return `Enrolled (${firebaseUid.substring(0, 8)}...)`;
-    return 'Not Enrolled — click to set up';
-}
-
-function updateTray() {
-    if (!tray) return;
-
-    const proxyRunning = proxyController ? !!proxyController.proxyProcess : false;
-    const shieldStatus = isMonitoringEnabled
-        ? (proxyRunning ? '🟢 Shield Active' : '🟡 Shield Starting...')
-        : '🔴 Shield Off';
-
-    const contextMenu = Menu.buildFromTemplate([
-        { label: `Complyze Shield  v${AGENT_VERSION}`, enabled: false },
-        { label: shieldStatus, enabled: false },
-        { label: `Enrolled: ${getEnrollmentLabel()}`, enabled: false },
-        { label: `Last Sync: ${lastSyncTime}`, enabled: false },
-        { type: 'separator' },
-        {
-            label: isMonitoringEnabled ? '⏸  Pause Monitoring' : '▶  Resume Monitoring',
-            click: () => toggleMonitoring()
-        },
-        {
-            label: '🌐 Open Admin Hub',
-            click: () => shell.openExternal(ADMIN_HUB_URL)
-        },
-        {
-            label: '📋 Open Status Window',
-            click: () => createWindow()
-        },
-        { type: 'separator' },
-        {
-            label: '🗑  Uninstall Agent...',
-            click: () => {
-                shell.openExternal('https://complyze.co/docs/uninstall');
-            }
-        },
-        { label: 'Quit', click: () => { app.isQuiting = true; app.quit(); } },
-    ]);
-
-    tray.setImage(getStatusIcon());
-    tray.setToolTip(`Complyze: ${shieldStatus}`);
-    tray.setContextMenu(contextMenu);
-}
-
-function toggleMonitoring() {
-    isMonitoringEnabled = !isMonitoringEnabled;
-
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+    console.log('Shutting down gracefully...');
     if (proxyController) {
-        proxyController.syncState(isMonitoringEnabled, {
-            ...currentSettings,
-            proxyEnabled: isMonitoringEnabled,
-            uid: firebaseUid
-        });
+        await proxyController.stopProxy();
     }
-
-    // Write toggle state back to RTDB so dashboard reflects change
-    if (firebaseUid) {
-        settingsSync.updateSettings({
-            proxyEnabled: isMonitoringEnabled,
-        });
-    }
-
-    sendHeartbeat();
-    syncStatusToWindow();
-    updateTray();
-
-    new Notification({
-        title: 'Complyze Agent',
-        body: isMonitoringEnabled ? 'Monitoring has been enabled.' : 'Monitoring has been disabled.'
-    }).show();
-}
-
-process.on('uncaughtException', (err) => {
-    console.error('UNCAUGHT EXCEPTION:', err);
-});
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('UNHANDLED REJECTION:', reason);
+    process.exit(0);
 });
 
-function createWindow() {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.show();
-        mainWindow.focus();
-        return;
+process.on('SIGTERM', async () => {
+    console.log('Shutting down gracefully...');
+    if (proxyController) {
+        await proxyController.stopProxy();
     }
-
-    mainWindow = new BrowserWindow({
-        width: 600,
-        height: 500,
-        resizable: false,
-        icon: path.join(__dirname, 'icon.png'),
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
-        },
-        titleBarStyle: 'hiddenInset',
-        // Show in taskbar so user can find it when opened from tray
-        skipTaskbar: false,
-        show: false
-    });
-
-    mainWindow.loadFile(path.join(__dirname, 'index.html'));
-
-    mainWindow.once('ready-to-show', () => {
-        mainWindow.show();
-        syncStatusToWindow();
-    });
-
-    mainWindow.on('close', (event) => {
-        if (!app.isQuiting) {
-            event.preventDefault();
-            mainWindow.hide();
-        }
-    });
-}
-
-ipcMain.on('toggle-monitoring', () => {
-    toggleMonitoring();
+    process.exit(0);
 });
-
-// Handle Firebase token from dashboard deep link
-ipcMain.on('firebase-token', (event, token) => {
-    if (token) {
-        const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
-        fs.writeFileSync(tokenPath, JSON.stringify({ customToken: token }));
-        const { auth } = initFirebase();
-        if (auth) {
-            signInWithCustomToken(auth, token).catch((err) => {
-                console.error('[firebase] Sign-in with token failed:', err.message);
-            });
-        }
-    }
-});
-
-// ─── App Lifecycle ───────────────────────────────────────────────────────────
-
-// Helper: show and focus the main window (create if needed)
-function showAndFocusWindow() {
-    if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        mainWindow.show();
-        mainWindow.focus();
-    } else {
-        createWindow();
-    }
-}
-
-// Helper: handle deep link URLs
-// complyze://open                          — wake agent
-// complyze://enroll?token=XYZ              — enrollment (admin-generated token)
-// complyze://login?token=XYZ              — Firebase auth token from dashboard
-function handleDeepLink(url) {
-    if (!url || typeof url !== 'string') return;
-    console.log('[protocol] Received deep link:', url);
-
-    try {
-        const parsed = new URL(url);
-
-        if (parsed.protocol !== 'complyze:') return;
-
-        // ─── ENROLL: complyze://enroll?token=XYZ (⭐ Primary onboarding path)
-        if (parsed.hostname === 'enroll') {
-            const enrollToken = parsed.searchParams.get('token');
-            if (enrollToken) {
-                console.log('[protocol] Enrollment token received');
-                const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
-                fs.writeFileSync(tokenPath, JSON.stringify({ customToken: enrollToken }));
-
-                const { auth } = initFirebase();
-                if (auth) {
-                    signInWithCustomToken(auth, enrollToken)
-                        .then(() => {
-                            new Notification({
-                                title: 'Complyze Shield Enrolled ✅',
-                                body: 'This device is now enrolled and managed from complyze.co.',
-                            }).show();
-                            updateTray();
-                        })
-                        .catch((err) => {
-                            console.error('[protocol] Enrollment sign-in failed:', err.message);
-                            new Notification({
-                                title: 'Enrollment Failed',
-                                body: 'Invalid or expired enrollment token. Please contact your admin.',
-                            }).show();
-                        });
-                }
-            }
-            return;
-        }
-
-        // ─── DASHBOARD URL: complyze://open?dashboard=https://...
-        const dashboardParam = parsed.searchParams.get('dashboard');
-        if (dashboardParam && process.env.COMPLYZE_DASHBOARD !== dashboardParam) {
-            console.log(`[protocol] Updating DASHBOARD_URL to: ${dashboardParam}`);
-            process.env.COMPLYZE_DASHBOARD = dashboardParam;
-
-            if (proxyController && proxyController.proxyProcess) {
-                proxyController.stopProxy().then(() => {
-                    firebaseUid ? sendHeartbeat() : syncGlobalSettingsLegacy();
-                });
-            } else {
-                firebaseUid ? sendHeartbeat() : syncGlobalSettingsLegacy();
-            }
-        }
-
-        // ─── LOGIN: complyze://login?token=XYZ (legacy dashboard auth)
-        if (parsed.hostname === 'login') {
-            const token = parsed.searchParams.get('token');
-            if (token) {
-                const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
-                fs.writeFileSync(tokenPath, JSON.stringify({ customToken: token }));
-                const { auth } = initFirebase();
-                if (auth) {
-                    signInWithCustomToken(auth, token).catch((err) => {
-                        console.error('[firebase] Deep-link sign-in failed:', err.message);
-                    });
-                }
-            }
-        }
-
-    } catch (e) {
-        console.warn('[protocol] Failed to parse deep link URL:', e.message);
-    }
-}
-
-// Register protocol for browser deep-linking
-if (process.defaultApp) {
-    if (process.argv.length >= 2) {
-        app.setAsDefaultProtocolClient('complyze', process.execPath, [path.resolve(process.argv[1])]);
-    }
-} else {
-    app.setAsDefaultProtocolClient('complyze');
-}
-
-// Prevent multiple instances
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-    app.quit();
-} else {
-    app.on('second-instance', (event, commandLine, workingDirectory) => {
-        // Someone tried to run a second instance, we should focus our window.
-        showAndFocusWindow();
-
-        // Handle protocol link: complyze://open or complyze://login
-        const url = commandLine.pop();
-        handleDeepLink(url);
-    });
-
-    // macOS: handle complyze:// protocol when app is already running
-    app.on('open-url', (event, url) => {
-        event.preventDefault();
-        handleDeepLink(url);
-    });
-    app.on('ready', () => {
-        // Headless daemon startup — Tray ONLY, no window on start
-        tray = new Tray(getStatusIcon());
-        tray.setToolTip('Complyze Shield — Starting...');
-        updateTray();
-
-        // Boot the Firebase sync and proxy without opening any window
-        setTimeout(() => {
-            initializeFirebaseAuth();
-            // syncState will be called inside applyInterceptorSettings via initializeFirebaseAuth subscription
-
-            // Show a brief startup notification so user knows the agent is running
-            new Notification({
-                title: 'Complyze Shield Active',
-                body: 'AI monitoring is running in the background. Manage from complyze.co.',
-                silent: true,
-            }).show();
-        }, 100);
-    });
-
-    app.on('window-all-closed', (e) => {
-        e.preventDefault(); // Keep app running in tray
-    });
-
-    app.on('before-quit', () => {
-        settingsSync.unsubscribe();
-        stopLegacyLifecycle();
-        stopProxy();
-    });
-}

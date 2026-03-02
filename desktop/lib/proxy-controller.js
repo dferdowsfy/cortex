@@ -1,12 +1,22 @@
-const { fork, execSync } = require('child_process');
+const { fork, execSync, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
-const sudo = require('sudo-prompt');
 const os = require('os');
 
 const PROXY_PORT = 8080;
-const sudoOptions = { name: 'Complyze Agent' };
+
+// Helper to run commands with admin privileges natively on macOS
+function execSudo(command) {
+    return new Promise((resolve, reject) => {
+        const escapedCmd = command.replace(/"/g, '\\"');
+        const osaCmd = `osascript -e 'do shell script "${escapedCmd}" with administrator privileges'`;
+        exec(osaCmd, (err, stdout, stderr) => {
+            if (err) return reject(err);
+            resolve(stdout);
+        });
+    });
+}
 
 class ProxyController {
     constructor(app, scriptPath, monitorCallback) {
@@ -51,16 +61,18 @@ class ProxyController {
             env: {
                 ...process.env,
                 CERTS_DIR: this.certsDir,
-                COMPLYZE_API: process.env.COMPLYZE_API || `${process.env.COMPLYZE_DASHBOARD || 'http://localhost:3737'}/api/proxy/intercept`,
-                COMPLYZE_DASHBOARD: process.env.COMPLYZE_DASHBOARD || 'http://localhost:3737',
+                COMPLYZE_API: process.env.COMPLYZE_API || `${process.env.COMPLYZE_DASHBOARD || 'https://complyze.co'}/api/proxy/intercept`,
+                COMPLYZE_DASHBOARD: process.env.COMPLYZE_DASHBOARD || 'https://complyze.co',
+                // Observe-only defaults — admin can override via Firebase settings
+                ENFORCEMENT_MODE: settings.enforcementMode || 'monitor',
+                FAIL_OPEN: 'true',               // Never block on inspection error
+                BLOCK_HIGH_RISK: String(settings.blockHighRisk === true),
+                REDACT_SENSITIVE: String(settings.redactSensitive === true),
                 PROXY_ENABLED: String(settings.proxyEnabled !== false),
-                BLOCK_ENABLED: String(settings.blockEnabled),
-                BLOCK_HIGH_RISK: String(settings.blockHighRisk),
-                REDACT_SENSITIVE: String(settings.redactSensitive),
-                RISK_THRESHOLD: String(settings.riskThreshold),
-                DESKTOP_BYPASS: String(settings.desktopBypass),
-                USER_ATTRIBUTION_ENABLED: String(settings.userAttributionEnabled),
-                INSPECT_ATTACHMENTS: String(settings.inspectAttachments || false),
+                DESKTOP_BYPASS: String(settings.desktopBypass === true),
+                USER_ATTRIBUTION_ENABLED: String(settings.userAttributionEnabled !== false),
+                INSPECT_ATTACHMENTS: String(settings.inspectAttachments === true),
+                RISK_THRESHOLD: String(settings.riskThreshold || 60),
                 FIREBASE_UID: settings.uid || '',
             }
         });
@@ -106,10 +118,12 @@ class ProxyController {
         }
 
         const trustCmd = `security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "${certPath}"`;
-        sudo.exec(trustCmd, sudoOptions, (err) => {
-            if (err) console.error('[proxy-ctrl] Failed to trust CA cert:', err);
-            else console.log('[proxy-ctrl] CA cert trusted successfully');
-        });
+        try {
+            await execSudo(trustCmd);
+            console.log('[proxy-ctrl] CA cert trusted successfully');
+        } catch (err) {
+            console.error('[proxy-ctrl] Failed to trust CA cert:', err);
+        }
     }
 
     async enableSystemProxy() {
@@ -124,9 +138,11 @@ class ProxyController {
             `networksetup -setsecurewebproxystate "${iface}" on && ` +
             `networksetup -setautoproxystate "${iface}" off`; // Disable PAC just in case
 
-        sudo.exec(cmd, sudoOptions, (err) => {
-            if (err) console.error('[proxy-ctrl] Failed to set system proxy:', err);
-        });
+        try {
+            await execSudo(cmd);
+        } catch (err) {
+            console.error('[proxy-ctrl] Failed to set system proxy:', err);
+        }
     }
 
     async disableSystemProxy() {
@@ -137,9 +153,11 @@ class ProxyController {
         const cmd = `networksetup -setwebproxystate "${iface}" off && ` +
             `networksetup -setsecurewebproxystate "${iface}" off`;
 
-        sudo.exec(cmd, sudoOptions, (err) => {
-            if (err) console.error('[proxy-ctrl] Failed to disable system proxy:', err);
-        });
+        try {
+            await execSudo(cmd);
+        } catch (err) {
+            console.error('[proxy-ctrl] Failed to disable system proxy:', err);
+        }
     }
 
     startFailSafe() {
