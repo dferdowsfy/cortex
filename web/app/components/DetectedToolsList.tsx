@@ -63,7 +63,7 @@ export default function DetectedToolsList({
                             <div className="min-w-0 flex-1 flex items-start gap-5">
                                 <div className="flex-shrink-0">
                                     <div className="h-12 w-12 rounded-lg bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-400 text-xs shadow-sm group-hover:border-gray-300 transition-colors uppercase">
-                                        {tool.tool_name.substring(0, 2)}
+                                        {tool.tool_name?.substring(0, 2) || "??"}
                                     </div>
                                 </div>
                                 <div className="min-w-0 flex-1">

@@ -102,7 +102,19 @@ class AssessmentStore {
                 }
                 return [];
             } catch (error) {
-                console.error("[assessment-store] Failed to get reports from RTDB:", error);
+                console.warn("[assessment-store] Failed to get indexed reports, trying full fetch:", error);
+                try {
+                    const snap = await db.ref(`workspaces/${workspaceId}/reports`).get();
+                    if (snap.exists()) {
+                        const data = snap.val();
+                        const all = Object.values(data);
+                        return all.sort((a: any, b: any) =>
+                            new Date(b.date).getTime() - new Date(a.date).getTime()
+                        );
+                    }
+                } catch (inner) {
+                    console.error("[assessment-store] Full reports fetch failed:", inner);
+                }
             }
         }
         return localStorage.getWorkspaceData(workspaceId, "reports", []) as any[];

@@ -6,16 +6,27 @@ export async function GET() {
         if (!adminDb) return NextResponse.json({ error: "Firebase not initialized" }, { status: 500 });
 
         const ref = adminDb.ref("audit_reports");
-        // Get the last 20 reports
-        const snapshot = await ref.orderByChild("created_at").limitToLast(20).once("value");
+        let reports: any[] = [];
 
-        const reports: any[] = [];
-        snapshot.forEach((child) => {
-            reports.push({
-                id: child.key,
-                ...child.val()
+        try {
+            const snapshot = await ref.orderByChild("created_at").limitToLast(20).once("value");
+            snapshot.forEach((child) => {
+                reports.push({ id: child.key, ...child.val() });
             });
-        });
+        } catch (err) {
+            console.warn("[audit-history] Indexed fetch failed, trying full fetch:", err);
+            const snapshot = await ref.get();
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                reports = Object.entries(data).map(([key, val]: [string, any]) => ({
+                    id: key,
+                    ...val
+                })).sort((a: any, b: any) =>
+                    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                ).slice(0, 20);
+            }
+        }
+
 
         console.log(`[audit-history] Found ${reports.length} reports in Firebase`);
 

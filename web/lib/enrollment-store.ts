@@ -187,15 +187,27 @@ class EnrollmentStore {
     }
 
     async listTokens(org_id: string, workspaceId: string = "default"): Promise<EnrollmentToken[]> {
-        let tokens: EnrollmentToken[] = [];
-        if (adminDb && adminDb.app.options.databaseURL) {
-            const snap = await adminDb.ref(TOKENS_PATH).orderByChild('org_id').equalTo(org_id).get();
-            if (snap.exists()) tokens = Object.values(snap.val());
-        } else {
-            const allTokens = localStorage.getWorkspaceData(workspaceId, "enrollment_tokens", {}) as Record<string, EnrollmentToken>;
-            tokens = Object.values(allTokens).filter((t: any) => t.org_id === org_id);
+        try {
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(TOKENS_PATH).orderByChild('org_id').equalTo(org_id).get();
+                if (snap.exists()) return Object.values(snap.val());
+            }
+        } catch (err) {
+            console.error("[enrollment-store] listTokens fallback:", err);
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(TOKENS_PATH).get();
+                if (snap.exists()) {
+                    const all = Object.values(snap.val()) as EnrollmentToken[];
+                    return all.filter(t => t.org_id === org_id);
+                }
+            }
         }
-        return tokens;
+
+        if (!adminDb || !adminDb.app.options.databaseURL) {
+            const allTokens = localStorage.getWorkspaceData(workspaceId, "enrollment_tokens", {}) as Record<string, EnrollmentToken>;
+            return Object.values(allTokens).filter((t: any) => t.org_id === org_id);
+        }
+        return [];
     }
 
     async revokeToken(token_id: string, workspaceId?: string): Promise<void> {
@@ -281,15 +293,27 @@ class EnrollmentStore {
     }
 
     async listDevices(org_id: string, workspaceId: string = "default"): Promise<Device[]> {
-        let devices: Device[] = [];
-        if (adminDb && adminDb.app.options.databaseURL) {
-            const snap = await adminDb.ref(DEVICES_PATH).orderByChild('org_id').equalTo(org_id).get();
-            if (snap.exists()) devices = Object.values(snap.val());
-        } else {
-            const allDevices = localStorage.getWorkspaceData(workspaceId, "devices", {}) as Record<string, Device>;
-            devices = Object.values(allDevices).filter((d: any) => d.org_id === org_id);
+        try {
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(DEVICES_PATH).orderByChild('org_id').equalTo(org_id).get();
+                if (snap.exists()) return Object.values(snap.val());
+            }
+        } catch (err) {
+            console.error("[enrollment-store] listDevices fallback:", err);
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(DEVICES_PATH).get();
+                if (snap.exists()) {
+                    const all = Object.values(snap.val()) as Device[];
+                    return all.filter(d => d.org_id === org_id);
+                }
+            }
         }
-        return devices;
+
+        if (!adminDb || !adminDb.app.options.databaseURL) {
+            const allDevices = localStorage.getWorkspaceData(workspaceId, "devices", {}) as Record<string, Device>;
+            return Object.values(allDevices).filter((d: any) => d.org_id === org_id);
+        }
+        return [];
     }
 
     async listAllDevices(workspaceId: string = "default"): Promise<Device[]> {

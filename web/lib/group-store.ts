@@ -98,10 +98,23 @@ class GroupStore {
     }
 
     async listGroups(org_id: string, workspaceId: string = "default"): Promise<Group[]> {
-        if (adminDb && adminDb.app.options.databaseURL) {
-            const snap = await adminDb.ref(GROUPS_PATH).orderByChild("org_id").equalTo(org_id).get();
-            if (snap.exists()) return Object.values(snap.val());
-        } else {
+        try {
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(GROUPS_PATH).orderByChild("org_id").equalTo(org_id).get();
+                if (snap.exists()) return Object.values(snap.val());
+            }
+        } catch (err) {
+            console.error("[group-store] Indexed query failed, falling back to local filter:", err);
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(GROUPS_PATH).get();
+                if (snap.exists()) {
+                    const allGroups = Object.values(snap.val()) as Group[];
+                    return allGroups.filter(g => g.org_id === org_id);
+                }
+            }
+        }
+
+        if (!adminDb || !adminDb.app.options.databaseURL) {
             const all = localStorage.getWorkspaceData(workspaceId, "groups", {}) as Record<string, Group>;
             return Object.values(all).filter((g: any) => g.org_id === org_id);
         }
@@ -175,13 +188,26 @@ class GroupStore {
     }
 
     async getPolicyByGroup(group_id: string, workspaceId: string = "default"): Promise<GroupPolicy | null> {
-        if (adminDb && adminDb.app.options.databaseURL) {
-            const snap = await adminDb.ref(GROUP_POLICIES_PATH).orderByChild("group_id").equalTo(group_id).get();
-            if (snap.exists()) {
-                const vals = Object.values(snap.val()) as GroupPolicy[];
-                return vals[0] || null;
+        try {
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(GROUP_POLICIES_PATH).orderByChild("group_id").equalTo(group_id).get();
+                if (snap.exists()) {
+                    const vals = Object.values(snap.val()) as GroupPolicy[];
+                    return vals[0] || null;
+                }
             }
-        } else {
+        } catch (err) {
+            console.error("[group-store] getPolicyByGroup fallback:", err);
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(GROUP_POLICIES_PATH).get();
+                if (snap.exists()) {
+                    const allPolicies = Object.values(snap.val()) as GroupPolicy[];
+                    return allPolicies.find(p => p.group_id === group_id) || null;
+                }
+            }
+        }
+
+        if (!adminDb || !adminDb.app.options.databaseURL) {
             const policies = localStorage.getWorkspaceData(workspaceId, "group_policies", {}) as Record<string, GroupPolicy>;
             return Object.values(policies).find((p: any) => p.group_id === group_id) || null;
         }

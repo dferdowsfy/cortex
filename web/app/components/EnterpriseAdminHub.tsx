@@ -539,7 +539,7 @@ export default function EnterpriseAdminHub() {
                                         <tr key={d.device_id} className="hover:bg-white/[0.02] transition-colors group">
                                             <td className="px-6 py-4">
                                                 <p className="text-sm font-black text-white/90 uppercase">{d.hostname || "Unknown"}</p>
-                                                <p className="text-[9px] text-white/50 font-mono">{d.device_id.substring(0, 16)}…</p>
+                                                <p className="text-[9px] text-white/50 font-mono">{d.device_id?.substring(0, 16) || "..."}…</p>
                                             </td>
                                             <td className="px-6 py-4"><span className="text-xs font-bold text-white/70 uppercase">{d.os_type || "—"}</span></td>
                                             <td className="px-6 py-4"><span className="text-xs font-mono text-white/60">v{d.agent_version || "—"}</span></td>
@@ -842,7 +842,7 @@ export default function EnterpriseAdminHub() {
                                     <span className="text-[9px] font-black text-white/40 font-mono w-6 text-center shrink-0">{rule.priority}</span>
                                     <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase shrink-0 ${ACTION_BADGE[rule.action] || "bg-white/10 text-white/60"}`}>{rule.action}</span>
                                     <span className="flex items-center gap-1.5 text-[9px] font-black text-white/50 uppercase shrink-0">{typeIcon}{parsed.type.replace(/_/g, " ")}</span>
-                                    <span className="flex-1 text-xs font-semibold text-white/80 truncate">{parsed.displayLabel}</span>
+                                    <span className="flex-1 text-xs font-semibold text-white/80 truncate">{parsed.displayLabel || "unnamed target"}</span>
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                         <button onClick={() => handleToggleRule(rule.rule_id)} className="text-white/50 hover:text-white text-[9px] font-black uppercase transition-all">
                                             {rule.enabled ? "Disable" : "Enable"}

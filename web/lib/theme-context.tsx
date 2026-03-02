@@ -12,35 +12,31 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setTheme] = useState<Theme>("dark");
+    const [theme] = useState<Theme>("dark");
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem("theme") as Theme | null;
-        if (savedTheme) {
-            setTheme(savedTheme);
-        }
-        // Default to dark mode; do not follow system preference since
-        // light mode has incomplete styling across many components.
+        // ALWAYS force dark mode to ensure consistent premium aesthetic.
+        // Light mode is deprecated due to incomplete visibility on many components.
+        localStorage.setItem("theme", "dark");
         setMounted(true);
     }, []);
 
     useEffect(() => {
         if (!mounted) return;
-
         const root = window.document.documentElement;
-        root.classList.remove("light", "dark");
-        root.classList.add(theme);
-        localStorage.setItem("theme", theme);
-    }, [theme, mounted]);
+        root.classList.remove("light");
+        root.classList.add("dark");
+    }, [mounted]);
 
     const toggleTheme = () => {
-        setTheme(prev => (prev === "dark" ? "light" : "dark"));
+        // Manual toggle disabled to maintain brand aesthetic
+        console.log("Light mode is disabled.");
     };
 
     return (
         <ThemeContext.Provider value={{ theme, toggleTheme }}>
-            <div className={mounted ? "" : "dark"}>
+            <div className="dark">
                 {children}
             </div>
         </ThemeContext.Provider>

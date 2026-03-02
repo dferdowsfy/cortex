@@ -329,7 +329,7 @@ export default function MonitoringPage() {
                                 <tr key={agent.device_id} className="hover:bg-white/[0.02] transition-colors group">
                                     <td className="px-8 py-5">
                                         <p className="text-sm font-black text-primary uppercase tracking-tight">{agent.hostname}</p>
-                                        <p className="text-[9px] text-muted font-bold font-mono uppercase mt-0.5">{agent.device_id.substring(0, 12)}</p>
+                                        <p className="text-[9px] text-muted font-bold font-mono uppercase mt-0.5">{agent.device_id?.substring(0, 12) || "..."}</p>
                                     </td>
                                     <td className="px-8 py-5">
                                         <div className="flex items-center gap-2">

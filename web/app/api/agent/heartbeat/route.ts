@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
         // Normalize agent registry → unified Agent shape
         const fromRegistry = registryAgents.map(a => ({
             device_id: a.device_id,
-            hostname: a.hostname || a.device_id.substring(0, 12),
+            hostname: a.hostname || a.device_id?.substring(0, 12) || "unknown",
             os_type: a.os,          // AgentRegistration uses 'os'
             agent_version: a.version, // AgentRegistration uses 'version'
             last_sync: a.last_sync,
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
             const isStale = now - lastSeen > OFFLINE_THRESHOLD_MS;
             return {
                 device_id: d.device_id,
-                hostname: d.device_name || d.device_id.substring(0, 12),
+                hostname: d.device_name || d.device_id?.substring(0, 12) || "unknown",
                 os_type: d.os_type,
                 agent_version: d.agent_version,
                 last_sync: d.last_heartbeat,

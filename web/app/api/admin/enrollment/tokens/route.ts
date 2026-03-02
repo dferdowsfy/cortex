@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
         const tokens = raw.map(t => ({
             id: t.token_id,
             // Show only the token_id prefix — raw token is one-time-display only
-            token: `${t.token_id.substring(0, 8)}…`,
+            token: `${t.token_id?.substring(0, 8) || "..."}…`,
             status: t.revoked ? "revoked" : new Date(t.expires_at) < now ? "expired" : "active",
             created_at: t.created_at,
             expires_at: t.expires_at,

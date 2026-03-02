@@ -228,7 +228,20 @@ class ProxyStore {
                     return Object.values(data).reverse();
                 }
             } catch (err) {
-                console.warn("[proxy-store] getEvents RTDB error:", err);
+                console.warn("[proxy-store] getEvents indexed query failed, trying full fetch:", err);
+                try {
+                    const path = `workspaces/${workspaceId}/${EVENTS_PATH}`;
+                    const snap = await db.ref(path).get();
+                    if (snap.exists()) {
+                        const data = snap.val() as Record<string, ActivityEvent>;
+                        const sorted = Object.values(data).sort((a, b) =>
+                            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                        );
+                        return sorted.slice(0, limitCount);
+                    }
+                } catch (inner) {
+                    console.warn("[proxy-store] getEvents fallback failed:", inner);
+                }
             }
         }
         return getMemEvents(workspaceId).slice(0, limitCount);
@@ -261,7 +274,20 @@ class ProxyStore {
                     return Object.values(data).reverse();
                 }
             } catch (err) {
-                console.warn("[proxy-store] getAlerts RTDB error:", err);
+                console.warn("[proxy-store] getAlerts indexed query failed, trying full fetch:", err);
+                try {
+                    const path = `workspaces/${workspaceId}/${ALERTS_PATH}`;
+                    const snap = await db.ref(path).get();
+                    if (snap.exists()) {
+                        const data = snap.val() as Record<string, ProxyAlert>;
+                        const sorted = Object.values(data).sort((a, b) =>
+                            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                        );
+                        return sorted.slice(0, limitCount);
+                    }
+                } catch (inner) {
+                    console.warn("[proxy-store] getAlerts fallback failed:", inner);
+                }
             }
         }
         return getMemAlerts(workspaceId).slice(0, limitCount);

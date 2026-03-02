@@ -765,7 +765,7 @@ export default function EnrollmentAdminPanel() {
                                                 <tr key={device.device_id} className="hover:bg-white/[0.01] transition-colors">
                                                     <td className="py-3.5 pr-6">
                                                         <p className="text-xs font-black text-white/80 uppercase tracking-tight">{device.hostname}</p>
-                                                        <p className="text-[9px] text-white/20 font-mono mt-0.5">{device.device_id.substring(0, 12)}</p>
+                                                        <p className="text-[9px] text-white/20 font-mono mt-0.5">{device.device_id?.substring(0, 12) || "..."}</p>
                                                     </td>
                                                     <td className="py-3.5 pr-6">
                                                         <span className="text-xs font-bold text-white/50 uppercase">{device.os_type || "—"}</span>

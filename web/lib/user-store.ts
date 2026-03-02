@@ -71,10 +71,23 @@ class UserStore {
     }
 
     async listUsers(org_id: string, workspaceId: string = "default"): Promise<ManagedUser[]> {
-        if (adminDb && adminDb.app.options.databaseURL) {
-            const snap = await adminDb.ref(MANAGED_USERS_PATH).orderByChild("org_id").equalTo(org_id).get();
-            if (snap.exists()) return Object.values(snap.val());
-        } else {
+        try {
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(MANAGED_USERS_PATH).orderByChild("org_id").equalTo(org_id).get();
+                if (snap.exists()) return Object.values(snap.val());
+            }
+        } catch (err) {
+            console.error("[user-store] listUsers fallback:", err);
+            if (adminDb && adminDb.app.options.databaseURL) {
+                const snap = await adminDb.ref(MANAGED_USERS_PATH).get();
+                if (snap.exists()) {
+                    const all = Object.values(snap.val()) as ManagedUser[];
+                    return all.filter(u => u.org_id === org_id);
+                }
+            }
+        }
+
+        if (!adminDb || !adminDb.app.options.databaseURL) {
             const all = localStorage.getWorkspaceData(workspaceId, "managed_users", {}) as Record<string, ManagedUser>;
             return Object.values(all).filter((u: any) => u.org_id === org_id);
         }
