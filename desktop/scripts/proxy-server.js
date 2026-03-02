@@ -384,11 +384,29 @@ async function logToComplyze(targetUrl, method, headers, body, dlpResult = null)
             const data = await res.json();
             const eid = data.event_id || data['X-Complyze-Event-Id'] || 'ok';
             console.log(`      ✅ Logged [${payload.user_id}] event #${n} (${eid})`);
+            telemetry.log('event_logged', {
+                id: n,
+                eid,
+                user_id: payload.user_id,
+                application: payload.application,
+                target: targetUrl
+            });
         } else {
             console.log(`      ⚠️  Log failed #${n}: HTTP ${res.status}`);
+            telemetry.log('event_log_failed', {
+                id: n,
+                status: res.status,
+                user_id: payload.user_id,
+                target: targetUrl
+            });
         }
     } catch (e) {
         console.error(`      ❌ Log error #${n}: ${e.message}`);
+        telemetry.log('event_log_error', {
+            id: n,
+            error: e.message,
+            target: targetUrl
+        });
     }
 }
 

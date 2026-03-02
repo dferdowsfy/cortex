@@ -47,6 +47,16 @@ function MonitoringToggle({ collapsed }: { collapsed: boolean }) {
                 }),
             });
 
+            if (res.ok && newState) {
+                // For local automation: attempt to wake up the desktop agent with current dashboard context
+                const dashboardUrl = window.location.origin;
+                const iframe = document.createElement("iframe");
+                iframe.style.display = "none";
+                iframe.src = `complyze://open?dashboard=${encodeURIComponent(dashboardUrl)}`;
+                document.body.appendChild(iframe);
+                setTimeout(() => document.body.removeChild(iframe), 500);
+            }
+
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 const errMsg = data.error || "Failed to update proxy";

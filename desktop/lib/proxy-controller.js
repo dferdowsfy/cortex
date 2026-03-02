@@ -51,6 +51,8 @@ class ProxyController {
             env: {
                 ...process.env,
                 CERTS_DIR: this.certsDir,
+                COMPLYZE_API: process.env.COMPLYZE_API || `${process.env.COMPLYZE_DASHBOARD || 'http://localhost:3737'}/api/proxy/intercept`,
+                COMPLYZE_DASHBOARD: process.env.COMPLYZE_DASHBOARD || 'http://localhost:3737',
                 PROXY_ENABLED: String(settings.proxyEnabled !== false),
                 BLOCK_ENABLED: String(settings.blockEnabled),
                 BLOCK_HIGH_RISK: String(settings.blockHighRisk),

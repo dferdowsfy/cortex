@@ -63,37 +63,30 @@ function ProxyStatusBanner({ health, onStartProxy }: { health: ProxyHealth | nul
                 {isToggleOnButNotRunning && (
                     <>
                         <p className="text-sm font-bold text-red-400 mb-1">⚠️ AI Shield Not Intercepting — Proxy Server Down</p>
-                        <p className="text-xs text-red-300/80 leading-relaxed mb-3">
-                            The AI monitoring toggle is ON but the local proxy server is not running.
-                            Sensitive prompts sent to ChatGPT, Claude, and Gemini are <strong className="text-red-300">NOT being captured</strong>.
-                        </p>
-                        <p className="text-xs text-red-300/60 font-mono mb-3">
-                            Run in terminal: <code className="bg-red-900/30 px-2 py-0.5 rounded text-red-300">cd cortex/web && ./scripts/start-shield.sh</code>
+                        <p className="text-xs text-red-300/80 leading-relaxed mb-4">
+                            The AI monitoring toggle is ON but the local proxy server is not responding.
+                            Sensitive prompts are <strong className="text-red-300">NOT being captured</strong>.
                         </p>
                         <button
                             onClick={onStartProxy}
-                            className="text-xs font-bold px-4 py-2 rounded-lg bg-red-500 hover:bg-red-400 text-white transition-colors"
+                            className="text-xs font-bold px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-all shadow-lg active:scale-95"
                         >
-                            Start Proxy & Enable System Proxy
+                            Reconnect & Launch Agent
                         </button>
                     </>
                 )}
                 {isRunningButSysProxyOff && (
                     <>
                         <p className="text-sm font-bold text-amber-400 mb-1">⚠️ Proxy Running — System Proxy Route Missing</p>
-                        <p className="text-xs text-amber-300/80 leading-relaxed mb-3">
-                            The local proxy server is running on <strong className="text-amber-300">127.0.0.1:8080</strong> but your
-                            macOS System Proxy is <strong className="text-amber-300">disabled</strong>.
-                            Browser traffic bypasses the proxy and sensitive prompts are <strong className="text-amber-300">not captured</strong>.
-                        </p>
-                        <p className="text-xs text-amber-300/60 font-mono mb-3">
-                            Run: <code className="bg-amber-900/30 px-2 py-0.5 rounded text-amber-300">./scripts/start-shield.sh</code>
+                        <p className="text-xs text-amber-300/80 leading-relaxed mb-4">
+                            The local proxy server is running, but your system routing is <strong className="text-amber-300">disabled</strong>.
+                            Traffic is currently bypassing the governance shield.
                         </p>
                         <button
                             onClick={onStartProxy}
-                            className="text-xs font-bold px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white transition-colors"
+                            className="text-xs font-bold px-5 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-all shadow-lg active:scale-95"
                         >
-                            Enable System Proxy
+                            Enable System Shield
                         </button>
                     </>
                 )}
@@ -191,6 +184,14 @@ export default function Dashboard() {
         if (startingProxy) return;
         setStartingProxy(true);
         try {
+            // Trigger the local agent via custom protocol with current environment context
+            const dashboardUrl = window.location.origin;
+            const iframe = document.createElement("iframe");
+            iframe.style.display = "none";
+            iframe.src = `complyze://open?dashboard=${encodeURIComponent(dashboardUrl)}`;
+            document.body.appendChild(iframe);
+            setTimeout(() => document.body.removeChild(iframe), 500);
+
             const wsId = user?.uid || "default";
             const res = await fetch("/api/proxy/settings", {
                 method: "POST",

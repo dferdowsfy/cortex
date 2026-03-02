@@ -231,8 +231,12 @@ async function syncGlobalSettingsLegacy() {
         const res = await fetch(`${DASHBOARD_URL}/api/proxy/settings`);
         if (res.ok) {
             const data = await res.json();
-            if (data.proxy_enabled !== isMonitoringEnabled) {
-                console.log(`[sync-legacy] Updating monitoring state to ${data.proxy_enabled} from dashboard`);
+
+            // Re-sync if state changed OR if proxy isn't running yet but requested
+            const needsSync = data.proxy_enabled !== isMonitoringEnabled || (!proxyController?.proxyProcess);
+
+            if (needsSync) {
+                console.log(`[sync-legacy] Syncing monitoring state to ${data.proxy_enabled}`);
                 isMonitoringEnabled = data.proxy_enabled;
 
                 // Initialize proxyController if needed
@@ -246,7 +250,8 @@ async function syncGlobalSettingsLegacy() {
                 // Sync the state
                 proxyController.syncState(isMonitoringEnabled, {
                     ...currentSettings,
-                    proxyEnabled: isMonitoringEnabled
+                    proxyEnabled: isMonitoringEnabled,
+                    uid: firebaseUid
                 });
 
                 updateTray();
@@ -416,6 +421,30 @@ function handleDeepLink(url) {
         if (parsed.protocol === 'complyze:') {
             // Always bring window to front on any deep link
             showAndFocusWindow();
+
+            // Handle dashboard URL update from deep link
+            const dashboardParam = parsed.searchParams.get('dashboard');
+            if (dashboardParam && process.env.COMPLYZE_DASHBOARD !== dashboardParam) {
+                console.log(`[protocol] Updating DASHBOARD_URL to: ${dashboardParam}`);
+                process.env.COMPLYZE_DASHBOARD = dashboardParam;
+
+                // If proxy is running, restart it to pick up new environment (COMPLYZE_API)
+                if (proxyController && proxyController.proxyProcess) {
+                    proxyController.stopProxy().then(() => {
+                        if (firebaseUid) {
+                            sendHeartbeat();
+                        } else {
+                            syncGlobalSettingsLegacy();
+                        }
+                    });
+                } else {
+                    if (firebaseUid) {
+                        sendHeartbeat();
+                    } else {
+                        syncGlobalSettingsLegacy();
+                    }
+                }
+            }
 
             // Handle login with token
             if (parsed.hostname === 'login' || parsed.pathname === '//login') {
