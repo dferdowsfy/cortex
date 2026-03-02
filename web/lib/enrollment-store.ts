@@ -234,13 +234,13 @@ class EnrollmentStore {
             device_id,
             org_id,
             device_secret_hash,
-            device_name,
             os_type,
             agent_version,
             enrolled_at: new Date().toISOString(),
             last_heartbeat: new Date().toISOString(),
             status: 'active',
         };
+        if (device_name) device.device_name = device_name;
 
         if (adminDb && adminDb.app.options.databaseURL) {
             await adminDb.ref(`${DEVICES_PATH}/${device_id}`).set(device);

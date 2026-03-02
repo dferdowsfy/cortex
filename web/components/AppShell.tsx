@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* ── Main Content ── */}
             <main className="flex-1 overflow-y-auto">
-                <div className={`${normalizedPath === "/dashboard" || normalizedPath === "/governance" ? "" : "mx-auto max-w-7xl px-6 py-8"}`}>
+                <div className={`${normalizedPath === "/dashboard" || normalizedPath === "/governance" || normalizedPath === "/admin" ? "" : "mx-auto max-w-7xl px-6 py-8"}`}>
                     {children}
                 </div>
             </main>

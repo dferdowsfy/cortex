@@ -16,7 +16,8 @@ import {
     ChevronRight,
     ChevronLeft,
     Sun,
-    Moon
+    Moon,
+    Building2
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -102,6 +103,7 @@ const NAV_ITEMS = [
     { label: "Monitor", href: "/monitoring", icon: Activity },
     { label: "Assess", href: "/scan", icon: ShieldCheck },
     { label: "Governance", href: "/governance", icon: Users },
+    { label: "Admin Hub", href: "/admin", icon: Building2 },
 ];
 
 export function Sidebar() {
