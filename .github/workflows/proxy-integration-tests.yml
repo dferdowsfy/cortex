@@ -1,0 +1,36 @@
+name: Proxy Stabilization & Integration Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-proxy:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'desktop/package-lock.json'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Proxy Integration Tests
+        run: node scripts/test-proxy-flow.js
+        env:
+          # Force mock URLs for the test suite
+          COMPLYZE_DASHBOARD: http://localhost:3737
+          COMPLYZE_API: http://localhost:3737/api/proxy/intercept
