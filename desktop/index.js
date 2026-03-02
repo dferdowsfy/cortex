@@ -15,11 +15,17 @@ const { ProxyController } = require('./lib/proxy-controller');
 const AGENT_VERSION = '1.2.0';
 const PROXY_PORT = 8080;
 const PROXY_SCRIPT_PATH = path.join(__dirname, 'scripts', 'proxy-server.js');
-const DASHBOARD_URL = process.env.COMPLYZE_DASHBOARD || 'http://localhost:3737';
+const DASHBOARD_URL = process.env.COMPLYZE_DASHBOARD || 'https://complyze.co';
+const ADMIN_HUB_URL = `${DASHBOARD_URL}/admin`;
 
 const sudoOptions = {
     name: 'Complyze Monitoring Agent',
 };
+
+// ─── Headless Daemon Mode ────────────────────────────────────────────────────
+// Hide from Dock so agent runs as a tray-only background service.
+// Users should never see this in their Dock or App Switcher.
+app.dock?.hide();
 
 // ─── State ──────────────────────────────────────────────────────────────────
 let tray = null;
@@ -290,28 +296,49 @@ function getStatusIcon() {
     return resized;
 }
 
+function getEnrollmentLabel() {
+    if (firebaseUid) return `Enrolled (${firebaseUid.substring(0, 8)}...)`;
+    return 'Not Enrolled — click to set up';
+}
+
 function updateTray() {
     if (!tray) return;
 
+    const proxyRunning = proxyController ? !!proxyController.proxyProcess : false;
+    const shieldStatus = isMonitoringEnabled
+        ? (proxyRunning ? '🟢 Shield Active' : '🟡 Shield Starting...')
+        : '🔴 Shield Off';
+
     const contextMenu = Menu.buildFromTemplate([
-        { label: `Complyze Agent v${AGENT_VERSION}`, enabled: false },
-        { label: `Status: ${getStatusLabel()}`, enabled: false },
-        { label: `Sync: ${getSyncLabel()}`, enabled: false },
+        { label: `Complyze Shield  v${AGENT_VERSION}`, enabled: false },
+        { label: shieldStatus, enabled: false },
+        { label: `Enrolled: ${getEnrollmentLabel()}`, enabled: false },
         { label: `Last Sync: ${lastSyncTime}`, enabled: false },
         { type: 'separator' },
-        { label: 'Open Status Window', click: () => { if (mainWindow) { mainWindow.show(); } else { createWindow(); } } },
         {
-            label: isMonitoringEnabled ? 'Disable Monitoring' : 'Enable Monitoring',
+            label: isMonitoringEnabled ? '⏸  Pause Monitoring' : '▶  Resume Monitoring',
             click: () => toggleMonitoring()
         },
-        { label: 'Open Control Dashboard', click: () => shell.openExternal(`${DASHBOARD_URL}/dashboard`) },
+        {
+            label: '🌐 Open Admin Hub',
+            click: () => shell.openExternal(ADMIN_HUB_URL)
+        },
+        {
+            label: '📋 Open Status Window',
+            click: () => createWindow()
+        },
         { type: 'separator' },
-        { label: 'Check for Updates...', click: () => { } },
-        { label: 'Quit Complyze', click: () => { app.isQuiting = true; app.quit(); } },
+        {
+            label: '🗑  Uninstall Agent...',
+            click: () => {
+                shell.openExternal('https://complyze.co/docs/uninstall');
+            }
+        },
+        { label: 'Quit', click: () => { app.isQuiting = true; app.quit(); } },
     ]);
 
     tray.setImage(getStatusIcon());
-    tray.setToolTip(`Complyze Agent: ${getStatusLabel()}`);
+    tray.setToolTip(`Complyze: ${shieldStatus}`);
     tray.setContextMenu(contextMenu);
 }
 
@@ -351,6 +378,12 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 function createWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        return;
+    }
+
     mainWindow = new BrowserWindow({
         width: 600,
         height: 500,
@@ -361,6 +394,8 @@ function createWindow() {
             contextIsolation: false
         },
         titleBarStyle: 'hiddenInset',
+        // Show in taskbar so user can find it when opened from tray
+        skipTaskbar: false,
         show: false
     });
 
@@ -410,7 +445,10 @@ function showAndFocusWindow() {
     }
 }
 
-// Helper: handle deep link URLs (complyze://open, complyze://login?token=...)
+// Helper: handle deep link URLs
+// complyze://open                          — wake agent
+// complyze://enroll?token=XYZ              — enrollment (admin-generated token)
+// complyze://login?token=XYZ              — Firebase auth token from dashboard
 function handleDeepLink(url) {
     if (!url || typeof url !== 'string') return;
     console.log('[protocol] Received deep link:', url);
@@ -418,53 +456,70 @@ function handleDeepLink(url) {
     try {
         const parsed = new URL(url);
 
-        if (parsed.protocol === 'complyze:') {
-            // Always bring window to front on any deep link
-            showAndFocusWindow();
+        if (parsed.protocol !== 'complyze:') return;
 
-            // Handle dashboard URL update from deep link
-            const dashboardParam = parsed.searchParams.get('dashboard');
-            if (dashboardParam && process.env.COMPLYZE_DASHBOARD !== dashboardParam) {
-                console.log(`[protocol] Updating DASHBOARD_URL to: ${dashboardParam}`);
-                process.env.COMPLYZE_DASHBOARD = dashboardParam;
+        // ─── ENROLL: complyze://enroll?token=XYZ (⭐ Primary onboarding path)
+        if (parsed.hostname === 'enroll') {
+            const enrollToken = parsed.searchParams.get('token');
+            if (enrollToken) {
+                console.log('[protocol] Enrollment token received');
+                const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
+                fs.writeFileSync(tokenPath, JSON.stringify({ customToken: enrollToken }));
 
-                // If proxy is running, restart it to pick up new environment (COMPLYZE_API)
-                if (proxyController && proxyController.proxyProcess) {
-                    proxyController.stopProxy().then(() => {
-                        if (firebaseUid) {
-                            sendHeartbeat();
-                        } else {
-                            syncGlobalSettingsLegacy();
-                        }
-                    });
-                } else {
-                    if (firebaseUid) {
-                        sendHeartbeat();
-                    } else {
-                        syncGlobalSettingsLegacy();
-                    }
+                const { auth } = initFirebase();
+                if (auth) {
+                    signInWithCustomToken(auth, enrollToken)
+                        .then(() => {
+                            new Notification({
+                                title: 'Complyze Shield Enrolled ✅',
+                                body: 'This device is now enrolled and managed from complyze.co.',
+                            }).show();
+                            updateTray();
+                        })
+                        .catch((err) => {
+                            console.error('[protocol] Enrollment sign-in failed:', err.message);
+                            new Notification({
+                                title: 'Enrollment Failed',
+                                body: 'Invalid or expired enrollment token. Please contact your admin.',
+                            }).show();
+                        });
                 }
             }
+            return;
+        }
 
-            // Handle login with token
-            if (parsed.hostname === 'login' || parsed.pathname === '//login') {
-                const token = parsed.searchParams.get('token');
-                if (token) {
-                    const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
-                    fs.writeFileSync(tokenPath, JSON.stringify({ customToken: token }));
-                    const { auth } = initFirebase();
-                    if (auth) {
-                        signInWithCustomToken(auth, token).catch((err) => {
-                            console.error('[firebase] Deep-link sign-in failed:', err.message);
-                        });
-                    }
+        // ─── DASHBOARD URL: complyze://open?dashboard=https://...
+        const dashboardParam = parsed.searchParams.get('dashboard');
+        if (dashboardParam && process.env.COMPLYZE_DASHBOARD !== dashboardParam) {
+            console.log(`[protocol] Updating DASHBOARD_URL to: ${dashboardParam}`);
+            process.env.COMPLYZE_DASHBOARD = dashboardParam;
+
+            if (proxyController && proxyController.proxyProcess) {
+                proxyController.stopProxy().then(() => {
+                    firebaseUid ? sendHeartbeat() : syncGlobalSettingsLegacy();
+                });
+            } else {
+                firebaseUid ? sendHeartbeat() : syncGlobalSettingsLegacy();
+            }
+        }
+
+        // ─── LOGIN: complyze://login?token=XYZ (legacy dashboard auth)
+        if (parsed.hostname === 'login') {
+            const token = parsed.searchParams.get('token');
+            if (token) {
+                const tokenPath = path.join(app.getPath('userData'), 'auth-token.json');
+                fs.writeFileSync(tokenPath, JSON.stringify({ customToken: token }));
+                const { auth } = initFirebase();
+                if (auth) {
+                    signInWithCustomToken(auth, token).catch((err) => {
+                        console.error('[firebase] Deep-link sign-in failed:', err.message);
+                    });
                 }
             }
         }
+
     } catch (e) {
         console.warn('[protocol] Failed to parse deep link URL:', e.message);
-        // Fallback: still show the window
-        showAndFocusWindow();
     }
 }
 
@@ -497,16 +552,22 @@ if (!gotTheLock) {
         handleDeepLink(url);
     });
     app.on('ready', () => {
-        // Create Tray IMMEDIATELY for maximum visibility — use programmatic green icon
+        // Headless daemon startup — Tray ONLY, no window on start
         tray = new Tray(getStatusIcon());
-        tray.setToolTip('Complyze Agent — Monitoring Active');
+        tray.setToolTip('Complyze Shield — Starting...');
         updateTray();
 
-        // Create UI with slight delay to ensure tray is registered
+        // Boot the Firebase sync and proxy without opening any window
         setTimeout(() => {
-            createWindow();
             initializeFirebaseAuth();
             // syncState will be called inside applyInterceptorSettings via initializeFirebaseAuth subscription
+
+            // Show a brief startup notification so user knows the agent is running
+            new Notification({
+                title: 'Complyze Shield Active',
+                body: 'AI monitoring is running in the background. Manage from complyze.co.',
+                silent: true,
+            }).show();
         }, 100);
     });
 
