@@ -5,12 +5,14 @@
 
 :root {
   /* ── Typography Scale ── */
-  --font-size-base: 16px;
+  --font-size-base: 18px;
+  /* High legibility base */
   --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-  --font-weight-black: 900;
+  --font-weight-medium: 600;
+  /* Increased weight for premium feel */
+  --font-weight-semibold: 700;
+  --font-weight-bold: 800;
+  --font-weight-black: 950;
 
   /* ── Risk Colors ── */
   --risk-critical: #ef4444;
@@ -38,16 +40,65 @@
   --bg-sidebar: #0f172a;
   --bg-card: #0f172a;
   --bg-card-hover: #1e293b;
-  --text-primary: #f8fafc;
-  /* Near white */
-  --text-secondary: #94a3b8;
-  /* Medium-light grey */
-  --text-muted: #64748b;
-  /* Readable dark grey */
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-muted: #f8fafc;
   --border-main: #334155;
   --border-soft: #1e293b;
   --brand-color: #3b82f6;
   --brand-hover: #2563eb;
+}
+
+/* Sidebar Fix: Prevents scaling and keeps muted tones */
+.sidebar-fix {
+  font-size: 16px !important;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+}
+
+.sidebar-fix * {
+  font-size: 0.8888rem;
+  /* Correcting for 18px base (16/18 approx) */
+}
+
+.sidebar-fix span,
+.sidebar-fix div,
+.sidebar-fix p,
+.sidebar-fix a {
+  font-size: inherit;
+  /* Ensure reset propagates */
+}
+
+/* Force white text in each page, but not the sidebar */
+.main-content-area,
+.main-content-area *,
+.main-content-area h1,
+.main-content-area h2,
+.main-content-area h3,
+.main-content-area p,
+.main-content-area span,
+.main-content-area div,
+.main-content-area li,
+.main-content-area th,
+.main-content-area td,
+.main-content-area code,
+.main-content-area pre,
+.main-content-area button:not(.btn-primary):not(.btn-secondary) {
+  color: #ffffff !important;
+}
+
+/* Ensure buttons still have their intentional contrast */
+.main-content-area .btn-primary {
+  color: #ffffff !important;
+}
+
+.main-content-area .btn-secondary {
+  color: var(--brand-color) !important;
+}
+
+.main-content-area .btn-secondary:hover {
+  color: #ffffff !important;
 }
 
 html {

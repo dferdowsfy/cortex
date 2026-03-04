@@ -47,7 +47,7 @@ interface DynamicToolRisk {
     governance_downgraded: boolean;
 }
 
-interface Agent {
+interface ExtensionInstance {
     device_id: string;
     device_name?: string;
     hostname: string;
@@ -57,7 +57,7 @@ interface Agent {
     status: string;
 }
 
-interface ProxyAlert {
+interface ShieldAlert {
     id: string;
     type: string;
     tool: string;
@@ -185,8 +185,8 @@ export default function MonitoringPage() {
     const [summary, setSummary] = useState<ActivitySummary | null>(null);
     const [events, setEvents] = useState<ActivityEvent[]>([]);
     const [toolRisks, setToolRisks] = useState<DynamicToolRisk[]>([]);
-    const [alerts, setAlerts] = useState<ProxyAlert[]>([]);
-    const [agents, setAgents] = useState<Agent[]>([]);
+    const [alerts, setAlerts] = useState<ShieldAlert[]>([]);
+    const [activeExtensions, setActiveExtensions] = useState<ExtensionInstance[]>([]);
     const [period, setPeriod] = useState<"24h" | "7d" | "30d">("7d");
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"overview" | "events" | "tools" | "alerts">("overview");
@@ -208,7 +208,7 @@ export default function MonitoringPage() {
             setEvents(activityData.events);
             setToolRisks(activityData.tool_risks);
             setAlerts(activityData.alerts);
-            setAgents(agentData.agents || []);
+            setActiveExtensions(agentData.agents || []);
         } catch (err) {
             console.error("Failed to fetch monitoring data:", err);
         } finally {
@@ -242,7 +242,7 @@ export default function MonitoringPage() {
         }
     }
 
-    if (loading || (!summary && agents.length === 0)) {
+    if (loading || (!summary && activeExtensions.length === 0 && events.length === 0)) {
         return (
             <div className="flex items-center justify-center py-20 min-h-[60vh]">
                 <div className="text-center">
@@ -251,52 +251,69 @@ export default function MonitoringPage() {
                 </div>
             </div>
         );
-    }
+    } // end loading state
 
     /* ── Minimal Empty State ── */
-    if (agents.length === 0 && events.length === 0) {
+    if (activeExtensions.length === 0 && events.length === 0) {
         return (
             <div className="mx-auto max-w-2xl py-32 flex flex-col items-center text-center">
                 <div className="w-16 h-16 rounded-2xl bg-zinc-800/10 dark:bg-zinc-800/50 flex items-center justify-center mb-8 border border-[var(--border-main)] shadow-xl">
                     <Activity className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-3xl font-black text-white tracking-tighter uppercase italic">No active devices enrolled</h3>
+                <h3 className="text-3xl font-black text-white tracking-tighter uppercase italic">No activity detected</h3>
                 <p className="mt-4 text-sm text-secondary max-w-sm leading-relaxed font-bold uppercase tracking-widest italic opacity-80">
-                    Captured real-time AI usage data will materialize here once an agent is active on your network.
+                    Real-time AI usage data will materialize here once the extension is active on your browser.
                 </p>
-                <Link href="/governance" className="btn-primary mt-12">
-                    Manage Enrollment Provisions
+                <Link href="/dashboard" className="btn-primary mt-12 px-10">
+                    Review Deployment Guide
                 </Link>
             </div>
         );
     }
+
+    // Derive Extension Fleet from events
+    const extensionFleet = events.reduce((acc, e) => {
+        const id = e.user_hash || "unknown";
+        if (!acc[id] || new Date(e.timestamp) > new Date(acc[id].last_active)) {
+            acc[id] = {
+                id,
+                email: e.user_hash.includes('@') ? e.user_hash : 'Guest User',
+                inst_id: e.user_hash.startsWith('inst_') ? e.user_hash : 'managed_device',
+                last_active: e.timestamp,
+                last_tool: e.tool,
+                status: 'Active'
+            };
+        }
+        return acc;
+    }, {} as Record<string, any>);
+    const fleetList = Object.values(extensionFleet);
 
     return (
         <div className="space-y-10 max-w-7xl mx-auto px-6">
             {/* ── Header ── */}
             <div className="flex items-end justify-between border-b border-white/5 pb-8">
                 <div>
-                    <h1 className="text-2xl font-black text-white tracking-tighter">Monitoring</h1>
+                    <h1 className="text-3xl font-black text-white tracking-tighter">Monitoring</h1>
                     <div className="flex items-center gap-2 mt-2">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        <span className="text-[10px] font-black text-emerald-500/80 uppercase tracking-[0.2em]">Operational Pulse Active (5s)</span>
+                        <span className="text-[12px] font-black text-emerald-500/80 uppercase tracking-[0.2em]">Operational Pulse Active (5s)</span>
                     </div>
                 </div>
                 <div className="flex gap-2">
                     <button
-                        className={`rounded-lg px-6 py-2 text-[11px] font-black uppercase tracking-widest transition-all border ${period === "24h" ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg" : "text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-secondary)]"}`}
+                        className={`rounded-lg px-6 py-2 text-[12px] font-black uppercase tracking-widest transition-all border ${period === "24h" ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg" : "text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-secondary)]"}`}
                         onClick={() => setPeriod("24h")}
                     >
                         24 Hours
                     </button>
                     <button
-                        className={`rounded-lg px-6 py-2 text-[11px] font-black uppercase tracking-widest transition-all border ${period === "7d" ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg" : "text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-secondary)]"}`}
+                        className={`rounded-lg px-6 py-2 text-[12px] font-black uppercase tracking-widest transition-all border ${period === "7d" ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg" : "text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-secondary)]"}`}
                         onClick={() => setPeriod("7d")}
                     >
                         7 Days
                     </button>
                     <button
-                        className={`rounded-lg px-6 py-2 text-[11px] font-black uppercase tracking-widest transition-all border ${period === "30d" ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg" : "text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-secondary)]"}`}
+                        className={`rounded-lg px-6 py-2 text-[12px] font-black uppercase tracking-widest transition-all border ${period === "30d" ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)] shadow-lg" : "text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--text-secondary)]"}`}
                         onClick={() => setPeriod("30d")}
                     >
                         30 Days
@@ -304,50 +321,50 @@ export default function MonitoringPage() {
                 </div>
             </div>
 
-            {/* ── Device Constellation ── */}
+            {/* ── Extension Fleet ── */}
             <section className="card p-0 overflow-hidden shadow-2xl">
                 <div className="px-8 py-6 border-b border-[var(--border-soft)] bg-white/[0.01] flex justify-between items-center">
-                    <h2 className="text-[11px] font-black text-muted uppercase tracking-[0.3em] font-mono italic">Active Device Constellation</h2>
-                    <span className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-2">
+                    <h2 className="text-[14px] font-black text-muted uppercase tracking-[0.3em] font-mono italic">Extension Fleet Intelligence</h2>
+                    <span className="text-[12px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Live Operational Stream
+                        Live Security Pulse
                     </span>
                 </div>
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="border-b border-[var(--border-soft)] text-[11px] uppercase tracking-[0.15em] font-black text-[var(--text-primary)] bg-[var(--bg-card-hover)]">
-                                <th className="px-8 py-5">Endpoint Identity</th>
-                                <th className="px-8 py-5">OS Status</th>
-                                <th className="px-8 py-5">Agent Version</th>
-                                <th className="px-8 py-5">Last Sync Pulse</th>
-                                <th className="px-8 py-5 text-right">Protection</th>
+                                <th className="px-8 py-5">Browser Identity</th>
+                                <th className="px-8 py-5">Enrollment Type</th>
+                                <th className="px-8 py-5">Last Observed Interaction</th>
+                                <th className="px-8 py-5">Current Tool</th>
+                                <th className="px-8 py-5 text-right">Shield Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--border-soft)]">
-                            {agents.map(agent => (
-                                <tr key={agent.device_id} className="hover:bg-white/[0.02] transition-colors group">
+                            {fleetList.map(member => (
+                                <tr key={member.id} className="hover:bg-white/[0.02] transition-colors group">
                                     <td className="px-8 py-5">
-                                        <p className="text-sm font-black text-primary uppercase tracking-tight">{agent.hostname}</p>
-                                        <p className="text-[9px] text-muted font-bold font-mono uppercase mt-0.5">{agent.device_id?.substring(0, 12) || "..."}</p>
+                                        <p className="text-base font-black text-primary uppercase tracking-tight">{member.email}</p>
+                                        <p className="text-[11px] text-muted font-bold font-mono uppercase mt-0.5">{member.id}</p>
                                     </td>
                                     <td className="px-8 py-5">
                                         <div className="flex items-center gap-2">
-                                            <span className={`w-1.5 h-1.5 rounded-full ${agent.status === 'Online' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                                            <span className="text-xs font-black text-secondary uppercase italic">{agent.os_type}</span>
+                                            <span className={`w-1.5 h-1.5 rounded-full bg-emerald-500`} />
+                                            <span className="text-sm font-black text-secondary uppercase italic">{member.email !== 'Guest User' ? 'Managed Identity' : 'Installation Lease'}</span>
                                         </div>
-                                    </td>
-                                    <td className="px-8 py-5">
-                                        <span className="text-xs font-black text-muted font-mono">v{agent.agent_version}</span>
                                     </td>
                                     <td className="px-8 py-5">
                                         <div className="flex items-center gap-2 text-muted">
                                             <Clock className="w-3 h-3" />
-                                            <span className="text-xs font-bold uppercase tracking-tight">{new Date(agent.last_sync).toLocaleTimeString()}</span>
+                                            <span className="text-sm font-bold uppercase tracking-tight">{new Date(member.last_active).toLocaleString()}</span>
                                         </div>
                                     </td>
+                                    <td className="px-8 py-5">
+                                        <span className="text-sm font-black text-muted font-mono uppercase italic">{member.last_tool}</span>
+                                    </td>
                                     <td className="px-8 py-5 text-right">
-                                        <span className="px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm">
+                                        <span className="px-3 py-1 rounded-md text-[11px] font-black uppercase tracking-tighter bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm">
                                             Fail-Closed Active
                                         </span>
                                     </td>
@@ -371,7 +388,7 @@ export default function MonitoringPage() {
                     ).map((tab) => (
                         <button
                             key={tab.key}
-                            className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all whitespace-nowrap ${activeTab === tab.key
+                            className={`px-4 py-3 text-[12px] font-black uppercase tracking-widest border-b-2 transition-all whitespace-nowrap ${activeTab === tab.key
                                 ? "border-white/90 text-white"
                                 : "border-transparent text-white/30 hover:text-white/50"
                                 }`}
@@ -393,8 +410,8 @@ export default function MonitoringPage() {
                                 { label: "Risk Score", val: summary.activity_score, cls: "text-white" }
                             ].map((card) => (
                                 <div key={card.label} className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl flex flex-col gap-2">
-                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">{card.label}</span>
-                                    <span className={`text-3xl font-black ${card.cls}`}>{card.val}</span>
+                                    <span className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em]">{card.label}</span>
+                                    <span className={`text-4xl font-black ${card.cls}`}>{card.val}</span>
                                 </div>
                             ))}
                         </div>
@@ -402,8 +419,8 @@ export default function MonitoringPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className="bg-white/[0.01] border border-white/10 rounded-2xl p-8 flex items-center justify-between">
                                 <div className="space-y-4">
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Composite Risk Posture</h3>
-                                    <p className="text-sm font-bold text-white/60 leading-relaxed max-w-xs uppercase tracking-tight italic">
+                                    <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-white/30">Composite Risk Posture</h3>
+                                    <p className="text-base font-bold text-white/60 leading-relaxed max-w-xs uppercase tracking-tight italic">
                                         Dynamic assessment based on real-time behavior and tool classification.
                                     </p>
                                 </div>
@@ -411,11 +428,11 @@ export default function MonitoringPage() {
                             </div>
 
                             <div className="bg-white/[0.01] border border-white/10 rounded-2xl p-8">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-6">Top Risk Flux</h3>
+                                <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-white/30 mb-6">Top Risk Flux</h3>
                                 <div className="space-y-4">
                                     {summary.top_risk_categories.map((c) => (
                                         <div key={c.category} className="flex items-center gap-4">
-                                            <span className="text-[10px] font-black text-white/40 uppercase w-24 tracking-widest">{categoryLabel(c.category)}</span>
+                                            <span className="text-[12px] font-black text-white/40 uppercase w-24 tracking-widest">{categoryLabel(c.category)}</span>
                                             <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                                                 <div className={`h-full ${riskColor(c.category === 'pii' ? 'critical' : 'high')}`} style={{ width: `${Math.min(100, (c.count / summary.total_requests) * 500)}%`, backgroundColor: 'currentColor' }} />
                                             </div>
@@ -428,10 +445,10 @@ export default function MonitoringPage() {
 
                         <div className="bg-white/[0.01] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
                             <div className="px-8 py-5 border-b border-white/5 bg-white/[0.01]">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Most Frequent AI Traffic</h3>
+                                <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-white/30">Browser-Native AI Traffic</h3>
                             </div>
                             <table className="w-full text-left">
-                                <thead className="text-[9px] font-black text-white/20 uppercase tracking-widest border-b border-white/5">
+                                <thead className="text-[11px] font-black text-white/20 uppercase tracking-widest border-b border-white/5">
                                     <tr>
                                         <th className="px-8 py-4">Tool Intelligence</th>
                                         <th className="px-8 py-4">Vol</th>
@@ -440,7 +457,7 @@ export default function MonitoringPage() {
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
                                     {summary.top_tools.map((t) => (
-                                        <tr key={t.tool} className="text-sm">
+                                        <tr key={t.tool} className="text-base">
                                             <td className="px-8 py-4 font-black text-white/80">{t.tool}</td>
                                             <td className="px-8 py-4 font-bold text-white/40 tabular-nums">{t.count}</td>
                                             <td className="px-8 py-4">
@@ -448,7 +465,7 @@ export default function MonitoringPage() {
                                                     <div className="w-20 h-1 bg-white/5 rounded-full overflow-hidden">
                                                         <div className={`h-full ${sensitivityBar(t.avg_sensitivity)}`} style={{ width: `${t.avg_sensitivity}%` }} />
                                                     </div>
-                                                    <span className="text-[10px] font-black text-white/40 tabular-nums">{t.avg_sensitivity}/100</span>
+                                                    <span className="text-[12px] font-black text-white/40 tabular-nums">{t.avg_sensitivity}/100</span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -463,22 +480,22 @@ export default function MonitoringPage() {
                 {activeTab === "events" && (
                     <div className="bg-white/[0.01] border border-white/10 rounded-2xl overflow-hidden animate-in slide-in-from-bottom-2 duration-500">
                         <div className="px-8 py-5 border-b border-white/5 bg-white/[0.01] flex justify-between items-center">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Streaming Activity Log</h3>
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest tabular-nums">{events.length} logs cached</span>
+                            <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-white/30">Streaming Activity Log</h3>
+                            <span className="text-[11px] font-black text-white/20 uppercase tracking-widest tabular-nums">{events.length} logs cached</span>
                         </div>
                         <div className="divide-y divide-white/[0.03] max-h-[600px] overflow-y-auto custom-scrollbar">
                             {events.map((e) => (
                                 <div key={e.id} className="px-8 py-5 hover:bg-white/[0.01] transition-all flex items-center justify-between group">
                                     <div className="flex items-center gap-6">
-                                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white shadow-lg transition-transform group-hover:scale-110 ${e.sensitivity_score >= 60 ? "bg-red-500" : e.sensitivity_score >= 30 ? "bg-amber-500" : "bg-emerald-500"}`}>
+                                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[12px] font-black text-white shadow-lg transition-transform group-hover:scale-110 ${e.sensitivity_score >= 60 ? "bg-red-500" : e.sensitivity_score >= 30 ? "bg-amber-500" : "bg-emerald-500"}`}>
                                             {e.sensitivity_score}
                                         </div>
                                         <div>
-                                            <p className="font-black text-white/90 text-sm tracking-tight">{e.tool}</p>
+                                            <p className="font-black text-white/90 text-base tracking-tight">{e.tool}</p>
                                             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                                                <span className="text-[9px] font-black text-white/30 uppercase font-mono tracking-widest">{e.user_hash}</span>
+                                                <span className="text-[11px] font-black text-white/30 uppercase font-mono tracking-widest">{e.user_hash}</span>
                                                 {e.sensitivity_categories.filter(c => c !== 'none').map(cat => (
-                                                    <span key={cat} className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded tracking-tighter ${categoryColor(cat)}`}>
+                                                    <span key={cat} className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded tracking-tighter ${categoryColor(cat)}`}>
                                                         {categoryLabel(cat)}
                                                     </span>
                                                 ))}
@@ -486,9 +503,9 @@ export default function MonitoringPage() {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.1em]">{new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</p>
+                                        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.1em]">{new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</p>
                                         {e.policy_violation_flag && (
-                                            <span className="text-[9px] font-black text-red-500 uppercase tracking-widest mt-1 block">Policy Violation</span>
+                                            <span className="text-[11px] font-black text-red-500 uppercase tracking-widest mt-1 block">Policy Violation</span>
                                         )}
                                     </div>
                                 </div>
@@ -504,16 +521,16 @@ export default function MonitoringPage() {
                             <div key={t.tool_name} className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 hover:bg-white/[0.03] transition-all">
                                 <div className="flex items-center justify-between mb-8">
                                     <div>
-                                        <h3 className="text-lg font-black text-white/90 tracking-tight">{t.tool_name}</h3>
-                                        <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">
+                                        <h3 className="text-xl font-black text-white/90 tracking-tight">{t.tool_name}</h3>
+                                        <p className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">
                                             {t.total_requests} Observed Instances · {t.policy_violation_count} Critical findings
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`text-4xl font-black ${riskColor(t.combined_risk_score >= 70 ? 'critical' : t.combined_risk_score >= 40 ? 'high' : 'low')}`}>
+                                        <span className={`text-5xl font-black ${riskColor(t.combined_risk_score >= 70 ? 'critical' : t.combined_risk_score >= 40 ? 'high' : 'low')}`}>
                                             {t.combined_risk_score}
                                         </span>
-                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mt-1">Risk Bias</p>
+                                        <p className="text-[11px] font-black text-white/20 uppercase tracking-widest mt-1">Risk Bias</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 pt-6 border-t border-white/5">
@@ -524,8 +541,8 @@ export default function MonitoringPage() {
                                         { label: "Exposure Profile", val: t.risk_escalated ? "ESCALATED" : "STABLE" }
                                     ].map(metric => (
                                         <div key={metric.label}>
-                                            <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">{metric.label}</p>
-                                            <p className="text-sm font-black text-white/70">{metric.val}</p>
+                                            <p className="text-[11px] font-black text-white/20 uppercase tracking-widest mb-1">{metric.label}</p>
+                                            <p className="text-base font-black text-white/70">{metric.val}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -539,7 +556,7 @@ export default function MonitoringPage() {
                     <div className="space-y-4 animate-in slide-in-from-right-2 duration-500">
                         {alerts.length === 0 ? (
                             <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-20 text-center">
-                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">System Signal Clear</p>
+                                <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.3em]">System Signal Clear</p>
                             </div>
                         ) : (
                             alerts.map((a) => (
@@ -548,18 +565,18 @@ export default function MonitoringPage() {
                                         <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${a.severity === 'critical' ? 'bg-red-500' : 'bg-orange-500 font-black'}`} />
                                         <div>
                                             <div className="flex items-center gap-3">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest ${riskColor(a.severity)}`}>{a.severity}</span>
-                                                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{a.tool}</span>
-                                                <span className="text-[10px] font-bold text-white/40 font-mono italic">{new Date(a.timestamp).toLocaleString()}</span>
+                                                <span className={`text-[12px] font-black uppercase tracking-widest ${riskColor(a.severity)}`}>{a.severity}</span>
+                                                <span className="text-[12px] font-black text-white/20 uppercase tracking-widest">{a.tool}</span>
+                                                <span className="text-[12px] font-bold text-white/40 font-mono italic">{new Date(a.timestamp).toLocaleString()}</span>
                                             </div>
-                                            <p className="mt-2 text-sm font-bold text-white/80 leading-relaxed uppercase tracking-tight">{a.message}</p>
+                                            <p className="mt-2 text-base font-bold text-white/80 leading-relaxed uppercase tracking-tight">{a.message}</p>
                                         </div>
                                     </div>
                                     <div>
                                         {!a.acknowledged && (
                                             <button
                                                 onClick={() => acknowledgeAlert(a.id)}
-                                                className="bg-zinc-800 hover:bg-zinc-700 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                                className="bg-zinc-800 hover:bg-zinc-700 text-white px-5 py-2 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all"
                                             >
                                                 Acknowledge
                                             </button>

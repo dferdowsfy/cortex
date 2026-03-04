@@ -44,8 +44,8 @@ interface GeneratedToken {
 interface Device {
     device_id: string;
     hostname: string;
-    os_type: string;
-    agent_version: string;
+    extension_version?: string;
+    browser?: string;
     last_sync: string;
     status: string;
 }
@@ -339,14 +339,14 @@ export default function EnrollmentAdminPanel() {
                 <div className="w-16 h-16 rounded-2xl bg-[var(--brand-color)]/10 flex items-center justify-center mb-10 shadow-sm">
                     <Shield className="w-7 h-7 text-[var(--brand-color)]" strokeWidth={2.5} />
                 </div>
-                <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-6">Governance Assurance Scan</h2>
-                <p className="text-sm text-zinc-400 font-semibold uppercase tracking-widest max-w-lg leading-relaxed mb-12">
-                    Initiate an independent validation sequence to verify current endpoint policy enforcement against organizational security standards.
+                <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase mb-6">Governance Assurance Scan</h2>
+                <p className="text-base text-zinc-400 font-semibold uppercase tracking-widest max-w-lg leading-relaxed mb-12">
+                    Initiate an independent validation sequence to verify current extension policy enforcement against organizational security standards.
                 </p>
                 <button
                     onClick={handleRunAudit}
                     disabled={auditRunning}
-                    className="btn-primary px-16 py-4 rounded-xl text-[12px] shadow-2xl transition-all active:scale-95 flex items-center gap-4"
+                    className="btn-primary px-16 py-4 rounded-xl text-[14px] shadow-2xl transition-all active:scale-95 flex items-center gap-4"
                 >
                     {auditRunning && <span className="animate-spin w-4 h-4 border-2 border-white/20 border-b-white rounded-full" />}
                     Run Independent Validation Scan
@@ -356,34 +356,11 @@ export default function EnrollmentAdminPanel() {
             {/* GOVERNANCE SUMMARY STRIP */}
             <div className="card px-10 py-8 flex flex-wrap items-center justify-between gap-8 shadow-2xl backdrop-blur-md">
                 {/* AI Shield + Toggle */}
-                <div className="flex items-center gap-5">
-                    <div>
-                        <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">AI Shield</p>
-                        <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-2 ${userSettings.proxyEnabled ? "text-emerald-500" : "text-red-500"}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${userSettings.proxyEnabled ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" : "bg-red-500"}`} />
-                            {userSettings.proxyEnabled ? "Protected" : "Inactive"}
-                        </span>
-                    </div>
-                    <button
-                        onClick={handleToggleShield}
-                        disabled={shieldToggling}
-                        className={`ml-2 flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all disabled:opacity-60 ${userSettings.proxyEnabled
-                            ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                            : "border-red-500/30 text-red-400 hover:bg-red-500/10"}`}
-                    >
-                        {shieldToggling
-                            ? <span className="animate-spin w-3 h-3 border border-current border-b-transparent rounded-full" />
-                            : userSettings.proxyEnabled
-                                ? <ToggleRight className="w-4 h-4" />
-                                : <ToggleLeft className="w-4 h-4" />
-                        }
-                        {userSettings.proxyEnabled ? "Disable" : "Enable"}
-                    </button>
-                </div>
 
-                <div className="border-l border-[var(--border-main)] pl-10">
-                    <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Devices Online</p>
-                    <span className="text-sm font-black uppercase tracking-widest">
+
+                <div>
+                    <p className="text-[13px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Extensions Online</p>
+                    <span className="text-base font-black uppercase tracking-widest">
                         <span className="text-emerald-400">{activeDevices.length}</span>
                         <span className="text-white/30 mx-1">/</span>
                         <span className="text-white">{devices.length}</span>
@@ -391,20 +368,20 @@ export default function EnrollmentAdminPanel() {
                 </div>
 
                 <div className="border-l border-[var(--border-main)] pl-10">
-                    <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Policy Version</p>
-                    <span className="text-sm font-black text-white uppercase tracking-widest">
+                    <p className="text-[13px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Policy Version</p>
+                    <span className="text-base font-black text-white uppercase tracking-widest">
                         v{organizations.find(o => o.id === activeOrgId)?.policy_version ?? "—"}
                     </span>
                 </div>
 
                 <div className="border-l border-[var(--border-main)] pl-10">
-                    <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Last Validation</p>
-                    <span className="text-sm font-black text-white uppercase tracking-widest">{validationTimestamp}</span>
+                    <p className="text-[13px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Last Validation</p>
+                    <span className="text-base font-black text-white uppercase tracking-widest">{validationTimestamp}</span>
                 </div>
 
                 {lastReport && (
                     <div className="border-l border-[var(--border-main)] pl-10 hidden md:block">
-                        <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Validation Score</p>
+                        <p className="text-[13px] font-black text-white uppercase tracking-[0.2em] mb-1 font-mono">Validation Score</p>
                         <span className="text-4xl font-black text-white italic tracking-tighter tabular-nums">
                             {lastReport.enforcementScore}/100
                         </span>
@@ -420,7 +397,7 @@ export default function EnrollmentAdminPanel() {
                 >
                     <div className="flex items-center gap-4">
                         <Clock className="w-5 h-5 text-white" />
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white italic">Audit &amp; Scheduling Preferences</h3>
+                        <h3 className="text-[14px] font-black uppercase tracking-[0.3em] text-white italic">Audit &amp; Scheduling Preferences</h3>
                     </div>
                     {auditCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
                 </div>
@@ -437,7 +414,7 @@ export default function EnrollmentAdminPanel() {
                                                 e.stopPropagation();
                                                 setAuditConfig(prev => ({ ...prev, scheduleHour: h }));
                                             }}
-                                            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase border transition-all ${auditConfig.scheduleHour === h ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)]" : "text-zinc-400 border-[var(--border-main)] hover:border-white/30"}`}
+                                            className={`px-4 py-2 rounded-lg text-[11px] font-black uppercase border transition-all ${auditConfig.scheduleHour === h ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)]" : "text-zinc-400 border-[var(--border-main)] hover:border-white/30"}`}
                                         >
                                             {h}:00
                                         </button>
@@ -448,7 +425,7 @@ export default function EnrollmentAdminPanel() {
                                 </p>
                             </div>
                             <div className="space-y-6">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block font-mono">Repeat Strategy</label>
+                                <label className="text-[11px] font-black text-zinc-500 uppercase tracking-widest block font-mono">Repeat Strategy</label>
                                 <div className="flex flex-wrap gap-2">
                                     {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => (
                                         <button
@@ -461,7 +438,7 @@ export default function EnrollmentAdminPanel() {
                                                     : [...current, day];
                                                 setAuditConfig(prev => ({ ...prev, daysOfWeek: next }));
                                             }}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border transition-all ${auditConfig.daysOfWeek.includes(day) ? "bg-white text-black border-white" : "text-white/40 border-white/10 hover:border-white/30"}`}
+                                            className={`px-4 py-2 rounded-lg text-[11px] font-black uppercase border transition-all ${auditConfig.daysOfWeek.includes(day) ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)]" : "text-zinc-400 border-[var(--border-main)] hover:border-white/30"}`}
                                         >
                                             {day}
                                         </button>
@@ -501,7 +478,7 @@ export default function EnrollmentAdminPanel() {
                 >
                     <div className="flex items-center gap-4">
                         <Plus className="w-5 h-5 text-white" />
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white italic">Enrollment Provisions</h3>
+                        <h3 className="text-[14px] font-black uppercase tracking-[0.3em] text-white italic">Enrollment Provisions</h3>
                     </div>
                     {enrollmentCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
                 </div>
@@ -526,14 +503,23 @@ export default function EnrollmentAdminPanel() {
                                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Deploy the following to your target endpoint:</p>
                                     </div>
                                 </div>
-                                <div className="bg-black/40 rounded-xl p-5 font-mono text-[11px] group relative border border-white/5">
-                                    <code className="text-emerald-400 break-all leading-relaxed">
-                                        curl -sL https://complyze.co/install.sh | sh -s -- --token={latestToken || "YOUR_TOKEN"} --org={activeOrgId}
-                                    </code>
+                                <div className="bg-black/40 rounded-xl p-5 font-mono text-[11px] group relative border border-white/5 overflow-x-auto">
+                                    <pre className="text-emerald-400 break-all leading-relaxed whitespace-pre-wrap">
+                                        {JSON.stringify({
+                                            organizationId: { Value: activeOrgId },
+                                            apiEndpoint: { Value: "https://api.complyze.com" },
+                                            deploymentToken: { Value: latestToken || "YOUR_TOKEN" }
+                                        }, null, 2)}
+                                    </pre>
                                     <button
                                         onClick={() => {
-                                            navigator.clipboard.writeText(`curl -sL https://complyze.co/install.sh | sh -s -- --token=${latestToken} --org=${activeOrgId}`);
-                                            alert("Enrollment command copied to clipboard.");
+                                            const jsonConfig = JSON.stringify({
+                                                organizationId: { Value: activeOrgId },
+                                                apiEndpoint: { Value: "https://api.complyze.com" },
+                                                deploymentToken: { Value: latestToken || "YOUR_TOKEN" }
+                                            }, null, 2);
+                                            navigator.clipboard.writeText(jsonConfig);
+                                            alert("Configuration copied to clipboard.");
                                         }}
                                         className="absolute right-4 top-4 p-2 bg-white/10 hover:bg-white/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-xl"
                                     >
@@ -544,12 +530,12 @@ export default function EnrollmentAdminPanel() {
                                     <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-white italic mb-6">Deployment Protocol</h5>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                                         <div className="space-y-3">
-                                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">Step 1: Execute Signal</p>
-                                            <p className="text-[11px] text-zinc-400 leading-relaxed font-bold uppercase">Run the pre-configured CURL command on your target machines (macOS/Linux). This initializes the agent and registers it with your workspace.</p>
+                                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">Step 1: Save Configuration</p>
+                                            <p className="text-[11px] text-zinc-400 leading-relaxed font-bold uppercase">Copy the JSON configuration above. Distribute this snippet via your MDM provider (Google Workspace, Jamf, Intune) as managed policy for the browser extension.</p>
                                         </div>
                                         <div className="space-y-3">
                                             <p className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">Step 2: Signal Broadcast</p>
-                                            <p className="text-[11px] text-zinc-400 leading-relaxed font-bold uppercase">Once deployed, the device will appear in the enrollment table below. Policy enforcement begins within 60 seconds.</p>
+                                            <p className="text-[11px] text-zinc-400 leading-relaxed font-bold uppercase">Once deployed securely, the extensions will appear in the fleet table below. Enforcement begins within 60 seconds.</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between bg-white/[0.03] p-6 rounded-2xl border border-white/5 mt-4">
@@ -662,7 +648,7 @@ export default function EnrollmentAdminPanel() {
                         {/* Token List */}
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
-                                <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest font-mono">
+                                <h4 className="text-[13px] font-black text-[var(--text-muted)] uppercase tracking-widest font-mono">
                                     Provisioning Tokens <span className="ml-2 text-white/20">({tokens.length})</span>
                                 </h4>
                                 <button
@@ -681,7 +667,7 @@ export default function EnrollmentAdminPanel() {
                             {tokens.length === 0 ? (
                                 <div className="bg-white/[0.01] border border-dashed border-white/10 rounded-xl p-10 text-center">
                                     <p className="text-[10px] text-[var(--text-muted)] uppercase font-black tracking-widest">
-                                        No tokens yet — generate one to start enrolling devices.
+                                        No tokens yet — generate one to start enrolling extensions.
                                     </p>
                                 </div>
                             ) : (
@@ -726,8 +712,8 @@ export default function EnrollmentAdminPanel() {
                         {/* Enrolled Device List */}
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
-                                <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest font-mono">
-                                    Enrolled Devices
+                                <h4 className="text-[13px] font-black text-[var(--text-muted)] uppercase tracking-widest font-mono">
+                                    Active Extensions
                                     <span className="ml-3 text-emerald-400">{activeDevices.length} online</span>
                                     {offlineDevices.length > 0 && (
                                         <span className="ml-3 text-red-400">{offlineDevices.length} offline</span>
@@ -745,17 +731,17 @@ export default function EnrollmentAdminPanel() {
                             {devices.length === 0 ? (
                                 <div className="bg-white/[0.01] border border-dashed border-white/10 rounded-xl p-10 text-center">
                                     <p className="text-[10px] text-[var(--text-muted)] uppercase font-black tracking-widest">
-                                        No devices enrolled yet — distribute a provisioning token to your endpoints.
+                                        No extensions enrolled yet — distribute a provisioning token via MDM.
                                     </p>
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
                                         <thead>
-                                            <tr className="text-[9px] font-black text-white/20 uppercase tracking-widest border-b border-white/5">
+                                            <tr className="text-[11px] font-black text-white/20 uppercase tracking-widest border-b border-white/5">
                                                 <th className="pb-3 pr-6">Endpoint</th>
-                                                <th className="pb-3 pr-6">OS</th>
-                                                <th className="pb-3 pr-6">Agent</th>
+                                                <th className="pb-3 pr-6">Browser</th>
+                                                <th className="pb-3 pr-6">Extension</th>
                                                 <th className="pb-3 pr-6">Last Seen</th>
                                                 <th className="pb-3">Status</th>
                                             </tr>
@@ -764,24 +750,24 @@ export default function EnrollmentAdminPanel() {
                                             {devices.map(device => (
                                                 <tr key={device.device_id} className="hover:bg-white/[0.01] transition-colors">
                                                     <td className="py-3.5 pr-6">
-                                                        <p className="text-xs font-black text-white/80 uppercase tracking-tight">{device.hostname}</p>
-                                                        <p className="text-[9px] text-white/20 font-mono mt-0.5">{device.device_id?.substring(0, 12) || "..."}</p>
+                                                        <p className="text-base font-black text-white/80 uppercase tracking-tight">{device.hostname}</p>
+                                                        <p className="text-[12px] text-white/20 font-mono mt-0.5">{device.device_id?.substring(0, 12) || "..."}</p>
                                                     </td>
                                                     <td className="py-3.5 pr-6">
-                                                        <span className="text-xs font-bold text-white/50 uppercase">{device.os_type || "—"}</span>
+                                                        <span className="text-base font-bold text-white/50 uppercase">{device.browser || "—"}</span>
                                                     </td>
                                                     <td className="py-3.5 pr-6">
-                                                        <span className="text-xs font-mono text-white/40">v{device.agent_version || "—"}</span>
+                                                        <span className="text-base font-mono text-white/40">v{device.extension_version || "—"}</span>
                                                     </td>
                                                     <td className="py-3.5 pr-6">
-                                                        <span className="text-xs text-white/30 font-bold">
+                                                        <span className="text-sm text-white/30 font-bold">
                                                             {new Date(device.last_sync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                                         </span>
                                                     </td>
                                                     <td className="py-3.5">
                                                         <div className="flex items-center gap-2">
                                                             <span className={`w-1.5 h-1.5 rounded-full ${deviceStatusDot(device.status)}`} />
-                                                            <span className="text-[9px] font-black uppercase tracking-wider text-white/50">{device.status}</span>
+                                                            <span className="text-[11px] font-black uppercase tracking-wider text-white/50">{device.status}</span>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -799,7 +785,7 @@ export default function EnrollmentAdminPanel() {
             {/* ZONE 4: Assurance History Log */}
             <section id="history-ledger" className="card p-0 shadow-xl overflow-hidden border-none ring-1 ring-[var(--border-main)]">
                 <div className="px-10 py-8 border-b border-[var(--border-soft)] flex justify-between items-center bg-white/[0.02]">
-                    <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-white italic">Assurance History Log</h3>
+                    <h3 className="text-[14px] font-black uppercase tracking-[0.3em] text-white italic">Assurance History Log</h3>
                     <button
                         onClick={() => document.getElementById("history-ledger")?.scrollIntoView({ behavior: "smooth" })}
                         className="flex items-center gap-3 text-[10px] font-black text-[var(--brand-color)] hover:underline uppercase tracking-[0.2em] decoration-2 underline-offset-4"

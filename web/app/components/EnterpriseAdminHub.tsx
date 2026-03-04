@@ -22,17 +22,17 @@ interface Group { group_id: string; org_id: string; name: string; description?: 
 interface PolicyRule { rule_id: string; type: string; target: string; action: "block" | "allow" | "audit_only" | "redact"; priority: number; enabled: boolean; }
 interface GroupPolicy { policy_id: string; group_id: string; version: number; rules: PolicyRule[]; inherit_org_default: boolean; }
 interface ManagedUser { user_id: string; org_id: string; group_id: string | null; email: string; display_name?: string; role: string; active: boolean; created_at: string; }
-interface Device { device_id: string; hostname: string; os_type: string; agent_version: string; last_sync: string; status: string; }
+interface ExtensionStatus { device_id: string; hostname: string; browser?: string; extension_version?: string; last_sync: string; status: string; }
 interface EnrollmentToken { id: string; token: string; status: "active" | "revoked" | "expired"; expires_at: string; uses_count: number; max_uses: number | null; org_id: string; }
 
 /* ─── Constants (outside component — fixes Issue 3) ─────── */
 type Tab = "fleet" | "groups" | "users" | "policy" | "tokens";
 const TABS: { key: Tab; label: string; Icon: React.ElementType }[] = [
-    { key: "fleet", label: "Device Fleet", Icon: Monitor },
+    { key: "fleet", label: "Extension Fleet", Icon: Monitor },
     { key: "groups", label: "Groups", Icon: Shield },
     { key: "users", label: "Users", Icon: Users },
     { key: "policy", label: "Policy Editor", Icon: Settings },
-    { key: "tokens", label: "Enrollment", Icon: Key },
+    { key: "tokens", label: "Deployment", Icon: Key },
 ];
 
 const ACTION_BADGE: Record<string, string> = {
@@ -46,9 +46,9 @@ const ACTION_BADGE: Record<string, string> = {
 const StatCard = memo(function StatCard({ label, value, sub, color = "text-white" }: { label: string; value: string | number; sub?: string; color?: string }) {
     return (
         <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col gap-1.5">
-            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30">{label}</p>
-            <p className={`text-3xl font-black tabular-nums ${color}`}>{value}</p>
-            {sub && <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">{sub}</p>}
+            <p className="text-[12px] font-black uppercase tracking-[0.25em] text-white/30">{label}</p>
+            <p className={`text-4xl font-black tabular-nums ${color}`}>{value}</p>
+            {sub && <p className="text-[13px] text-white/30 font-bold uppercase tracking-widest">{sub}</p>}
         </div>
     );
 });
@@ -64,7 +64,7 @@ export default function EnterpriseAdminHub() {
     const [activeOrgId, setActiveOrgId] = useState("");
     const [groups, setGroups] = useState<Group[]>([]);
     const [users, setUsers] = useState<ManagedUser[]>([]);
-    const [devices, setDevices] = useState<Device[]>([]);
+    const [devices, setDevices] = useState<ExtensionStatus[]>([]);
     const [tokens, setTokens] = useState<EnrollmentToken[]>([]);
 
     /* ── Policy state ── */
@@ -101,7 +101,7 @@ export default function EnterpriseAdminHub() {
     const [generatedToken, setGeneratedToken] = useState<string | null>(null);
     const [tokenVisible, setTokenVisible] = useState(false);
     const [tokenCopied, setTokenCopied] = useState(false);
-    const [dlInstaller, setDlInstaller] = useState<"mac" | "win" | null>(null);
+
 
     /* ── Memoised derived ── */
     const activeOrg = useMemo(() => organizations.find(o => o.id === activeOrgId), [organizations, activeOrgId]);
@@ -315,13 +315,13 @@ export default function EnterpriseAdminHub() {
     };
 
     const handleRevokeDevice = async (device_id: string) => {
-        if (!confirm("Revoke this device? The agent will halt within 60 seconds.")) return;
+        if (!confirm("Revoke this extension instance? The shield will deactivate within 60 seconds.")) return;
         setRevoking(device_id);
         try {
             const r = await fetch(`/api/admin/devices/${device_id}/revoke?workspaceId=${wid}`, { method: "POST" });
             if (r.ok) {
                 setDevices(prev => prev.map(d => d.device_id === device_id ? { ...d, status: "revoked" } : d));
-                toast("Device revoked.", "warning");
+                toast("Extension decommissioned.", "warning");
             }
         } finally { setRevoking(null); }
     };
@@ -349,30 +349,6 @@ export default function EnterpriseAdminHub() {
         toast("Token revoked.", "warning");
     };
 
-    const handleDownloadInstaller = async (platform: "mac" | "win") => {
-        if (!activeOrgId) return;
-        setDlInstaller(platform);
-        try {
-            const url = `/api/admin/installer?org_id=${activeOrgId}&group_id=${activeGroupId}&platform=${platform}&workspaceId=${wid}`;
-            const r = await fetch(url);
-            if (!r.ok) { toast("Failed to generate installer.", "error"); return; }
-            const blob = await r.blob();
-            // Use the server's Content-Disposition filename when available, fall back gracefully
-            const disposition = r.headers.get("Content-Disposition") || "";
-            const serverFilename = disposition.match(/filename="?([^"]+)"?/)?.[1];
-            const fallback = platform === "mac"
-                ? `complyze-install.sh`
-                : `complyze-install.ps1`;
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = serverFilename || fallback;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(a.href);
-            toast(`Installer downloaded: ${a.download}`, "success");
-        } finally { setDlInstaller(null); }
-    };
 
     /* Issue 2: policy save targets correct entity */
     const handleSavePolicy = async () => {
@@ -456,7 +432,7 @@ export default function EnterpriseAdminHub() {
             <div className="flex items-end justify-between border-b border-white/5 pb-8 pt-2">
                 <div>
                     <h1 className="text-2xl font-black tracking-tighter">Enterprise Admin Hub</h1>
-                    <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-black mt-1">Fleet · Groups · Policies · Enrollment</p>
+                    <p className="text-[12px] text-white/30 uppercase tracking-[0.2em] font-black mt-1">Extensions · Groups · Policies · Deployment</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Org:</span>
@@ -483,7 +459,7 @@ export default function EnterpriseAdminHub() {
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="Active Devices" value={activeDevices.length} sub={`of ${devices.length} total`} color="text-emerald-400" />
+                <StatCard label="Active Extensions" value={activeDevices.length} sub={`of ${devices.length} total`} color="text-emerald-400" />
                 <StatCard label="Revoked" value={revokedDevices.length} color={revokedDevices.length > 0 ? "text-red-400" : "text-white"} />
                 <StatCard label="Groups" value={groups.length} sub={`in ${activeOrg?.name || "—"}`} />
                 <StatCard label="Managed Users" value={activeUsers.length} sub={`of ${users.length} total`} color="text-blue-400" />
@@ -493,7 +469,7 @@ export default function EnterpriseAdminHub() {
             <div className="flex gap-1 bg-white/[0.03] border border-white/10 rounded-xl p-1">
                 {TABS.map(({ key, label, Icon }) => (
                     <button key={key} onClick={() => setTab(key)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${tab === key ? "bg-white/10 text-white" : "text-white/30 hover:text-white/60"}`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-[12px] font-black uppercase tracking-widest transition-colors ${tab === key ? "bg-white/10 text-white" : "text-white/30 hover:text-white/60"}`}
                     >
                         <Icon className="w-3.5 h-3.5" /><span className="hidden sm:inline">{label}</span>
                     </button>
@@ -504,17 +480,8 @@ export default function EnterpriseAdminHub() {
             {tab === "fleet" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/60">Device Fleet</h2>
+                        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/60">Extension Fleet</h2>
                         <div className="flex gap-2">
-                            {(["mac", "win"] as const).map(p => (
-                                <button key={p} onClick={() => handleDownloadInstaller(p)} disabled={dlInstaller === p || !activeOrgId}
-                                    className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-color)]/10 hover:bg-[var(--brand-color)]/20 border border-[var(--brand-color)]/30 rounded-lg text-[10px] font-black uppercase text-[var(--brand-color)] hover:text-white transition-all disabled:opacity-40">
-                                    {dlInstaller === p
-                                        ? <span className="animate-spin w-3 h-3 border border-current border-b-transparent rounded-full" />
-                                        : <Download className="w-3.5 h-3.5" />}
-                                    {dlInstaller === p ? "Generating…" : p === "mac" ? "macOS (.sh)" : "Windows (.ps1)"}
-                                </button>
-                            ))}
                             <button onClick={fetchDevices} className="p-2 bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/20 rounded-lg text-white/60 hover:text-white transition-all">
                                 <RefreshCw className="w-3.5 h-3.5" />
                             </button>
@@ -523,33 +490,33 @@ export default function EnterpriseAdminHub() {
                     {devices.length === 0 ? (
                         <div className="bg-white/[0.01] border border-dashed border-white/10 rounded-2xl p-20 text-center">
                             <Monitor className="w-10 h-10 text-white/20 mx-auto mb-4" />
-                            <p className="text-[10px] text-white/60 font-black uppercase tracking-widest">No devices enrolled yet</p>
-                            <p className="text-xs text-white/50 mt-2">Download an installer above and deploy to endpoints.</p>
+                            <p className="text-[10px] text-white/60 font-black uppercase tracking-widest">No extensions enrolled yet</p>
+                            <p className="text-xs text-white/50 mt-2">Deploy the MDM configuration to browsers across your fleet.</p>
                         </div>
                     ) : (
                         <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
                             <table className="w-full text-left">
-                                <thead><tr className="text-[9px] font-black text-white/20 uppercase tracking-widest border-b border-white/5 bg-white/[0.01]">
-                                    <th className="px-6 py-4">Endpoint</th><th className="px-6 py-4">Platform</th>
-                                    <th className="px-6 py-4">Agent</th><th className="px-6 py-4">Last Heartbeat</th>
-                                    <th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Actions</th>
+                                <thead><tr className="text-[11px] font-black text-white/20 uppercase tracking-widest border-b border-white/5 bg-white/[0.01]">
+                                    <th className="px-6 py-4">Identity</th><th className="px-6 py-4">Browser</th>
+                                    <th className="px-6 py-4">Extension</th><th className="px-6 py-4">Last Interaction</th>
+                                    <th className="px-6 py-4">Shield Status</th><th className="px-6 py-4 text-right">Actions</th>
                                 </tr></thead>
                                 <tbody className="divide-y divide-white/[0.04]">
                                     {devices.map(d => (
                                         <tr key={d.device_id} className="hover:bg-white/[0.02] transition-colors group">
                                             <td className="px-6 py-4">
-                                                <p className="text-sm font-black text-white/90 uppercase">{d.hostname || "Unknown"}</p>
-                                                <p className="text-[9px] text-white/50 font-mono">{d.device_id?.substring(0, 16) || "..."}…</p>
+                                                <p className="text-lg font-black text-white/90 uppercase">{d.hostname || "Unknown"}</p>
+                                                <p className="text-[12px] text-white/50 font-mono">{d.device_id?.substring(0, 16) || "..."}…</p>
                                             </td>
-                                            <td className="px-6 py-4"><span className="text-xs font-bold text-white/70 uppercase">{d.os_type || "—"}</span></td>
-                                            <td className="px-6 py-4"><span className="text-xs font-mono text-white/60">v{d.agent_version || "—"}</span></td>
-                                            <td className="px-6 py-4"><span className="text-xs text-white/60 font-bold">
+                                            <td className="px-6 py-4"><span className="text-sm font-bold text-white/70 uppercase">{d.browser || "—"}</span></td>
+                                            <td className="px-6 py-4"><span className="text-sm font-mono text-white/60">v{d.extension_version || "—"}</span></td>
+                                            <td className="px-6 py-4"><span className="text-sm text-white/60 font-bold">
                                                 {d.last_sync ? new Date(d.last_sync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}
                                             </span></td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`w-1.5 h-1.5 rounded-full ${d.status === "active" || d.status === "Healthy" ? "bg-emerald-500" : d.status === "revoked" ? "bg-red-500" : "bg-amber-500"}`} />
-                                                    <span className={`text-[9px] font-black uppercase ${d.status === "active" || d.status === "Healthy" ? "text-emerald-400" : d.status === "revoked" ? "text-red-400" : "text-amber-400"}`}>
+                                                    <span className={`text-[11px] font-black uppercase ${d.status === "active" || d.status === "Healthy" ? "text-emerald-400" : d.status === "revoked" ? "text-red-400" : "text-amber-400"}`}>
                                                         {d.status === "active" ? "Active" : d.status}
                                                     </span>
                                                 </div>
@@ -557,12 +524,12 @@ export default function EnterpriseAdminHub() {
                                             <td className="px-6 py-4 text-right">
                                                 {d.status !== "revoked" && (
                                                     <button onClick={() => handleRevokeDevice(d.device_id)} disabled={revoking === d.device_id}
-                                                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 ml-auto px-3 py-1.5 text-red-400 hover:bg-red-500/10 rounded-lg text-[9px] font-black uppercase border border-red-500/20 transition-all disabled:animate-pulse">
+                                                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 ml-auto px-3 py-1.5 text-red-400 hover:bg-red-500/10 rounded-lg text-[11px] font-black uppercase border border-red-500/20 transition-all disabled:animate-pulse">
                                                         {revoking === d.device_id ? <span className="animate-spin w-3 h-3 border border-red-400 border-b-transparent rounded-full" /> : <XCircle className="w-3 h-3" />}
-                                                        Revoke
+                                                        Decommission Extension
                                                     </button>
                                                 )}
-                                                {d.status === "revoked" && <span className="text-[9px] font-black text-red-500/50 uppercase">Revoked</span>}
+                                                {d.status === "revoked" && <span className="text-[9px] font-black text-red-500/50 uppercase">Decommissioned</span>}
                                             </td>
                                         </tr>
                                     ))}
@@ -577,7 +544,7 @@ export default function EnterpriseAdminHub() {
             {tab === "groups" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">Groups — {activeOrg?.name}</h2>
+                        <h2 className="text-[14px] font-black uppercase tracking-[0.3em] text-white/40">Groups — {activeOrg?.name}</h2>
                         <button onClick={() => setShowGroupForm(v => !v)}
                             className="flex items-center gap-2 px-5 py-2.5 bg-[var(--brand-color)] text-white rounded-xl text-[10px] font-black uppercase shadow-lg hover:opacity-90 transition-all">
                             <Plus className="w-3.5 h-3.5" /> New Group
@@ -620,11 +587,11 @@ export default function EnterpriseAdminHub() {
                                                 <Shield className="w-5 h-5 text-[var(--brand-color)]" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-black text-white/90 uppercase">{g.name}</p>
-                                                {g.description && <p className="text-xs text-white/60">{g.description}</p>}
+                                                <p className="text-lg font-black text-white/90 uppercase">{g.name}</p>
+                                                {g.description && <p className="text-base text-white/60">{g.description}</p>}
                                                 <div className="flex gap-4 mt-1">
-                                                    <span className="text-[9px] font-black text-white/50 uppercase">{memberCount} members</span>
-                                                    <span className={`text-[9px] font-black uppercase ${g.policy_id ? "text-emerald-400" : "text-amber-400"}`}>
+                                                    <span className="text-[11px] font-black text-white/50 uppercase">{memberCount} members</span>
+                                                    <span className={`text-[11px] font-black uppercase ${g.policy_id ? "text-emerald-400" : "text-amber-400"}`}>
                                                         {g.group_id.startsWith("temp-") ? "Saving…" : g.policy_id ? "Policy set" : "No policy"}
                                                     </span>
                                                 </div>
@@ -632,7 +599,7 @@ export default function EnterpriseAdminHub() {
                                         </div>
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => { setActiveGroupId(g.group_id); setPolicyTarget("group"); setTab("policy"); }}
-                                                className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[9px] font-black uppercase text-white/60 hover:text-white transition-all">
+                                                className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[13px] font-black uppercase text-white/60 hover:text-white transition-all">
                                                 <Settings className="w-3 h-3" /> Edit Policy
                                             </button>
                                             <button onClick={() => handleDeleteGroup(g.group_id)} disabled={g.group_id.startsWith("temp-")}
@@ -652,7 +619,7 @@ export default function EnterpriseAdminHub() {
             {tab === "users" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">Users — {activeOrg?.name}</h2>
+                        <h2 className="text-[14px] font-black uppercase tracking-[0.3em] text-white/40">Users — {activeOrg?.name}</h2>
                         <button onClick={() => setShowUserForm(v => !v)}
                             className="flex items-center gap-2 px-5 py-2.5 bg-[var(--brand-color)] text-white rounded-xl text-[10px] font-black uppercase shadow-lg hover:opacity-90 transition-all">
                             <Plus className="w-3.5 h-3.5" /> Add User
@@ -732,7 +699,7 @@ export default function EnterpriseAdminHub() {
                     ) : (
                         <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
                             <table className="w-full text-left">
-                                <thead><tr className="text-[9px] font-black text-white/20 uppercase border-b border-white/5 bg-white/[0.01]">
+                                <thead><tr className="text-[11px] font-black text-white/20 uppercase border-b border-white/5 bg-white/[0.01]">
                                     <th className="px-6 py-4">User</th><th className="px-6 py-4">Group</th>
                                     <th className="px-6 py-4">Role</th><th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4 text-right">Actions</th>
@@ -743,15 +710,15 @@ export default function EnterpriseAdminHub() {
                                         return (
                                             <tr key={u.user_id} className={`hover:bg-white/[0.02] transition-colors group ${!u.active ? "opacity-40" : ""}`}>
                                                 <td className="px-6 py-4">
-                                                    {u.display_name && <p className="text-sm font-bold text-white/90">{u.display_name}</p>}
-                                                    <p className="text-xs font-bold text-white/60">{u.email}</p>
+                                                    {u.display_name && <p className="text-lg font-bold text-white/90">{u.display_name}</p>}
+                                                    <p className="text-base font-bold text-white/60">{u.email}</p>
                                                 </td>
-                                                <td className="px-6 py-4"><span className="text-xs text-white/70 font-bold">{gName || <span className="text-white/40 italic">unassigned</span>}</span></td>
-                                                <td className="px-6 py-4"><span className="px-2 py-1 rounded text-[9px] font-black uppercase bg-white/5 text-white/60 border border-white/10">{u.role}</span></td>
+                                                <td className="px-6 py-4"><span className="text-sm text-white/70 font-bold">{gName || <span className="text-white/40 italic">unassigned</span>}</span></td>
+                                                <td className="px-6 py-4"><span className="px-2 py-1 rounded text-[11px] font-black uppercase bg-white/5 text-white/60 border border-white/10">{u.role}</span></td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`w-1.5 h-1.5 rounded-full ${u.active ? "bg-emerald-500" : "bg-red-500"}`} />
-                                                        <span className={`text-[9px] font-black uppercase ${u.active ? "text-emerald-400" : "text-red-400"}`}>{u.active ? "Active" : "Deactivated"}</span>
+                                                        <span className={`text-[11px] font-black uppercase ${u.active ? "text-emerald-400" : "text-red-400"}`}>{u.active ? "Active" : "Deactivated"}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
@@ -778,11 +745,11 @@ export default function EnterpriseAdminHub() {
                     {/* Issue 2: hierarchy selector — Org / Group / User */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-wrap">
-                            <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">Policy Editor</h2>
+                            <h2 className="text-[14px] font-black uppercase tracking-[0.3em] text-white/40">Policy Editor</h2>
                             <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
                                 {(["org", "group", "user"] as const).map(t => (
                                     <button key={t} onClick={() => setPolicyTarget(t)}
-                                        className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${policyTarget === t ? "bg-white/15 text-white" : "text-white/30 hover:text-white/60"}`}>
+                                        className={`px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-widest transition-all ${policyTarget === t ? "bg-white/15 text-white" : "text-white/30 hover:text-white/60"}`}>
                                         {t}
                                     </button>
                                 ))}
@@ -815,7 +782,7 @@ export default function EnterpriseAdminHub() {
                     {/* Policy scope badge */}
                     <div className="flex items-center gap-3 bg-blue-500/5 border border-blue-500/20 rounded-xl px-5 py-3">
                         <Globe className="w-4 h-4 text-blue-400 shrink-0" />
-                        <p className="text-xs text-blue-300/80 font-bold">
+                        <p className="text-base text-blue-300/80 font-bold">
                             Hierarchy: <span className="text-white/60">Org default</span>
                             <ChevronRight className="w-3 h-3 inline mx-1 text-white/30" />
                             <span className={policyTarget === "group" ? "text-white" : "text-white/60"}>Group policy</span>
@@ -827,7 +794,7 @@ export default function EnterpriseAdminHub() {
 
                     {/* Active rules */}
                     <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Active Rules ({currentPolicy.length})</p>
+                        <p className="text-[12px] font-black uppercase tracking-widest text-white/60">Active Rules ({currentPolicy.length})</p>
                         {currentPolicy.length === 0 ? (
                             <div className="bg-white/[0.01] border border-dashed border-white/10 rounded-xl p-10 text-center">
                                 <p className="text-[10px] text-white/60 font-black uppercase">No rules — inheriting from parent level</p>
@@ -839,10 +806,10 @@ export default function EnterpriseAdminHub() {
                                     : <Globe className="w-3 h-3" />;
                             return (
                                 <div key={rule.rule_id} className={`flex items-center gap-3 bg-white/[0.02] border border-white/10 rounded-xl px-5 py-3.5 group transition-all ${!rule.enabled ? "opacity-40" : ""}`}>
-                                    <span className="text-[9px] font-black text-white/40 font-mono w-6 text-center shrink-0">{rule.priority}</span>
-                                    <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase shrink-0 ${ACTION_BADGE[rule.action] || "bg-white/10 text-white/60"}`}>{rule.action}</span>
-                                    <span className="flex items-center gap-1.5 text-[9px] font-black text-white/50 uppercase shrink-0">{typeIcon}{parsed.type.replace(/_/g, " ")}</span>
-                                    <span className="flex-1 text-xs font-semibold text-white/80 truncate">{parsed.displayLabel || "unnamed target"}</span>
+                                    <span className="text-[11px] font-black text-white/40 font-mono w-6 text-center shrink-0">{rule.priority}</span>
+                                    <span className={`px-2.5 py-1 rounded text-[11px] font-black uppercase shrink-0 ${ACTION_BADGE[rule.action] || "bg-white/10 text-white/60"}`}>{rule.action}</span>
+                                    <span className="flex items-center gap-1.5 text-[11px] font-black text-white/50 uppercase shrink-0">{typeIcon}{parsed.type.replace(/_/g, " ")}</span>
+                                    <span className="flex-1 text-sm font-semibold text-white/80 truncate">{parsed.displayLabel || "unnamed target"}</span>
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                         <button onClick={() => handleToggleRule(rule.rule_id)} className="text-white/50 hover:text-white text-[9px] font-black uppercase transition-all">
                                             {rule.enabled ? "Disable" : "Enable"}
@@ -860,8 +827,8 @@ export default function EnterpriseAdminHub() {
                     <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 space-y-6">
                         {/* Header */}
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-white/70">Add Rule</p>
-                            <p className="text-xs text-white/50 mt-1">Select what to govern, then define the enforcement action.</p>
+                            <p className="text-[12px] font-black uppercase tracking-widest text-white/70">Add Rule</p>
+                            <p className="text-sm text-white/50 mt-1">Select what to govern, then define the enforcement action.</p>
                         </div>
 
                         {/* ── WHEN row ── */}
@@ -884,8 +851,8 @@ export default function EnterpriseAdminHub() {
                                             ? "bg-[var(--brand-color)]/15 border-[var(--brand-color)]/50 text-white"
                                             : "bg-white/[0.02] border-white/10 text-white/50 hover:border-white/30 hover:text-white/80"
                                             }`}>
-                                        <div className="flex items-center gap-1.5">{icon}<span className="text-[10px] font-black uppercase tracking-widest">{label}</span></div>
-                                        <span className="text-[9px] text-white/40">{desc}</span>
+                                        <div className="flex items-center gap-1.5">{icon}<span className="text-[12px] font-black uppercase tracking-widest">{label}</span></div>
+                                        <span className="text-[11px] text-white/40">{desc}</span>
                                     </button>
                                 ))}
                             </div>
@@ -948,9 +915,9 @@ export default function EnterpriseAdminHub() {
                                                         {active && <CheckCircle className="w-2.5 h-2.5 text-white" />}
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-bold text-white/90">{cat.display_name}</p>
-                                                        <p className="text-[9px] text-white/50 mt-0.5">{cat.description}</p>
-                                                        <p className="text-[9px] text-white/30 mt-1">{cat.tools.length} tools covered</p>
+                                                        <p className="text-sm font-bold text-white/90">{cat.display_name}</p>
+                                                        <p className="text-[11px] text-white/50 mt-0.5">{cat.description}</p>
+                                                        <p className="text-[11px] text-white/30 mt-1">{cat.tools.length} tools covered</p>
                                                     </div>
                                                 </button>
                                             );
@@ -993,7 +960,7 @@ export default function EnterpriseAdminHub() {
                             <div className="flex gap-2">
                                 {(["block", "allow", "audit_only", "redact"] as const).map(act => (
                                     <button key={act} onClick={() => setNewRule(r => ({ ...r, action: act }))}
-                                        className={`flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase border transition-all ${newRule.action === act
+                                        className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase border transition-all ${newRule.action === act
                                             ? act === "block" ? "bg-red-500/20 border-red-500/50 text-red-300"
                                                 : act === "allow" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
                                                     : act === "audit_only" ? "bg-blue-500/20 border-blue-500/50 text-blue-300"
@@ -1004,7 +971,7 @@ export default function EnterpriseAdminHub() {
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-[10px] text-white/40">
+                            <p className="text-[12px] text-white/40">
                                 {newRule.action === "block" ? "Request is terminated. User receives a blocked notice."
                                     : newRule.action === "allow" ? "Request is explicitly permitted (overrides category blocks)."
                                         : newRule.action === "audit_only" ? "Request passes through. Event is logged for compliance review."
@@ -1046,9 +1013,9 @@ export default function EnterpriseAdminHub() {
             {tab === "tokens" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">Enrollment — {activeOrg?.name}</h2>
+                        <h2 className="text-[14px] font-black uppercase tracking-[0.3em] text-white/40">Enrollment — {activeOrg?.name}</h2>
                         <button onClick={handleGenerateToken} disabled={creating.token || !activeOrgId}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-[var(--brand-color)] text-white rounded-xl text-[10px] font-black uppercase shadow-lg hover:opacity-90 disabled:opacity-50 transition-all">
+                            className="flex items-center gap-2 px-5 py-2.5 bg-[var(--brand-color)] text-white rounded-xl text-[12px] font-black uppercase shadow-lg hover:opacity-90 disabled:opacity-50 transition-all">
                             {creating.token ? <span className="animate-spin w-3.5 h-3.5 border-2 border-white/20 border-b-white rounded-full" /> : <Key className="w-3.5 h-3.5" />}
                             Generate Token
                         </button>
@@ -1072,8 +1039,8 @@ export default function EnterpriseAdminHub() {
                                 </button>
                             </div>
                             <div className="bg-black/20 rounded-xl px-5 py-4 font-mono text-[10px]">
-                                <p className="text-[9px] text-white/30 font-black uppercase mb-2">Deploy (macOS/Linux):</p>
-                                <code className="text-emerald-400 break-all">curl -sL https://complyze.co/install.sh | sudo sh -s -- --token={generatedToken} --org={activeOrgId}</code>
+                                <p className="text-[9px] text-white/30 font-black uppercase mb-2">Deploy Configuration (MDM):</p>
+                                <pre className="text-emerald-400 break-all leading-relaxed whitespace-pre-wrap">{JSON.stringify({ organizationId: { Value: activeOrgId }, apiEndpoint: { Value: "https://api.complyze.com" }, deploymentToken: { Value: generatedToken } }, null, 2)}</pre>
                             </div>
                         </div>
                     )}
@@ -1087,9 +1054,9 @@ export default function EnterpriseAdminHub() {
                             {tokens.map(t => (
                                 <div key={t.id} className="bg-white/[0.02] border border-white/10 rounded-xl px-5 py-4 flex items-center justify-between group hover:border-white/20 transition-all">
                                     <div className="flex items-center gap-4 min-w-0">
-                                        <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase shrink-0 ${t.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : t.status === "revoked" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-zinc-700/50 text-zinc-400 border border-zinc-600/30"}`}>{t.status}</span>
-                                        <span className="text-xs font-mono text-white/60 truncate">{t.token}</span>
-                                        <span className="text-[9px] text-white/50 font-black uppercase shrink-0">{t.uses_count} used</span>
+                                        <span className={`px-2.5 py-1 rounded text-[11px] font-black uppercase shrink-0 ${t.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : t.status === "revoked" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-zinc-700/50 text-zinc-400 border border-zinc-600/30"}`}>{t.status}</span>
+                                        <span className="text-sm font-mono text-white/60 truncate">{t.token}</span>
+                                        <span className="text-[11px] text-white/50 font-black uppercase shrink-0">{t.uses_count} used</span>
                                     </div>
                                     <div className="flex items-center gap-4 shrink-0">
                                         <span className="text-[9px] text-white/50 font-mono hidden md:block">exp {new Date(t.expires_at).toLocaleDateString()}</span>

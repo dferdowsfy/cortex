@@ -21,92 +21,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
-function MonitoringToggle({ collapsed }: { collapsed: boolean }) {
-    const { settings, saveSettings, loading, user } = useUserSettings();
-    const [toggling, setToggling] = useState(false);
-    const [toggleError, setToggleError] = useState("");
 
-    if (loading) return null;
-
-    const enabled = settings.proxyEnabled;
-
-    async function handleToggle() {
-        if (toggling) return;
-        setToggling(true);
-        setToggleError("");
-        const newState = !enabled;
-
-        try {
-            await saveSettings({ proxyEnabled: newState });
-            const res = await fetch("/api/proxy/settings", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    proxy_enabled: newState,
-                    workspaceId: user?.uid || "default",
-                }),
-            });
-
-            if (res.ok && newState) {
-                // For local automation: attempt to wake up the desktop agent with current dashboard context
-                const dashboardUrl = window.location.origin;
-                const iframe = document.createElement("iframe");
-                iframe.style.display = "none";
-                iframe.src = `complyze://open?dashboard=${encodeURIComponent(dashboardUrl)}`;
-                document.body.appendChild(iframe);
-                setTimeout(() => document.body.removeChild(iframe), 500);
-            }
-
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                const errMsg = data.error || "Failed to update proxy";
-                console.error("[MonitoringToggle] Backend error:", errMsg);
-                setToggleError(errMsg);
-                await saveSettings({ proxyEnabled: !newState });
-            }
-        } catch (err: any) {
-            console.error("[MonitoringToggle] Toggle error:", err);
-            setToggleError(err.message || "Connection error");
-            await saveSettings({ proxyEnabled: !newState });
-        } finally {
-            setToggling(false);
-        }
-    }
-
-    if (collapsed) {
-        return (
-            <div className={`p-2 flex justify-center items-center w-full relative group cursor-pointer`} onClick={handleToggle}>
-                <span className={`w-3 h-3 rounded-full shadow-lg transition-all ${enabled ? "bg-emerald-400 shadow-emerald-400/50" : "bg-zinc-600"}`} />
-            </div>
-        );
-    }
-
-    return (
-        <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 dark:bg-zinc-800/50 border border-zinc-700/50 mt-auto">
-            <span className={`text-[10px] font-bold uppercase tracking-[0.15em] ${enabled ? "text-emerald-500" : "text-zinc-500"}`}>
-                AI Shield {enabled ? "Active" : "Inactive"}
-            </span>
-            <div className="flex items-center gap-2">
-                <button
-                    onClick={handleToggle}
-                    disabled={toggling}
-                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${toggling ? "cursor-wait opacity-60" : "cursor-pointer"
-                        } ${enabled ? "bg-emerald-500" : "bg-zinc-600"}`}
-                >
-                    <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enabled ? "translate-x-4" : "translate-x-0"
-                            }`}
-                    />
-                </button>
-            </div>
-            {toggleError && (
-                <span className="absolute bottom-0 text-[10px] text-red-400 max-w-[120px] truncate" title={toggleError}>
-                    ⚠ {toggleError}
-                </span>
-            )}
-        </div>
-    );
-}
 
 const NAV_ITEMS = [
     { label: "Home", href: "/dashboard", icon: LayoutDashboard },
@@ -135,7 +50,7 @@ export function Sidebar() {
 
     return (
         <div
-            className={`flex flex-col h-full bg-[var(--bg-sidebar)] border-r border-[var(--border-main)] transition-all duration-300 ease-in-out ${collapsed ? 'w-[72px]' : 'w-[260px]'
+            className={`flex flex-col h-full bg-[var(--bg-sidebar)] border-r border-[var(--border-main)] transition-all duration-300 ease-in-out sidebar-fix ${collapsed ? 'w-[72px]' : 'w-[260px]'
                 } py-8 z-50`}
         >
             {/* Logo area */}
@@ -184,7 +99,6 @@ export function Sidebar() {
 
             {/* Bottom Actions */}
             <div className="px-3 flex flex-col gap-2 relative mt-auto border-t border-[var(--border-main)] pt-6">
-                <MonitoringToggle collapsed={collapsed} />
 
                 <div className="relative mt-1 mb-1" ref={menuRef}>
                     <div

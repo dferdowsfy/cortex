@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         normalizedPath === "/signup" ||
         normalizedPath === "/install"
     ) {
-        return <main className="min-h-screen">{children}</main>;
+        return <main className="min-h-screen main-content-area">{children}</main>;
     }
 
     // While loading auth state, show a minimal loading indicator
@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Sidebar />
 
             {/* ── Main Content ── */}
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 overflow-y-auto main-content-area">
                 <div className={`${normalizedPath === "/dashboard" || normalizedPath === "/governance" || normalizedPath === "/admin" ? "" : "mx-auto max-w-7xl px-6 py-8"}`}>
                     {children}
                 </div>
