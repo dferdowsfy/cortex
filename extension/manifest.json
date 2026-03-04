@@ -1,0 +1,35 @@
+{
+    "manifest_version": 3,
+    "name": "Complyze Zero-Trust Shield",
+    "version": "1.0.0",
+    "description": "Enterprise AI governance and compliance monitor.",
+    "icons": {
+        "16": "icon16.png",
+        "48": "icon48.png",
+        "128": "icon128.png"
+    },
+    "permissions": [
+        "storage",
+        "webRequest",
+        "declarativeNetRequest",
+        "identity"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "promptScanner.js"
+            ],
+            "run_at": "document_idle",
+            "all_frames": true
+        }
+    ]
+}
