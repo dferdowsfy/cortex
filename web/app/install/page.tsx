@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Globe } from "lucide-react";
 
 export default function InstallPage() {
     const [copied, setCopied] = useState(false);
@@ -32,113 +33,91 @@ export default function InstallPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                         </svg>
                     </div>
-                    <h1 className="text-2xl font-semibold text-white mb-2">
-                        Install Complyze Desktop Agent
+                    <h1 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter italic">
+                        Activate Complyze Shield
                     </h1>
-                    <p className="text-white/75 text-sm max-w-md mx-auto">
-                        The desktop agent runs locally to discover and monitor AI tools across your environment.
+                    <p className="text-white/75 text-sm max-w-md mx-auto font-bold uppercase tracking-widest text-[10px] opacity-60">
+                        Deploy the browser extension to monitor and secure AI interactions across your organization.
                     </p>
                 </div>
 
                 {/* Steps */}
                 <div className="space-y-4">
-                    {/* Step 1 – Download */}
-                    <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-6">
-                        <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 h-7 w-7 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-semibold">
-                                1
+                    {/* Step 1 – Install Extension */}
+                    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-8 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 opacity-40" />
+                        <div className="flex items-start gap-6">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg font-black italic">
+                                01
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-[15px] font-medium text-white mb-1">Download the installer</h3>
-                                <p className="text-sm text-white/75 mb-4">macOS (Apple Silicon) &middot; ~150 MB</p>
+                                <h3 className="text-lg font-black text-white mb-1 uppercase tracking-tight">Add to Browser</h3>
+                                <p className="text-sm text-white/50 mb-6 font-bold uppercase tracking-widest text-[10px]">Chrome &middot; Edge &middot; Brave</p>
                                 <button
-                                    onClick={handleDownload}
-                                    disabled={downloading}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-400 transition-colors disabled:opacity-60"
+                                    onClick={() => window.open('https://chrome.google.com/webstore', '_blank')}
+                                    className="inline-flex items-center gap-3 rounded-xl bg-indigo-500 px-6 py-3 text-xs font-black text-white hover:bg-indigo-400 transition-all uppercase tracking-widest shadow-lg shadow-indigo-900/20 active:scale-95"
                                 >
-                                    {downloading ? (
-                                        <>
-                                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                            </svg>
-                                            Downloading…
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                            </svg>
-                                            Download Complyze.dmg
-                                        </>
-                                    )}
+                                    <Globe className="h-4 w-4" />
+                                    Add to Chrome
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Step 2 – Remove quarantine */}
-                    <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-6">
-                        <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 h-7 w-7 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm font-semibold">
-                                2
+                    {/* Step 2 – Configure Enrollment */}
+                    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-8 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 opacity-40" />
+                        <div className="flex items-start gap-6">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg font-black italic">
+                                02
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-[15px] font-medium text-white mb-1">
-                                    Remove macOS quarantine flag
-                                </h3>
-                                <p className="text-sm text-white/75 mb-3">
-                                    macOS blocks apps downloaded outside the App Store. Open <strong className="text-white/90">Terminal</strong> and run:
+                                <h3 className="text-lg font-black text-white mb-1 uppercase tracking-tight">Enter License Key</h3>
+                                <p className="text-sm text-white/50 mb-4 font-bold uppercase tracking-widest text-[10px]">
+                                    Click the Complyze icon in your browser toolbar and paste your organization token.
                                 </p>
-                                <div className="relative group">
-                                    <pre className="rounded-lg bg-black/40 border border-white/[0.06] px-4 py-3 text-[13px] font-mono text-emerald-400 overflow-x-auto">
-                                        {xattrCommand}
-                                    </pre>
+                                <div className="bg-black/40 border border-white/5 rounded-xl px-5 py-4 flex items-center justify-between group">
+                                    <code className="text-xs font-mono text-emerald-400/80 font-bold uppercase tracking-widest truncate mr-4">
+                                        COM-9B2-A4F-7X1
+                                    </code>
                                     <button
-                                        onClick={copyCommand}
-                                        className="absolute top-2 right-2 rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/75 hover:text-white hover:bg-white/20 transition-colors opacity-0 group-hover:opacity-100"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText('COM-9B2-A4F-7X1');
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2000);
+                                        }}
+                                        className="text-[10px] font-black uppercase text-white/40 hover:text-white transition-colors shrink-0"
                                     >
-                                        {copied ? "Copied!" : "Copy"}
+                                        {copied ? "Copied" : "Copy"}
                                     </button>
                                 </div>
-                                <p className="text-xs text-white/60 mt-2 font-medium">
-                                    This removes the quarantine extended attribute that macOS applies to downloaded files.
-                                </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Step 3 – Open DMG */}
-                    <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-6">
-                        <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 h-7 w-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-semibold">
-                                3
+                    {/* Step 3 – Verify Shield */}
+                    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-8 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 opacity-40" />
+                        <div className="flex items-start gap-6">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-lg font-black italic">
+                                03
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-[15px] font-medium text-white mb-1">
-                                    Open the DMG and install
-                                </h3>
-                                <p className="text-sm text-white/75">
-                                    Double-click the <strong className="text-white/90">.dmg</strong> file, then drag <strong className="text-white/90">Complyze.app</strong> to your Applications folder.
-                                    Launch it from Applications — the agent will connect to your Complyze dashboard automatically.
+                                <h3 className="text-lg font-black text-white mb-1 uppercase tracking-tight">Ready for AI</h3>
+                                <p className="text-sm text-white/50 font-bold uppercase tracking-widest text-[10px] leading-relaxed">
+                                    Refresh your AI tabs (ChatGPT, Gemini, etc). Complyze will now monitor for sensitive data and policy violations in real-time.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Troubleshooting */}
-                <div className="mt-8 rounded-xl bg-white/[0.02] border border-white/[0.06] p-5">
-                    <h4 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">Still seeing &ldquo;damaged&rdquo;?</h4>
-                    <div className="space-y-2 text-[13px] text-white/60 font-medium leading-relaxed">
-                        <p>If the error persists after Step 2, try clearing the attribute on the mounted app directly:</p>
-                        <pre className="rounded-lg bg-black/30 px-3 py-2 text-[12px] font-mono text-emerald-400/80 overflow-x-auto">
-                            sudo xattr -cr /Applications/Complyze.app
-                        </pre>
-                        <p className="text-xs">
-                            Or right-click the app → <strong className="text-white/75">Open</strong> to bypass Gatekeeper for a single launch.
-                        </p>
-                    </div>
+                {/* Managed Deployment */}
+                <div className="mt-8 rounded-2xl bg-black/20 border border-white/5 p-6 text-center">
+                    <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-3 font-mono">Managed Infrastructure?</h4>
+                    <p className="text-xs text-white/50 font-medium leading-relaxed">
+                        For bulk deployment via MDM (Jamf, Intune, InTune), visit the <Link href="/admin" className="text-indigo-400 hover:text-indigo-300 underline font-bold">Admin Hub</Link> to download the Managed Storage JSON configuration.
+                    </p>
                 </div>
 
                 {/* Back link */}

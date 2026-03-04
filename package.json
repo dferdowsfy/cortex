@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "build:web": "npm run build -w web",
+    "build:extension": "zip -r complyze-extension.zip extension/",
     "dev": "tsx watch src/index.ts",
     "dev:web": "npm run dev -w web",
     "dev:app": "npm run dev -w desktop",

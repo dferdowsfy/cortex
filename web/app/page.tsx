@@ -28,7 +28,7 @@ export default function LandingPage() {
                 <span className="text-[#7261fd] font-medium">Enterprise Oversight.</span>
               </h1>
               <p className="text-xl text-neutral-600 dark:text-neutral-400 mb-10 leading-relaxed max-w-xl">
-                Complyze centralizes AI tool inventory, structures governance workflows, and delivers audit-ready oversight across your enterprise.
+                Complyze centralizes AI tool inventory, automates governance workflows, and enforces real-time policy via the <strong>Complyze Browser Shield</strong>.
               </p>
               <div className="flex flex-col sm:flex-row gap-5 mb-16">
                 <Link
@@ -142,9 +142,9 @@ export default function LandingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-white">AI Tool Registry</h3>
+              <h3 className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-white">Extension Shield</h3>
               <p className="text-lg sm:text-xl text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Maintain a structured, versioned inventory of all AI tools, models, and integrations across your organization.
+                Deploy the Complyze Shield directly to browsers to monitor, redact, and block sensitive AI interactions in real-time.
               </p>
             </div>
             <div className="flex flex-col gap-6">

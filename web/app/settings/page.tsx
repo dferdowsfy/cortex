@@ -8,7 +8,7 @@ import { useUserSettings } from "@/lib/hooks/use-user-settings";
    Types (kept for agent/setup status — not user settings)
    ═══════════════════════════════════════════════════════════════ */
 
-interface AgentStatus {
+interface ExtensionStatus {
     connected: boolean;
     last_seen: string | null;
     hostname: string | null;
@@ -64,11 +64,10 @@ function Toggle({
                 aria-checked={enabled}
                 disabled={disabled}
                 onClick={() => !disabled && onChange(!enabled)}
-                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${
-                    disabled
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${disabled
                         ? "cursor-not-allowed opacity-50"
                         : "cursor-pointer"
-                } ${enabled ? "bg-brand-600" : "bg-gray-200"}`}
+                    } ${enabled ? "bg-brand-600" : "bg-gray-200"}`}
             >
                 <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enabled ? "translate-x-5" : "translate-x-0"
@@ -116,7 +115,7 @@ export default function SettingsPage() {
     const [setupLoading, setSetupLoading] = useState<string | null>(null);
     const [setupMessage, setSetupMessage] = useState<{ type: "success" | "error" | "info"; text: string; command?: string } | null>(null);
     const [isCloud, setIsCloud] = useState(false);
-    const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
+    const [extensionStatus, setExtensionStatus] = useState<ExtensionStatus | null>(null);
     const [mounted, setMounted] = useState(false);
     const [timedOut, setTimedOut] = useState(false);
 
@@ -139,12 +138,12 @@ export default function SettingsPage() {
         if (settingsError) setError(settingsError);
     }, [settingsError]);
 
-    const checkAgentStatus = useCallback(async () => {
+    const checkExtensionStatus = useCallback(async () => {
         try {
             const res = await fetch("/api/agent/heartbeat");
             if (res.ok) {
                 const data = await res.json();
-                setAgentStatus(data);
+                setExtensionStatus(data);
             }
         } catch { /* silent */ }
     }, []);
@@ -165,17 +164,17 @@ export default function SettingsPage() {
     }, [isCloud]);
 
     useEffect(() => {
-        checkAgentStatus();
+        checkExtensionStatus();
         if (!isCloud) checkSetupStatus();
-    }, [checkSetupStatus, checkAgentStatus, isCloud]);
+    }, [checkSetupStatus, checkExtensionStatus, isCloud]);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            checkAgentStatus();
+            checkExtensionStatus();
             if (!isCloud) checkSetupStatus();
         }, 5000);
         return () => clearInterval(interval);
-    }, [checkAgentStatus, checkSetupStatus, isCloud]);
+    }, [checkExtensionStatus, checkSetupStatus, isCloud]);
 
     // ── Save handler: Bridge sync between User Settings & Proxy Agent ──
     async function handleSave(partial: Partial<typeof settings>) {
@@ -311,8 +310,8 @@ export default function SettingsPage() {
                     <Toggle
                         enabled={settings.proxyEnabled}
                         onChange={(val) => handleSave({ proxyEnabled: val })}
-                        label="Enable AI Monitoring"
-                        description="Route AI traffic through the Complyze engine for risk analysis."
+                        label="Enable AI Security Shield"
+                        description="Activate the browser extension to classify and secure AI interactions."
                         disabled={isSaving}
                     />
                     <Toggle
@@ -369,8 +368,8 @@ export default function SettingsPage() {
                                         key={option.id}
                                         onClick={() => handleSave({ riskThreshold: option.val })}
                                         className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-150 border ${isActive
-                                                ? "bg-brand-50 border-brand-200 text-brand-700 shadow-sm ring-1 ring-brand-200"
-                                                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                                            ? "bg-brand-50 border-brand-200 text-brand-700 shadow-sm ring-1 ring-brand-200"
+                                            : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                                             }`}
                                     >
                                         {option.label}
@@ -427,38 +426,38 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.856.12-1.685.344-2.469" />
                             </svg>
                         </div>
                         <div>
-                            <h2 className="text-base font-bold text-gray-900">Local Monitoring Agent</h2>
-                            <p className="text-xs text-gray-500">The lightweight agent that handles local traffic interception</p>
+                            <h2 className="text-base font-bold text-gray-900">Browser Security Shield</h2>
+                            <p className="text-xs text-gray-500">Managed browser extension for real-time AI governance</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${agentStatus?.connected ? "bg-green-500" : "bg-gray-300"}`} />
+                        <span className={`h-2 w-2 rounded-full ${extensionStatus?.connected ? "bg-green-500" : "bg-gray-300"}`} />
                         <span className="text-xs font-bold text-gray-600 uppercase tracking-tight">
-                            {agentStatus?.connected ? "INSTALLED" : "NOT INSTALLED"}
+                            {extensionStatus?.connected ? "ACTIVE" : "INACTIVE"}
                         </span>
                     </div>
                 </div>
 
                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 mb-6">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                        To enable deep inspection on this device, the Complyze Agent must be running. It automatically configures system proxy settings to ensure all AI interactions are governed.
+                        The Complyze extension monitors AI usage within your browser. It applies organization-wide policies and redacts sensitive data before it reaches LLM providers.
                     </p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3">
-                    <a
-                        href="/api/agent/installer"
+                    <Link
+                        href="/install"
                         className="flex-1 btn-primary py-3 px-4 flex items-center justify-center gap-2"
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        {agentStatus?.connected ? "Reinstall Agent" : "Deploy Monitoring Agent"}
-                    </a>
+                        {extensionStatus?.connected ? "Manage Extension" : "Activate Extension"}
+                    </Link>
                     {!isCloud && (
                         <button
                             onClick={checkSetupStatus}
@@ -473,11 +472,11 @@ export default function SettingsPage() {
                     )}
                 </div>
 
-                {agentStatus?.connected && (
+                {extensionStatus?.connected && (
                     <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
                         <div className="flex items-center gap-4">
-                            <span>Host: <strong>{agentStatus.hostname}</strong></span>
-                            <span>Seen: <strong>{agentStatus.minutes_ago === 0 ? "Just now" : `${agentStatus.minutes_ago}m ago`}</strong></span>
+                            <span>Hash: <strong>{extensionStatus.hostname}</strong></span>
+                            <span>Interaction: <strong>{extensionStatus.minutes_ago === 0 ? "Just now" : `${extensionStatus.minutes_ago}m ago`}</strong></span>
                         </div>
                         <span className="text-gray-300">v1.2.0</span>
                     </div>
