@@ -1,0 +1,50 @@
+🚀 Starting E2E Proxy Deterministic Tests...
+⚙️  Booting Proxy Server (Monitor Mode)...
+🔐 Loading existing CA certificate...
+
+╔════════════════════════════════════════════════════════════════╗
+║           🛡️  Complyze AI Traffic Interceptor                 ║
+╠════════════════════════════════════════════════════════════════╣
+║  Proxy:     127.0.0.1:8089                                    ║
+║  PAC URL:   http://127.0.0.1:8089/proxy.pac                   ║
+║  Dashboard: http://localhost:3737/dashboard                    ║
+║  Mode:      OBSERVE                                       ║
+║  Deep Inspection (all AI domains):                             ║
+║    🔍 api.openai.com                                       ║
+║    🔍 api.anthropic.com                                    ║
+║    🔍 api.cohere.com                                       ║
+║    🔍 api.mistral.ai                                       ║
+║    🔍 api.together.ai                                      ║
+║    🔍 api.together.xyz                                     ║
+║    🔍 openrouter.ai                                        ║
+║    🔍 api.perplexity.ai                                    ║
+║    🔍 api.groq.com                                         ║
+║    🔍 api.fireworks.ai                                     ║
+║    🔍 api.replicate.com                                    ║
+║    🔍 generativelanguage.googleapis.com                    ║
+║    🔍 chatgpt.com                                          ║
+║    🔍 chat.openai.com                                      ║
+║    🔍 ab.chatgpt.com                                       ║
+║    🔍 cdn.oaistatic.com                                    ║
+║    🔍 claude.ai                                            ║
+║    🔍 gemini.google.com                                    ║
+║                                                                ║
+║  Block Sensitive: 🔴 OFF                                   ║
+║  Desktop App Bypass: 🔴 OFF                                    ║
+║  (Toggle in Settings → allows cert-pinned apps)               ║
+╚════════════════════════════════════════════════════════════════╝
+
+Waiting for AI traffic... (press Ctrl+C to stop)
+
+[DIAGNOSE] ⚠️  1 check(s) failed: proxy_running — see /Users/dariusferdows/Cortex/cortex/desktop/certs/diagnostics-report.json
+🧪 TEST 1: Monitor mode tracking (High Risk Prompt)
+
+🔍 [#1] INTERCEPTING API → api.openai.com:443
+{"hostname":"api.openai.com","mode":"inspection","timestamp":"2026-03-02T20:28:41.908Z"}
+[DLP] Encrypted risk metadata logged: f0f543ee-2106-4abf-8159-10793a7b3b3e (REU: 400)
+   🛡️  TEXT SCAN [b44ca6d4-d7af-4a53-8be8-45948e8aa1db]: REU=400 | 100 (SP) × 2 (EM) × 2 (DM) = 400 | 3ms
+   📨 [b44ca6d4-d7af-4a53-8be8-45948e8aa1db] POST /v1/chat/completions (53 bytes)
+[ENFORCEMENT] {"event":"enforcement_decision","timestamp":"2026-03-02T20:28:42.298Z","request_id":"b44ca6d4-d7af-4a53-8be8-45948e8aa1db","hostname":"api.openai.com","path":"/v1/chat/completions","detection_result":"MONITOR","detection_reason":"High risk exposure detected — logged (monitor mode)","reu_score":400,"enforcement_mode":"monitor","enforcement_action":"monitor"}
+   ⏱️  LATENCY [b44ca6d4-d7af-4a53-8be8-45948e8aa1db]: 75ms (total)
+   📬 ← 200 OK
+      ✅ Logged [ANON] event #1 (ok)

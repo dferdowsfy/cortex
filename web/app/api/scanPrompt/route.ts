@@ -19,15 +19,14 @@ const openai = new OpenAI({
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        // Support promptText or prompt for backwards compatibility
         const promptText = body.promptText || body.prompt;
         const aiTool = body.aiTool || "Unknown Tool";
         const workspaceId = body.workspaceId || "default";
         const context = body.context || "";
 
-        const orgId = req.headers.get("X-Organization-ID");
+        const orgId = req.headers.get("X-Organization-ID") || body.orgId;
         const authHeader = req.headers.get("Authorization");
-        const userEmail = req.headers.get("X-User-Email");
+        const userEmail = req.headers.get("X-User-Email") || body.userEmail;
 
         if (!promptText) {
             return NextResponse.json({ error: "promptText is required" }, { status: 400 });
@@ -46,73 +45,87 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Determine user/group policies
+        // ISSUE 3 FIX: Use cachedPolicies FROM the extension if provided.
+        // This is the most up-to-date policy set the user's extension has.
+        // Fall back to fetching from the database if not supplied.
         let rules: any[] = [];
-        let groupId = null;
 
-        if (orgId) {
-            // Fetch org policy
+        if (body.cachedPolicies && Array.isArray(body.cachedPolicies) && body.cachedPolicies.length > 0) {
+            // Extension sent its locally-cached policies — use them directly
+            rules = body.cachedPolicies;
+            console.log(`[scanPrompt] Using ${rules.length} extension-cached policy rules.`);
+        } else if (orgId) {
+            // Fall back to DB lookup
+            let groupId = null;
             const org = await enrollmentStore.getOrganization(orgId, workspaceId);
-            if (org && org.policy_config && org.policy_config.rules) {
+            if (org?.policy_config?.rules) {
                 rules = org.policy_config.rules;
             }
 
-            // Fetch user mapping mapping
             if (userEmail && userEmail !== "unknown@domain.com") {
                 try {
                     const users = await userStore.listUsers(orgId, workspaceId);
-                    const foundUser = users.find(u => u.email === userEmail);
-                    if (foundUser && foundUser.group_id) {
-                        groupId = foundUser.group_id;
-                    }
+                    const foundUser = users.find((u: any) => u.email === userEmail);
+                    if (foundUser?.group_id) groupId = foundUser.group_id;
                 } catch (e) {
-                    console.error("Could not fetch user to determine group policy", e);
+                    console.error("Could not fetch user group", e);
                 }
             }
 
-            // Overlay group policy
             if (groupId) {
                 const groupPolicy = await groupStore.getPolicyByGroup(groupId, workspaceId);
-                if (groupPolicy && groupPolicy.rules && groupPolicy.rules.length > 0) {
-                    if (!groupPolicy.inherit_org_default) {
-                        rules = groupPolicy.rules;
-                    } else {
-                        rules = [...rules, ...groupPolicy.rules];
-                    }
+                const groupRules = groupPolicy?.rules || [];
+                if (groupRules.length > 0) {
+                    rules = groupPolicy?.inherit_org_default ? [...rules, ...groupRules] : groupRules;
                 }
             }
         }
 
-        const systemPrompt = `You are a strict enterprise compliance officer evaluating an employee's prompt to an AI tool (${aiTool}).
-Your goal is to enforce the company's Data Loss Prevention (DLP) and Acceptable Use policies.
+        const systemPrompt = `You are a strict enterprise AI security compliance officer.
+You are evaluating an employee's prompt to an AI tool (${aiTool}).
+Your primary job is to prevent data leakage and enforce policy.
 
-Here are the specific policy rules defined for this user's group/organization:
-${JSON.stringify(rules.length ? rules : [{ type: "baseline", action: "monitor", description: "Standard acceptable use policy. Block critical data leaks." }], null, 2)}
+CRITICAL: If the prompt contains ANY of the following, you MUST block or redact it:
+- AWS access keys (AKIA...)
+- API keys, secret keys, tokens
+- Social Security Numbers (SSN)
+- Passwords or credentials
+- Credit card numbers
+- Private keys or certificates
 
-You must return a JSON object with this exact schema:
+Policy rules for this user:
+${JSON.stringify(rules.length ? rules : [{ type: "baseline", action: "monitor", description: "Block critical data leaks, secrets, PII." }], null, 2)}
+
+Return a JSON object with this EXACT schema:
 {
-  "action": "allow" | "block" | "redact",
-  "message": "Reason for block/redaction (shown to user if action is not allow)",
-  "redactedText": "The sanitized text (only if action is redact; replace sensitive portions with [REDACTED])",
-  "riskScore": <integer representing risk from 0-100>
+  "action": "allow" | "block" | "redact" | "warn",
+  "message": "Reason for block/redaction",
+  "redactedText": "Cleaned text (only if action=redact)",
+  "riskScore": <0-100>
 }
 
-Instructions:
-1. Examine the user's Prompt alongside the provided Conversational Context.
-2. If the Prompt violates any "block" rules heavily, set action to "block" and provide a direct message.
-3. If the Prompt violates "redact" rules or contains sensitive data that can be sanitized, set action to "redact" and provide the "redactedText".
-4. If it is safe or only triggers "audit_only"/"allow" rules, set action to "allow".
-5. Calculate a riskScore from 0 (safe) to 100 (critical violation).
-`;
+Rules:
+1. If prompt contains AWS keys, API secrets, SSNs, passwords and policy says block → action MUST be "block"
+2. If prompt contains sensitive data that can be masked → action is "redact"
+3. If prompt matches a 'warn' rule or is high risk but not blocked → action is "warn"
+4. If prompt is safe → action is "allow", riskScore < 30
+5. NEVER return "allow" if secrets are present. Unsafe prompts must NEVER be marked SAFE.`;
 
-        const userContextMessage = context ? `Conversational Context:\n${Array.isArray(context) ? context.join('\\n---') : context}\n\n` : "";
-        const finalUserMessage = `${userContextMessage}User Prompt to evaluate:\n${promptText}`;
+        const userContextMessage = context ? `Context:\n${Array.isArray(context) ? context.join('\n---') : context}\n\n` : "";
+
+        let userContent: any = `${userContextMessage}Prompt to evaluate:\n${promptText}`;
+        if (typeof promptText === 'string' && promptText.startsWith('data:image/')) {
+            userContent = [
+                { type: "text", text: `${userContextMessage}Analyze this image/screenshot for sensitive data, secrets, or policy violations according to the system prompt.` },
+                { type: "image_url", image_url: { url: promptText } }
+            ];
+        }
 
         const llmResponse = await openai.chat.completions.create({
-            model: process.env.OPENROUTER_MODEL || "gpt-4o-mini", // Use OpenRouter or fallback to standard model
+            model: process.env.OPENROUTER_MODEL || "gpt-4o-mini",
             messages: [
                 { role: "system", content: systemPrompt },
-                { role: "user", content: finalUserMessage }
+                { role: "user", content: userContent }
             ],
             response_format: { type: "json_object" },
             temperature: 0.1,
@@ -126,24 +139,35 @@ Instructions:
             parsedResult = JSON.parse(resultText);
         } catch (e) {
             console.error("LLM failed to return valid JSON", resultText);
-            parsedResult = {
-                action: "allow",
-                message: "Evaluation error, fail-open applied",
-                redactedText: "",
-                riskScore: 0
-            };
+            parsedResult = { action: "allow", message: "Evaluation error", riskScore: 0 };
         }
+
+        // NEVER let LLM override a clear DLP violation
+        // Server-side DLP safety net
+        const criticalPatterns = [
+            /\b(AKIA|AGPA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{12,20}\b/,
+            /\bsk-(?:proj-)?[A-Za-z0-9]{20,}\b/,
+            /\b(?!000|666|9\d{2})\d{3}-\d{2}-\d{4}\b/,
+        ];
+        const hasCritical = criticalPatterns.some(p => p.test(promptText));
+        if (hasCritical && parsedResult.action === "allow") {
+            console.warn("[scanPrompt] LLM returned 'allow' but DLP found critical data — overriding to 'block'");
+            parsedResult.action = "block";
+            parsedResult.riskScore = Math.max(parsedResult.riskScore || 0, 90);
+            parsedResult.message = "Critical sensitive data detected (server-side override).";
+        }
+
+        console.log(`[scanPrompt] Final: action=${parsedResult.action} | riskScore=${parsedResult.riskScore} | tool=${aiTool}`);
 
         return NextResponse.json({
             riskScore: parsedResult.riskScore || 0,
             action: parsedResult.action || "allow",
             message: parsedResult.message || "",
             redactedText: parsedResult.redactedText || "",
-            // Additional structure for backward compatibility with the frontend if needed
             categories: ["llm_evaluated"],
             riskCategory: parsedResult.riskScore > 75 ? "critical" : (parsedResult.riskScore > 50 ? "high" : "low"),
             policyViolation: parsedResult.action === "block",
-            details: [parsedResult.message]
+            details: [parsedResult.message],
         });
 
     } catch (err: any) {

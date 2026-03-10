@@ -18,9 +18,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "aiTool is required" }, { status: 400 });
         }
 
-        const resolvedWorkspaceId = workspaceId || "default";
+        const orgId = req.headers.get("X-Organization-ID") || "default";
+        const resolvedWorkspaceId = workspaceId || orgId;
 
         // Map extension payload to ActivityEvent schema
+        const isBlocked = action === "blocked" || action === "block" || body.blocked === true;
+        const score = parseInt(riskScore) || 0;
+
         const event: ActivityEvent = {
             id: `ext_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
             tool: aiTool,
@@ -30,13 +34,15 @@ export async function POST(req: NextRequest) {
             prompt_length: parseInt(promptLength) || 0,
             token_count_estimate: Math.round((parseInt(promptLength) || 0) / 4),
             api_endpoint: "browser_extension",
-            sensitivity_score: parseInt(riskScore) || 0,
-            sensitivity_categories: (parseInt(riskScore) > 0) ? ["dlp_match" as any] : ["none"],
-            policy_violation_flag: action === "blocked",
-            risk_category: parseInt(riskScore) > 75 ? "critical" : (parseInt(riskScore) > 50 ? "high" : "low"),
+            sensitivity_score: score,
+            sensitivity_categories: (score > 0) ? ["dlp_match" as any] : ["none"],
+            policy_violation_flag: isBlocked || score > 75,
+            risk_category: score > 75 ? "critical" : (score > 50 ? "high" : "low"),
             timestamp: new Date().toISOString(),
-            enforcement_action: action === "blocked" ? "block" : "monitor",
-            blocked: action === "blocked"
+            enforcement_action: isBlocked ? "block" : "monitor",
+            blocked: isBlocked,
+            findings: body.findings || (body.message ? [body.message] : []),
+            full_prompt: body.promptText || body.prompt,
         };
 
         await store.addEvent(event, resolvedWorkspaceId);

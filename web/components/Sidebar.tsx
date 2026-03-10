@@ -7,28 +7,18 @@ import { useAuth } from "@/lib/auth-context";
 import { useUserSettings } from "@/lib/hooks/use-user-settings";
 import {
     LayoutDashboard,
-    Activity,
     ShieldCheck,
-    FileBarChart,
-    Users,
     Settings,
     UserCircle,
     ChevronRight,
     ChevronLeft,
-    Sun,
-    Moon,
-    Building2
+    Layers,
 } from "lucide-react";
-import { ThemeToggle } from "./ThemeToggle";
-
-
 
 const NAV_ITEMS = [
-    { label: "Home", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Monitor", href: "/monitoring", icon: Activity },
-    { label: "Assess", href: "/scan", icon: ShieldCheck },
-    { label: "Governance", href: "/governance", icon: Users },
-    { label: "Admin Hub", href: "/admin", icon: Building2 },
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Manage", href: "/admin", icon: Layers },
+    { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -118,14 +108,6 @@ export function Sidebar() {
 
                     {userMenuOpen && (
                         <div className={`absolute mb-2 w-48 rounded-xl bg-[var(--bg-card)] border border-[var(--border-main)] shadow-xl py-1 z-50 overflow-hidden ${collapsed ? 'bottom-0 left-16' : 'bottom-full left-0'}`}>
-                            <Link
-                                href="/settings"
-                                className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)] transition-colors"
-                                onClick={() => setUserMenuOpen(false)}
-                            >
-                                <Settings size={14} className="shrink-0" />
-                                User Settings
-                            </Link>
                             <button
                                 onClick={() => {
                                     setUserMenuOpen(false);

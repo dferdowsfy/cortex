@@ -219,6 +219,7 @@ process.on('SIGINT', async () => {
     console.log('Shutting down gracefully...');
     if (proxyController) {
         await proxyController.stopProxy();
+        await proxyController.disableSystemProxy();
     }
     process.exit(0);
 });
@@ -227,6 +228,22 @@ process.on('SIGTERM', async () => {
     console.log('Shutting down gracefully...');
     if (proxyController) {
         await proxyController.stopProxy();
+        await proxyController.disableSystemProxy();
     }
     process.exit(0);
 });
+
+async function handleCrash(err) {
+    console.error('AGENT CRASH:', err);
+    if (proxyController) {
+        try {
+            // Emergency cleanup: try to disable proxy before dying
+            await proxyController.disableSystemProxy();
+        } catch (e) { }
+    }
+    process.exit(1);
+}
+
+process.on('uncaughtException', handleCrash);
+process.on('unhandledRejection', handleCrash);
+

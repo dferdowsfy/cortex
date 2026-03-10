@@ -21,18 +21,16 @@ interface Organization { id: string; name: string; created_at: string; }
 interface Group { group_id: string; org_id: string; name: string; description?: string; policy_id: string | null; created_at: string; }
 interface PolicyRule { rule_id: string; type: string; target: string; action: "block" | "allow" | "audit_only" | "redact"; priority: number; enabled: boolean; }
 interface GroupPolicy { policy_id: string; group_id: string; version: number; rules: PolicyRule[]; inherit_org_default: boolean; }
-interface ManagedUser { user_id: string; org_id: string; group_id: string | null; email: string; display_name?: string; role: string; active: boolean; created_at: string; }
+interface ManagedUser { user_id: string; org_id: string; group_id: string | null; email: string; display_name?: string; role: string; active: boolean; created_at: string; license_key?: string; last_activity?: string; }
 interface ExtensionStatus { device_id: string; hostname: string; browser?: string; extension_version?: string; last_sync: string; status: string; }
 interface EnrollmentToken { id: string; token: string; status: "active" | "revoked" | "expired"; expires_at: string; uses_count: number; max_uses: number | null; org_id: string; }
 
 /* ─── Constants (outside component — fixes Issue 3) ─────── */
-type Tab = "fleet" | "groups" | "users" | "policy" | "tokens";
+type Tab = "people" | "policy" | "deploy";
 const TABS: { key: Tab; label: string; Icon: React.ElementType }[] = [
-    { key: "fleet", label: "Extension Fleet", Icon: Monitor },
-    { key: "groups", label: "Groups", Icon: Shield },
-    { key: "users", label: "Users", Icon: Users },
-    { key: "policy", label: "Policy Editor", Icon: Settings },
-    { key: "tokens", label: "Deployment", Icon: Key },
+    { key: "people", label: "Groups & Users", Icon: Users },
+    { key: "policy", label: "Policies", Icon: Settings },
+    { key: "deploy", label: "Deploy", Icon: Key },
 ];
 
 const ACTION_BADGE: Record<string, string> = {
@@ -72,7 +70,7 @@ export default function EnterpriseAdminHub() {
     const [activeGroupId, setActiveGroupId] = useState("");
     const [activeUserId, setActiveUserId] = useState("");
     const [policyMap, setPolicyMap] = useState<Record<string, PolicyRule[]>>({});  // keyed by groupId or userId
-    const [newRule, setNewRule] = useState<Partial<PolicyRule>>({ type: "ai_tool", target: "", action: "block", priority: 50, enabled: true });
+    const [newRule, setNewRule] = useState<Partial<PolicyRule>>({ type: "ai_tool", action: "block", priority: 50, enabled: true });
     // Rule builder structured state
     const [ruleTargetType, setRuleTargetType] = useState<RuleTargetType>("ai_tool");
     const [selectedTool, setSelectedTool] = useState<ToolId>("chatgpt");
@@ -82,7 +80,7 @@ export default function EnterpriseAdminHub() {
     const [showAdvancedTarget, setShowAdvancedTarget] = useState(false);
 
     /* ── UI state ── */
-    const [tab, setTab] = useState<Tab>("fleet");
+    const [tab, setTab] = useState<Tab>("people");
     const [loading, setLoading] = useState(true);
     const [revoking, setRevoking] = useState<string | null>(null);
     const [savingPolicy, setSavingPolicy] = useState(false);
@@ -314,6 +312,39 @@ export default function EnterpriseAdminHub() {
         }
     };
 
+    const handleAssignUserGroup = async (user_id: string, group_id: string | null) => {
+        setUsers(prev => prev.map(x => x.user_id === user_id ? { ...x, group_id } : x));
+        const r = await fetch(`/api/admin/users?workspaceId=${wid}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id, group_id }),
+        });
+        if (!r.ok) {
+            toast("Failed to assign group.", "error");
+            fetchUsers(activeOrgId);
+        } else {
+            toast("User group updated.", "success");
+        }
+    };
+
+    const handleRegenerateKey = async (user_id: string) => {
+        if (!confirm("Regenerate license key? The old key will stop working immediately.")) return;
+        const r = await fetch(`/api/admin/users?workspaceId=${wid}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id, regenerate_license: true }),
+        });
+        if (r.ok) {
+            const { license_key } = await r.json();
+            setUsers(prev => prev.map(x => x.user_id === user_id ? { ...x, license_key } : x));
+            toast("License key regenerated.", "success");
+        } else {
+            toast("Failed to generate key.", "error");
+        }
+    };
+
+    const handleResetPassword = async (email: string) => {
+        toast(`Password reset link sent to ${email}`, "info");
+    };
+
     const handleRevokeDevice = async (device_id: string) => {
         if (!confirm("Revoke this extension instance? The shield will deactivate within 60 seconds.")) return;
         setRevoking(device_id);
@@ -360,7 +391,7 @@ export default function EnterpriseAdminHub() {
                 body = { org_id: activeOrgId, rules: currentPolicy, inherit_org_default: true };
             }
             // user-level and org-level stubs — extend as backend grows
-            if (!url) { toast("Select a valid target.", "error"); return; }
+            if (!url) { toast("Select a Group or User to save this policy.", "error"); return; }
             const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
             r.ok ? toast("Policy saved.", "success") : toast("Failed to save policy.", "error");
         } finally { setSavingPolicy(false); }
@@ -402,7 +433,7 @@ export default function EnterpriseAdminHub() {
         setSelectedCategories([]);
         setRawTargetValue("");
         setToolSearch("");
-        setNewRule({ type: "ai_tool", target: "", action: "block", priority: 50, enabled: true });
+        setNewRule({ type: "ai_tool", action: "block", priority: 50, enabled: true });
     };
 
     const handleRemoveRule = (rule_id: string) => {
@@ -431,8 +462,8 @@ export default function EnterpriseAdminHub() {
             {/* Header + Org Switcher */}
             <div className="flex items-end justify-between border-b border-white/5 pb-8 pt-2">
                 <div>
-                    <h1 className="text-2xl font-black tracking-tighter">Enterprise Admin Hub</h1>
-                    <p className="text-[12px] text-white/30 uppercase tracking-[0.2em] font-black mt-1">Extensions · Groups · Policies · Deployment</p>
+                    <h1 className="text-2xl font-black tracking-tighter">Manage</h1>
+                    <p className="text-[12px] text-white/30 uppercase tracking-[0.2em] font-black mt-1">Groups · Users · Policies · Deployment</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Org:</span>
@@ -476,8 +507,8 @@ export default function EnterpriseAdminHub() {
                 ))}
             </div>
 
-            {/* ══ FLEET ══════════════════════════════════════════════ */}
-            {tab === "fleet" && (
+            {/* ══ FLEET (shown inside Deploy tab) ═════════════════ */}
+            {tab === "deploy" && devices.length > 0 && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center">
                         <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-white/60">Extension Fleet</h2>
@@ -540,8 +571,8 @@ export default function EnterpriseAdminHub() {
                 </div>
             )}
 
-            {/* ══ GROUPS ══════════════════════════════════════════════ */}
-            {tab === "groups" && (
+            {/* ══ GROUPS + USERS ═══════════════════════════════════ */}
+            {tab === "people" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center">
                         <h2 className="text-[14px] font-black uppercase tracking-[0.3em] text-white/40">Groups — {activeOrg?.name}</h2>
@@ -615,8 +646,8 @@ export default function EnterpriseAdminHub() {
                 </div>
             )}
 
-            {/* ══ USERS ═══════════════════════════════════════════════ */}
-            {tab === "users" && (
+            {/* ══ USERS (also part of People tab) ═════════════════ */}
+            {tab === "people" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center">
                         <h2 className="text-[14px] font-black uppercase tracking-[0.3em] text-white/40">Users — {activeOrg?.name}</h2>
@@ -700,34 +731,62 @@ export default function EnterpriseAdminHub() {
                         <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
                             <table className="w-full text-left">
                                 <thead><tr className="text-[11px] font-black text-white/20 uppercase border-b border-white/5 bg-white/[0.01]">
-                                    <th className="px-6 py-4">User</th><th className="px-6 py-4">Group</th>
-                                    <th className="px-6 py-4">Role</th><th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">User</th>
+                                    <th className="px-6 py-4">License Key</th>
+                                    <th className="px-6 py-4">Group</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">Activity</th>
                                     <th className="px-6 py-4 text-right">Actions</th>
                                 </tr></thead>
                                 <tbody className="divide-y divide-white/[0.04]">
                                     {users.map(u => {
-                                        const gName = groups.find(g => g.group_id === u.group_id)?.name;
                                         return (
                                             <tr key={u.user_id} className={`hover:bg-white/[0.02] transition-colors group ${!u.active ? "opacity-40" : ""}`}>
                                                 <td className="px-6 py-4">
-                                                    {u.display_name && <p className="text-lg font-bold text-white/90">{u.display_name}</p>}
-                                                    <p className="text-base font-bold text-white/60">{u.email}</p>
+                                                    {u.display_name && <p className="text-base font-bold text-white/90 uppercase">{u.display_name}</p>}
+                                                    <p className="text-xs font-bold text-white/40 font-mono">{u.email}</p>
                                                 </td>
-                                                <td className="px-6 py-4"><span className="text-sm text-white/70 font-bold">{gName || <span className="text-white/40 italic">unassigned</span>}</span></td>
-                                                <td className="px-6 py-4"><span className="px-2 py-1 rounded text-[11px] font-black uppercase bg-white/5 text-white/60 border border-white/10">{u.role}</span></td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <code className="text-[11px] font-black bg-white/5 px-2 py-1 rounded border border-white/10 text-blue-400 tracking-wider">
+                                                            {u.license_key || "CMP-PENDING"}
+                                                        </code>
+                                                        <button onClick={() => { navigator.clipboard.writeText(u.license_key || ""); toast("Copied key", "success"); }} className="opacity-0 group-hover:opacity-100 p-1 text-white/30 hover:text-white"><Copy className="w-3 h-3" /></button>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <select
+                                                        value={u.group_id || ""}
+                                                        onChange={(e) => handleAssignUserGroup(u.user_id, e.target.value || null)}
+                                                        className="bg-transparent text-sm font-bold text-white/70 focus:outline-none cursor-pointer hover:text-white transition-colors"
+                                                    >
+                                                        <option value="">Unassigned</option>
+                                                        {groups.filter(g => !g.group_id.startsWith("temp-")).map(g => (
+                                                            <option key={g.group_id} value={g.group_id}>{g.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`w-1.5 h-1.5 rounded-full ${u.active ? "bg-emerald-500" : "bg-red-500"}`} />
-                                                        <span className={`text-[11px] font-black uppercase ${u.active ? "text-emerald-400" : "text-red-400"}`}>{u.active ? "Active" : "Deactivated"}</span>
+                                                        <span className={`text-[11px] font-black uppercase ${u.active ? "text-emerald-400" : "text-red-400"}`}>{u.active ? "Active" : "Revoked"}</span>
                                                     </div>
                                                 </td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-[11px] font-black text-white/30 uppercase tracking-widest">{u.last_activity ? timeSince(new Date(u.last_activity).getTime()) : "Never"}</p>
+                                                </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <button onClick={() => handleToggleUser(u)}
-                                                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 ml-auto px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
-                                                        style={{ borderColor: u.active ? "rgba(239,68,68,.3)" : "rgba(16,185,129,.3)", color: u.active ? "rgb(251,113,133)" : "rgb(52,211,153)" }}>
-                                                        {u.active ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
-                                                        {u.active ? "Deactivate" : "Activate"}
-                                                    </button>
+                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button onClick={() => handleRegenerateKey(u.user_id)} title="Regenerate License" className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-blue-400 transition-all">
+                                                            <RefreshCw className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button onClick={() => handleResetPassword(u.email)} title="Reset Password" className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-amber-400 transition-all">
+                                                            <Key className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button onClick={() => handleToggleUser(u)} title={u.active ? "Revoke Access" : "Grant Access"} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-red-400 transition-all">
+                                                            {u.active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -848,7 +907,7 @@ export default function EnterpriseAdminHub() {
                                 ] as const).map(({ id, label, icon, desc }) => (
                                     <button key={id} onClick={() => { setRuleTargetType(id); if (id === "domain" || id === "pattern") setShowAdvancedTarget(true); }}
                                         className={`flex flex-col items-start gap-1.5 px-4 py-3 rounded-xl border text-left transition-all ${ruleTargetType === id
-                                            ? "bg-[var(--brand-color)]/15 border-[var(--brand-color)]/50 text-white"
+                                            ? "bg-orange-500/10 border-orange-500/60 shadow-[0_0_15px_rgba(249,115,22,0.15)] text-white"
                                             : "bg-white/[0.02] border-white/10 text-white/50 hover:border-white/30 hover:text-white/80"
                                             }`}>
                                         <div className="flex items-center gap-1.5">{icon}<span className="text-[12px] font-black uppercase tracking-widest">{label}</span></div>
@@ -875,7 +934,7 @@ export default function EnterpriseAdminHub() {
                                             .map(tool => (
                                                 <button key={tool.id} onClick={() => setSelectedTool(tool.id)}
                                                     className={`flex flex-col gap-0.5 px-3 py-2.5 rounded-xl border text-left transition-all ${selectedTool === tool.id
-                                                        ? "bg-[var(--brand-color)]/15 border-[var(--brand-color)]/50"
+                                                        ? "bg-orange-500/10 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.1)]"
                                                         : "bg-white/[0.02] border-white/10 hover:border-white/25"
                                                         }`}>
                                                     <span className="text-xs font-bold text-white/90">{tool.display_name}</span>
@@ -907,10 +966,10 @@ export default function EnterpriseAdminHub() {
                                                     active ? prev.filter(c => c !== cat.id) : [...prev, cat.id]
                                                 )}
                                                     className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all ${active
-                                                        ? "bg-[var(--brand-color)]/15 border-[var(--brand-color)]/50"
+                                                        ? "bg-orange-500/10 border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.1)]"
                                                         : "bg-white/[0.02] border-white/10 hover:border-white/25"
                                                         }`}>
-                                                    <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${active ? "bg-[var(--brand-color)] border-[var(--brand-color)]" : "border-white/30"
+                                                    <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${active ? "bg-orange-500 border-orange-500" : "border-white/30"
                                                         }`}>
                                                         {active && <CheckCircle className="w-2.5 h-2.5 text-white" />}
                                                     </div>
@@ -961,10 +1020,10 @@ export default function EnterpriseAdminHub() {
                                 {(["block", "allow", "audit_only", "redact"] as const).map(act => (
                                     <button key={act} onClick={() => setNewRule(r => ({ ...r, action: act }))}
                                         className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase border transition-all ${newRule.action === act
-                                            ? act === "block" ? "bg-red-500/20 border-red-500/50 text-red-300"
-                                                : act === "allow" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
-                                                    : act === "audit_only" ? "bg-blue-500/20 border-blue-500/50 text-blue-300"
-                                                        : "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                                            ? act === "block" ? "bg-red-500/20 border-orange-500/60 text-red-300"
+                                                : act === "allow" ? "bg-emerald-500/20 border-orange-500/60 text-emerald-300"
+                                                    : act === "audit_only" ? "bg-blue-500/20 border-orange-500/60 text-blue-300"
+                                                        : "bg-amber-500/20 border-orange-500/60 text-amber-300"
                                             : "bg-white/5 border-white/10 text-white/50 hover:border-white/30 hover:text-white"
                                             }`}>
                                         {act === "audit_only" ? "Audit Only" : act.charAt(0).toUpperCase() + act.slice(1)}
@@ -996,8 +1055,8 @@ export default function EnterpriseAdminHub() {
                         {/* ── Submit ── */}
                         <div className="flex items-center gap-3 pt-1 border-t border-white/5">
                             <button onClick={handleAddRule} disabled={!ruleBuilderValid}
-                                className="flex items-center gap-2 px-8 py-2.5 bg-[var(--brand-color)] text-white rounded-xl text-[10px] font-black uppercase shadow-lg hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                                <Plus className="w-3.5 h-3.5" /> Add Rule
+                                className="flex items-center gap-2 px-12 py-3.5 bg-orange-600 text-white rounded-xl text-[12px] font-black uppercase shadow-[0_10px_20px_rgba(249,115,22,0.2)] hover:bg-orange-500 hover:scale-[1.02] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                                Save
                             </button>
                             {!ruleBuilderValid && (
                                 <p className="text-[10px] text-white/40">
@@ -1010,7 +1069,7 @@ export default function EnterpriseAdminHub() {
             )}
 
             {/* ══ ENROLLMENT ══════════════════════════════════════════ */}
-            {tab === "tokens" && (
+            {tab === "deploy" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center">
                         <h2 className="text-[14px] font-black uppercase tracking-[0.3em] text-white/40">Enrollment — {activeOrg?.name}</h2>

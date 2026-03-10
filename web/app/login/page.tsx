@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
     signInWithEmailAndPassword,
@@ -207,6 +208,11 @@ export default function LoginPage() {
                             </button>
                         </div>
                     </form>
+                </div>
+                <div className="mt-8 text-center">
+                    <Link href="/privacy" className="text-xs font-semibold text-gray-500 hover:text-brand-600 transition-colors uppercase tracking-widest">
+                        Privacy Policy
+                    </Link>
                 </div>
             </div>
         </div>

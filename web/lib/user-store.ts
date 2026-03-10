@@ -18,6 +18,14 @@ export interface ManagedUser {
     enrolled_at?: string;
     last_seen?: string;
     enrolled_device_count: number;
+    license_key?: string;
+    last_activity?: string;
+}
+
+function generateLicenseKey(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No O/0/I/1 for clarity
+    const gen = (len: number) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    return `CMP-${gen(5)}-${gen(5)}`;
 }
 
 const MANAGED_USERS_PATH = "managed_users";
@@ -44,8 +52,10 @@ class UserStore {
             role,
             active: true,
             created_at: now,
-            enrolled_at: now, // Matches our latest ManagedUser type
+            enrolled_at: now,
             enrolled_device_count: 0,
+            license_key: generateLicenseKey(),
+            last_activity: now,
         };
         if (display_name) user.display_name = display_name;
 
@@ -139,6 +149,26 @@ class UserStore {
             delete users[user_id];
             localStorage.setWorkspaceData(workspaceId, "managed_users", users);
         }
+    }
+
+    async getUserByLicenseKey(license_key: string, workspaceId: string = "default"): Promise<ManagedUser | null> {
+        if (adminDb && adminDb.app.options.databaseURL) {
+            const snap = await adminDb.ref(MANAGED_USERS_PATH).orderByChild("license_key").equalTo(license_key).get();
+            if (snap.exists()) {
+                const val = snap.val();
+                return Object.values(val)[0] as ManagedUser;
+            }
+        } else {
+            const all = localStorage.getWorkspaceData(workspaceId, "managed_users", {}) as Record<string, ManagedUser>;
+            return Object.values(all).find((u: any) => u.license_key === license_key) || null;
+        }
+        return null;
+    }
+
+    async regenerateLicenseKey(user_id: string, workspaceId: string = "default"): Promise<string | null> {
+        const newKey = generateLicenseKey();
+        const user = await this.updateUser(user_id, { license_key: newKey } as any, workspaceId);
+        return user ? newKey : null;
     }
 
     async bulkImport(org_id: string, emails: string[], group_id: string | null, workspaceId: string = "default"): Promise<ManagedUser[]> {

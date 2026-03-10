@@ -478,7 +478,8 @@ async function main() {
   const args = process.argv.slice(2);
   const shouldPush = args.includes("--push");
   const urlIdx = args.indexOf("--url");
-  const baseUrl = urlIdx >= 0 && args[urlIdx + 1] ? args[urlIdx + 1] : "http://localhost:3737";
+  const envUrl = process.env.API_ENDPOINT || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3737";
+  const baseUrl = urlIdx >= 0 && args[urlIdx + 1] ? args[urlIdx + 1] : envUrl;
 
   console.log("🔍 Complyze Discovery Agent");
   console.log("═".repeat(50));

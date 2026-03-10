@@ -103,19 +103,39 @@ function _writeEntry(entry) {
 // ─── Remote forwarding (best-effort, optional) ────────────────────────────────
 
 let _remoteBuf = [];
+let _flushInProgress = false;
+let _retryCount = 0;
 
 async function _flushRemote() {
-    if (!REMOTE_ENABLED || _remoteBuf.length === 0) return;
-    const batch = _remoteBuf.splice(0, REMOTE_BATCH);
+    if (!REMOTE_ENABLED || _remoteBuf.length === 0 || _flushInProgress) return;
+    _flushInProgress = true;
+    const batch = _remoteBuf.slice(0, REMOTE_BATCH);
+
     try {
-        await fetch(REMOTE_URL, {
+        const res = await fetch(REMOTE_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ events: batch }),
             signal: AbortSignal.timeout(5000),
         });
-    } catch {
-        // Remote logging is fire-and-forget; silently discard failures
+
+        if (res.ok) {
+            _remoteBuf.splice(0, batch.length);
+            _retryCount = 0;
+            if (_remoteBuf.length > 0) {
+                setTimeout(_flushRemote, 1000).unref();
+            }
+        } else {
+            throw new Error(`HTTP ${res.status}`);
+        }
+    } catch (err) {
+        // Fallback with exponential backoff
+        _retryCount++;
+        const backoffMs = Math.min(60000, 1000 * Math.pow(2, _retryCount));
+        console.warn(`[TELEMETRY] Remote flush failed (${err.message}), retrying in ${backoffMs}ms. Buffer size: ${_remoteBuf.length}`);
+        setTimeout(_flushRemote, backoffMs).unref();
+    } finally {
+        _flushInProgress = false;
     }
 }
 

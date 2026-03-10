@@ -33,14 +33,20 @@ class ProxyController {
     async syncState(enable, settings = {}) {
         this.isMonitoringRequested = enable;
 
-        if (enable) {
-            await this.ensureProxyRunning(settings);
-            await this.enableSystemProxy();
-            this.startFailSafe();
-        } else {
-            await this.stopProxy();
+        try {
+            if (enable) {
+                await this.ensureProxyRunning(settings);
+                await this.enableSystemProxy();
+                this.startFailSafe();
+            } else {
+                await this.stopProxy();
+                await this.disableSystemProxy();
+                this.stopFailSafe();
+            }
+        } catch (err) {
+            console.error('[proxy-ctrl] Critical error in syncState, disabling system proxy for safety:', err);
             await this.disableSystemProxy();
-            this.stopFailSafe();
+            throw err;
         }
     }
 
@@ -129,34 +135,33 @@ class ProxyController {
     async enableSystemProxy() {
         if (process.platform !== 'darwin') return;
         const iface = this.getActiveInterface();
-        console.log(`[proxy-ctrl] Enabling global proxy on ${iface}`);
+        console.log(`[proxy-ctrl] Enabling PAC proxy on ${iface}`);
 
-        // Set both HTTP and HTTPS proxy
-        const cmd = `networksetup -setwebproxy "${iface}" 127.0.0.1 ${PROXY_PORT} && ` +
-            `networksetup -setsecurewebproxy "${iface}" 127.0.0.1 ${PROXY_PORT} && ` +
-            `networksetup -setwebproxystate "${iface}" on && ` +
-            `networksetup -setsecurewebproxystate "${iface}" on && ` +
-            `networksetup -setautoproxystate "${iface}" off`; // Disable PAC just in case
+        // Set PAC proxy. If proxy crashes, PAC fetch fails, macOS defaults to DIRECT.
+        const pacUrl = `http://127.0.0.1:${PROXY_PORT}/proxy.pac`;
+        const cmd = `networksetup -setautoproxyurl "${iface}" "${pacUrl}" && ` +
+            `networksetup -setautoproxystate "${iface}" on && ` +
+            `networksetup -setwebproxystate "${iface}" off && ` +
+            `networksetup -setsecurewebproxystate "${iface}" off`;
 
         try {
             await execSudo(cmd);
         } catch (err) {
-            console.error('[proxy-ctrl] Failed to set system proxy:', err);
+            console.error('[proxy-ctrl] Failed to set PAC proxy:', err);
         }
     }
 
     async disableSystemProxy() {
         if (process.platform !== 'darwin') return;
         const iface = this.getActiveInterface();
-        console.log(`[proxy-ctrl] Disabling global proxy on ${iface}`);
+        console.log(`[proxy-ctrl] Disabling PAC proxy on ${iface}`);
 
-        const cmd = `networksetup -setwebproxystate "${iface}" off && ` +
-            `networksetup -setsecurewebproxystate "${iface}" off`;
+        const cmd = `networksetup -setautoproxystate "${iface}" off`;
 
         try {
             await execSudo(cmd);
         } catch (err) {
-            console.error('[proxy-ctrl] Failed to disable system proxy:', err);
+            console.error('[proxy-ctrl] Failed to disable PAC proxy:', err);
         }
     }
 

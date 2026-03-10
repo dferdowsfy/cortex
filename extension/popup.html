@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Complyze Shield</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #080c18;
+            --card: #0d1225;
+            --input: #111827;
+            --hover: #1a2340;
+            --blue: #3b82f6;
+            --blue-d: #1d4ed8;
+            --glow: rgba(59, 130, 246, 0.22);
+            --green: #22c55e;
+            --red: #ef4444;
+            --amber: #f59e0b;
+            --text: #f1f5f9;
+            --muted: #64748b;
+            --dim: #94a3b8;
+            --border: rgba(59, 130, 246, 0.18);
+            --r: 12px;
+        }
+
+        html,
+        body {
+            width: 360px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            font-size: 13px;
+            overflow-x: hidden;
+        }
+
+        /* ── Header ── */
+        .hdr {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px 11px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-box {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, var(--blue-d), var(--blue));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 0 10px var(--glow);
+        }
+
+        .logo-box svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .logo-name {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .logo-tag {
+            font-size: 9px;
+            color: var(--muted);
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+
+        .hdr-right {
+            margin-left: auto;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--muted);
+            transition: background 0.3s;
+        }
+
+        .dot.on {
+            background: var(--green);
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .dot.warn {
+            background: var(--amber);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 4px rgba(34, 197, 94, 0.3)
+            }
+
+            50% {
+                box-shadow: 0 0 10px rgba(34, 197, 94, 0.6)
+            }
+        }
+
+        /* ── Panels ── */
+        .panel {
+            padding: 16px;
+        }
+
+        #login-panel {
+            display: block;
+        }
+
+        #main-panel {
+            display: none;
+        }
+
+        /* ── Login ── */
+        .hero {
+            text-align: center;
+            padding: 10px 0 18px;
+        }
+
+        .shield-big {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #1e3a8a, var(--blue));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            box-shadow: 0 0 24px rgba(59, 130, 246, 0.3), 0 4px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .shield-big svg {
+            width: 30px;
+            height: 30px;
+        }
+
+        .hero h2 {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .hero p {
+            font-size: 11.5px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .google-btn {
+            width: 100%;
+            background: #fff;
+            color: #1f2937;
+            border: none;
+            border-radius: var(--r);
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            transition: opacity 0.15s;
+        }
+
+        .google-btn:hover {
+            opacity: 0.9;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 12px;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .field {
+            margin-bottom: 9px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 11px;
+            color: var(--dim);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .field input {
+            width: 100%;
+            background: var(--input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 11px;
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .field input:focus {
+            border-color: var(--blue);
+        }
+
+        .field input::placeholder {
+            color: var(--muted);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--blue);
+            color: #fff;
+            border: none;
+            border-radius: var(--r);
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: var(--blue-d);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .err {
+            margin-top: 9px;
+            padding: 7px 11px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            color: #fca5a5;
+            font-size: 11.5px;
+            display: none;
+        }
+
+        /* ── Logged-in: User card ── */
+        .user-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 13px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 11px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue-d), #7c3aed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 700;
+            flex-shrink: 0;
+            color: #fff;
+        }
+
+        .user-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .u-name {
+            font-weight: 600;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .u-email {
+            font-size: 11px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .org-badge {
+            display: inline-block;
+            margin-top: 2px;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.28);
+            color: var(--blue);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 7px;
+            border-radius: 20px;
+            letter-spacing: 0.3px;
+        }
+
+        /* ── Last scan status ── */
+        .scan-status {
+            border-radius: var(--r);
+            margin-bottom: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .scan-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 13px;
+        }
+
+        .scan-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .scan-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+
+        .scan-time {
+            font-size: 10px;
+            color: var(--muted);
+            margin-left: auto;
+        }
+
+        .scan-body {
+            padding: 8px 13px 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .scan-snippet {
+            font-size: 11px;
+            color: var(--dim);
+            font-style: italic;
+            margin-bottom: 5px;
+        }
+
+        .scan-findings {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .finding-tag {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 20px;
+        }
+
+        .scan-status.safe {
+            background: rgba(34, 197, 94, 0.06);
+            border-color: rgba(34, 197, 94, 0.2);
+        }
+
+        .scan-status.safe .scan-header {
+            background: rgba(34, 197, 94, 0.08);
+        }
+
+        .scan-status.safe .scan-title {
+            color: #4ade80;
+        }
+
+        .scan-status.redact {
+            background: rgba(245, 158, 11, 0.06);
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .scan-status.redact .scan-header {
+            background: rgba(245, 158, 11, 0.08);
+        }
+
+        .scan-status.redact .scan-title {
+            color: #fbbf24;
+        }
+
+        .scan-status.redact .finding-tag {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .scan-status.block {
+            background: rgba(239, 68, 68, 0.06);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .scan-status.block .scan-header {
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .scan-status.block .scan-title {
+            color: #f87171;
+        }
+
+        .scan-status.block .finding-tag {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .scan-status.idle {
+            background: var(--card);
+        }
+
+        .scan-status.idle .scan-title {
+            color: var(--muted);
+        }
+
+        /* ── Shield + stats ── */
+        .shield-row {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 11px 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .sh-label {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .sh-label svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .sh-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 9px;
+            border-radius: 20px;
+            letter-spacing: 0.7px;
+        }
+
+        .sh-badge.on {
+            background: rgba(34, 197, 94, 0.12);
+            color: var(--green);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .sh-badge.off {
+            background: rgba(100, 116, 139, 0.12);
+            color: var(--muted);
+            border: 1px solid rgba(100, 116, 139, 0.2);
+        }
+
+        .toggle {
+            position: relative;
+            width: 36px;
+            height: 21px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .tog-track {
+            position: absolute;
+            inset: 0;
+            background: #334155;
+            border-radius: 11px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle input:checked+.tog-track {
+            background: var(--blue);
+        }
+
+        .tog-track::after {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 3px;
+            width: 15px;
+            height: 15px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .toggle input:checked+.tog-track::after {
+            transform: translateX(15px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+            margin-bottom: 12px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 11px 13px;
+            text-align: center;
+        }
+
+        .stat-n {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .stat-l {
+            font-size: 10px;
+            color: var(--muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-n.blue {
+            color: var(--blue);
+        }
+
+        .stat-n.red {
+            color: var(--red);
+        }
+
+        /* ── Action row ── */
+        .act-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-sec {
+            flex: 1;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            color: var(--text);
+            padding: 9px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-sec:hover {
+            background: var(--hover);
+        }
+
+        .btn-dash {
+            background: linear-gradient(135deg, var(--blue-d), var(--blue));
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 0 12px var(--glow);
+        }
+
+        .btn-dash:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+        }
+
+        /* ── Footer ── */
+        .footer {
+            padding: 9px 16px 11px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .flink {
+            font-size: 11px;
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .flink:hover {
+            color: var(--text);
+        }
+
+        .signout-btn {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .signout-btn:hover {
+            color: var(--red);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="hdr">
+        <div class="logo-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+        </div>
+        <div>
+            <div class="logo-name">Complyze</div>
+            <div class="logo-tag">Zero-Trust AI Shield</div>
+        </div>
+        <div class="hdr-right">
+            <div class="dot" id="hdr-dot"></div>
+        </div>
+    </div>
+
+    <!-- ════ LOGIN PANEL ════ -->
+    <div id="login-panel" class="panel">
+        <div class="hero">
+            <div class="shield-big">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <polyline points="9 12 11 14 15 10" />
+                </svg>
+            </div>
+            <h2>Sign in to Complyze</h2>
+            <p>Activate AI governance for your org.<br>Activity syncs to the admin dashboard.</p>
+        </div>
+
+        <button class="google-btn" id="btn-google">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            Continue with Google
+        </button>
+
+        <div class="divider">or sign in with email</div>
+
+        <div class="field">
+            <label>Email address</label>
+            <input type="email" id="input-email" placeholder="you@company.com" autocomplete="email" />
+        </div>
+        <div class="field">
+            <label>Password</label>
+            <input type="password" id="input-password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <button class="btn-primary" id="btn-signin">
+            <span id="btn-signin-label">Sign In</span>
+            <div class="spinner" id="signin-spinner"></div>
+        </button>
+        <div class="err" id="error-msg"></div>
+    </div>
+
+    <!-- ════ MAIN PANEL (LOGGED IN) ════ -->
+    <div id="main-panel" class="panel">
+
+        <!-- User card -->
+        <div class="user-card">
+            <div class="avatar" id="av-letter">U</div>
+            <div class="user-info">
+                <div class="u-name" id="u-name">Loading…</div>
+                <div class="u-email" id="u-email"></div>
+                <span class="org-badge" id="u-org">—</span>
+            </div>
+        </div>
+
+        <!-- Last scan result (populated from chrome.storage.local.lastScanResult) -->
+        <div class="scan-status idle" id="scan-status-card">
+            <div class="scan-header">
+                <span class="scan-icon" id="scan-icon">🛡️</span>
+                <span class="scan-title" id="scan-title">LAST PROMPT</span>
+                <span class="scan-time" id="scan-time">—</span>
+            </div>
+            <div class="scan-body" id="scan-body" style="display:none">
+                <div class="scan-snippet" id="scan-snippet"></div>
+                <div class="scan-findings" id="scan-findings"></div>
+            </div>
+        </div>
+
+        <!-- Shield toggle -->
+        <div class="shield-row">
+            <div class="sh-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                AI Shield
+            </div>
+            <span class="sh-badge on" id="sh-badge">ACTIVE</span>
+            <label class="toggle">
+                <input type="checkbox" id="shield-toggle" checked />
+                <div class="tog-track"></div>
+            </label>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-n blue" id="stat-scanned">—</div>
+                <div class="stat-l">Scanned Today</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-n red" id="stat-blocked">—</div>
+                <div class="stat-l">Blocked Today</div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="act-row">
+            <button class="btn-sec btn-dash" id="btn-dash">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                </svg>
+                Open Dashboard
+            </button>
+            <button class="btn-sec" id="btn-refresh">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                </svg>
+                Refresh
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <span class="flink" id="footer-link">complyze.co</span>
+        <button class="signout-btn" id="btn-signout" style="display:none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Sign Out
+        </button>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

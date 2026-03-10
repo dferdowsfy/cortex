@@ -78,6 +78,7 @@ export interface ActivityEvent {
     enforcement_action?: EnforcementMode; // which enforcement action was applied
     // Only present when full_audit_mode is enabled
     full_prompt?: string;
+    findings?: string[];
     attachment_inspection_enabled?: boolean;
 }
 

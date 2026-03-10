@@ -40,14 +40,17 @@ async function main() {
     console.log(`Targeting: ${apiBaseUrl}`);
     console.log(`Notifications: ${notify}`);
 
+    if (overrideEmail) {
+        process.env.PROXY_VALIDATION_EMAIL_TO = overrideEmail;
+    }
+    if (!process.env.PROXY_VALIDATION_ENGINE_URL) {
+        process.env.PROXY_VALIDATION_ENGINE_URL = apiBaseUrl;
+    }
+
     const result = await executeProxyValidationSkill({
         mode: isScheduledRun ? "scheduled" : "manual",
         notify,
-        target: {
-            platformApiBaseUrl: apiBaseUrl,
-            // @ts-ignore
-            overrideEmail: overrideEmail
-        }
+        environment: "production",
     });
 
     try {
@@ -58,12 +61,12 @@ async function main() {
     }
 
     console.log("\n================ REPORT ================\n");
-    console.log(`Timestamp: ${result.report.timestamp}`);
-    console.log(`Score: ${result.report.enforcementScore}/100`);
-    console.log(`Status: ${result.report.overallStatus}`);
-    console.log(`Findings: ${result.report.findings.length}`);
+    console.log(`Timestamp: ${result.report.generatedAt}`);
+    console.log(`Score: ${result.report.score}/100`);
+    console.log(`Status: ${result.report.status}`);
+    console.log(`Findings: ${result.report.totalFindings}`);
 
-    if (result.report.overallStatus === "CRITICAL") {
+    if (result.report.status === "FAIL") {
         console.error("\nCRITICAL FAILURE DETECTED: Exiting with status 1.");
         process.exit(1);
     } else {

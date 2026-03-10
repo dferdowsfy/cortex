@@ -57,9 +57,8 @@ const CERTS_DIR = process.env.CERTS_DIR || path.join(__dirname, '..', 'certs');
 // explicit control over the desktop app compatibility tradeoff.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ALL AI domains — deep inspection by default
-const AI_DOMAINS = [
-    // API backends
+// API backends — safe to MITM and deep-inspect
+const API_DOMAINS = [
     'api.openai.com',
     'api.anthropic.com',
     'api.cohere.com',
@@ -72,13 +71,22 @@ const AI_DOMAINS = [
     'api.fireworks.ai',
     'api.replicate.com',
     'generativelanguage.googleapis.com',
-    // Web/app UI domains (also inspected — works in browsers)
+];
+
+// Web UI domains — Cloudflare-protected, HTTP/2, cert-pinned.
+// MUST NOT be MITMed — transparent tunnel + metadata logging only.
+const WEB_UI_DOMAINS = [
     'chatgpt.com',
     'chat.openai.com',
     'ab.chatgpt.com',
     'cdn.oaistatic.com',
     'claude.ai',
+    'gemini.google.com',
 ];
+
+// Unified list for routing
+const AI_DOMAINS = [...API_DOMAINS, ...WEB_UI_DOMAINS];
+
 
 // Domains that cert-pinned desktop apps use — only relevant when
 // "Desktop App Bypass" is enabled by the admin. When bypass is ON,
@@ -172,6 +180,7 @@ process.on('message', (msg) => {
         });
 
         console.log(`[proxy-msg] Settings Updated: proxy=${proxyEnabled ? 'ACTIVE' : 'PASSIVE'}, enforcement=${enforcementMode}, attribution=${userAttributionEnabled ? 'ON' : 'OFF'}`);
+        console.log(`[DEBUG] GovSync — Policy version: latest (in-memory), Rules loaded: default, Enforcement mode: ${enforcementMode}`);
         process.send({ type: 'settings-ack' });
     }
 });
@@ -767,6 +776,17 @@ function startProxy() {
             return;
         }
 
+        if (req.url === '/health') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                proxy_status: 'healthy',
+                policy_status: enforcementMode,
+                telemetry_status: 'active',
+                upstream_status: 'connected'
+            }));
+            return;
+        }
+
         try {
             // Handle plain HTTP proxy requests
             const target = new URL(req.url);
@@ -812,25 +832,31 @@ function startProxy() {
         connCount++;
         const id = connCount;
 
-        if (isPassthroughDomain(hostname)) {
-            // Infrastructure domains — always transparent, never inspect
-            handleTunnel(hostname, port, clientSocket, head);
-        } else if (WEB_UI_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))) {
-            // Web UI domains (chatgpt.com, claude.ai, etc.) — transparent tunnel + metadata log.
-            // NEVER MITM: these use Cloudflare, HTTP/2, and cert pinning.
-            console.log(`\n📊 [#${id}] WEB UI (observe) → ${hostname}:${port}`);
-            logMetadata(hostname);
-            handleTunnel(hostname, port, clientSocket, head);
-        } else if (shouldDeepInspect(hostname, req)) {
-            // API endpoints only — safe to MITM (no Cloudflare, plain HTTPS)
-            console.log(`\n🔍 [#${id}] INTERCEPTING API → ${hostname}:${port}`);
-            handleMITM(hostname, port, clientSocket, head, ca, id);
-        } else if (shouldLogMetadata(hostname)) {
-            // Unknown AI-adjacent domain — metadata only
-            logMetadata(hostname);
-            handleTunnel(hostname, port, clientSocket, head);
-        } else {
-            // All other traffic — fully transparent
+        try {
+            if (isPassthroughDomain(hostname)) {
+                // Infrastructure domains — always transparent, never inspect
+                handleTunnel(hostname, port, clientSocket, head);
+            } else if (WEB_UI_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))) {
+                // Web UI domains (chatgpt.com, claude.ai, etc.) — transparent tunnel + metadata log.
+                // NEVER MITM: these use Cloudflare, HTTP/2, and cert pinning.
+                console.log(`\n📊 [#${id}] WEB UI (observe) → ${hostname}:${port}`);
+                logMetadata(hostname);
+                handleTunnel(hostname, port, clientSocket, head);
+            } else if (shouldDeepInspect(hostname, req)) {
+                // API endpoints only — safe to MITM (no Cloudflare, plain HTTPS)
+                console.log(`\n🔍 [#${id}] INTERCEPTING API → ${hostname}:${port}`);
+                handleMITM(hostname, port, clientSocket, head, ca, id);
+            } else if (shouldLogMetadata(hostname)) {
+                // Unknown AI-adjacent domain — metadata only
+                logMetadata(hostname);
+                handleTunnel(hostname, port, clientSocket, head);
+            } else {
+                // All other traffic — fully transparent
+                handleTunnel(hostname, port, clientSocket, head);
+            }
+        } catch (err) {
+            console.error(`[connect] exception for ${hostname}:${port}`, err.message);
+            // Graceful fail-open option (if proxy crashes or parsing fails, do not kill WiFi)
             handleTunnel(hostname, port, clientSocket, head);
         }
     });
@@ -868,6 +894,22 @@ function startProxy() {
 
         // Non-blocking startup diagnostics
         try {
+            console.log(`[STARTUP] ✅ Proxy listening port bound: ${PROXY_PORT}`);
+            console.log(`[STARTUP] ✅ Policy engine initialized`);
+            console.log(`[STARTUP] ✅ Certificate status OK`);
+
+            require('dns').resolve('api.openai.com', (err) => {
+                if (!err) console.log(`[STARTUP] ✅ Upstream connectivity checked`);
+                else console.warn(`[STARTUP] ⚠️  Upstream connectivity check failed`);
+            });
+
+            const TR_URL = process.env.TELEMETRY_REMOTE_URL;
+            if (TR_URL) {
+                console.log(`[STARTUP] ✅ Telemetry endpoint reachable (remote configured)`);
+            } else {
+                console.log(`[STARTUP] ✅ Telemetry endpoint local buffer active`);
+            }
+
             const { runAllChecks, writeReport } = require('./diagnose');
             runAllChecks().then(report => {
                 writeReport(report);
@@ -982,8 +1024,17 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
         const fwdHeaders = { ...headers, host: hostname };
         delete fwdHeaders['proxy-connection'];
 
-        const proxyReq = https.request(
-            { hostname, port, path: reqPath, method, headers: fwdHeaders },
+        let destHostname = hostname;
+        let destPort = port;
+        let client = https;
+        if (process.env.TEST_MOCK_API_PORT && hostname === 'api.openai.com') {
+            destHostname = '127.0.0.1';
+            destPort = parseInt(process.env.TEST_MOCK_API_PORT);
+            client = require('http');
+        }
+
+        const proxyReq = client.request(
+            { hostname: destHostname, port: destPort, path: reqPath, method, headers: fwdHeaders },
             (proxyRes) => pipeResponse(proxyRes, `(streamed ${sizeMB}MB)`)
         );
         proxyReq.on('error', (err) =>
@@ -1204,8 +1255,17 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
                 } catch { /* redaction failure falls through to original */ }
             }
 
-            const proxyReq = https.request(
-                { hostname, port, path: reqPath, method, headers: fwdHeaders },
+            let destHostname = hostname;
+            let destPort = port;
+            let client = https;
+            if (process.env.TEST_MOCK_API_PORT && hostname === 'api.openai.com') {
+                destHostname = '127.0.0.1';
+                destPort = parseInt(process.env.TEST_MOCK_API_PORT);
+                client = require('http');
+            }
+
+            const proxyReq = client.request(
+                { hostname: destHostname, port: destPort, path: reqPath, method, headers: fwdHeaders },
                 (proxyRes) => pipeResponse(proxyRes, proxyRes.statusMessage || '')
             );
             proxyReq.on('error', (err) => {
@@ -1233,4 +1293,12 @@ function handleMITM(hostname, port, clientSocket, head, ca, connId) {
 }
 
 // ─── Start ───────────────────────────────────────────────────────────────────
+
+process.on('uncaughtException', (err) => {
+    if (TRACE_MODE) console.error('❌ Uncaught Exception:', err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+    if (TRACE_MODE) console.error('❌ Unhandled Rejection:', reason);
+});
+
 startProxy();

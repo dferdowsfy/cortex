@@ -1,0 +1,57 @@
+📡 Logging to: complyze.co (production)
+🛡️  Complyze AI Shield — Starting...
+   Workspace: pDHzeZHAbkProJ2ATyJjHrGIJyO2
+   API:       https://complyze.co/api/proxy/intercept
+🚀 Launching proxy server on port 8080...
+  Proxy PID: 73792
+✅ Proxy running on 127.0.0.1:8080 (PID: 73792)
+🌐 Configuring system proxy on service: 'Wi-Fi'
+✅ System proxy enabled → 127.0.0.1:8080
+
+🛡️  AI Shield ACTIVE
+   Proxy:     http://127.0.0.1:8080
+   API:       https://complyze.co/api/proxy/intercept
+   Workspace: pDHzeZHAbkProJ2ATyJjHrGIJyO2
+   Logs:      /Users/dariusferdows/Cortex/cortex/web/scripts/../logs/proxy.log
+
+   To auto-start on login: ./scripts/start-shield.sh --install-agent
+   To stop:                ./scripts/stop-shield.sh
+
+📡 Logging to: complyze.co (production)
+🛡️  Complyze AI Shield — Starting...
+   Workspace: pDHzeZHAbkProJ2ATyJjHrGIJyO2
+   API:       https://complyze.co/api/proxy/intercept
+🚀 Launching proxy server on port 8080...
+  Proxy PID: 1997
+✅ Proxy running on 127.0.0.1:8080 (PID: 1997)
+🌐 Configuring system proxy on service: 'Wi-Fi'
+✅ System proxy enabled → 127.0.0.1:8080
+
+🛡️  AI Shield ACTIVE
+   Proxy:     http://127.0.0.1:8080
+   API:       https://complyze.co/api/proxy/intercept
+   Workspace: pDHzeZHAbkProJ2ATyJjHrGIJyO2
+   Logs:      /Users/dariusferdows/Cortex/cortex/web/scripts/../logs/proxy.log
+
+   To auto-start on login: ./scripts/start-shield.sh --install-agent
+   To stop:                ./scripts/stop-shield.sh
+
+📡 Logging to: complyze.co (production)
+🛡️  Complyze AI Shield — Starting...
+   Workspace: pDHzeZHAbkProJ2ATyJjHrGIJyO2
+   API:       https://complyze.co/api/proxy/intercept
+🚀 Launching proxy server on port 8080...
+  Proxy PID: 1482
+✅ Proxy running on 127.0.0.1:8080 (PID: 1482)
+🌐 Configuring system proxy on service: 'Wi-Fi'
+✅ System proxy enabled → 127.0.0.1:8080
+
+🛡️  AI Shield ACTIVE
+   Proxy:     http://127.0.0.1:8080
+   API:       https://complyze.co/api/proxy/intercept
+   Workspace: pDHzeZHAbkProJ2ATyJjHrGIJyO2
+   Logs:      /Users/dariusferdows/Cortex/cortex/web/scripts/../logs/proxy.log
+
+   To auto-start on login: ./scripts/start-shield.sh --install-agent
+   To stop:                ./scripts/stop-shield.sh
+

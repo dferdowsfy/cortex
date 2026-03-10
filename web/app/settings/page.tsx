@@ -46,12 +46,12 @@ function Toggle({
     disabled?: boolean;
 }) {
     return (
-        <div className="flex items-start justify-between gap-4 py-4 border-b border-gray-100 last:border-0">
+        <div className="flex items-start justify-between gap-4 py-5 border-b border-white/10 last:border-0">
             <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-800">{label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+                <p className="text-sm font-bold text-white">{label}</p>
+                <p className="text-xs text-white/40 mt-0.5">{description}</p>
                 {warning && enabled && (
-                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
                         <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                         </svg>
@@ -64,10 +64,10 @@ function Toggle({
                 aria-checked={enabled}
                 disabled={disabled}
                 onClick={() => !disabled && onChange(!enabled)}
-                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${disabled
-                        ? "cursor-not-allowed opacity-50"
-                        : "cursor-pointer"
-                    } ${enabled ? "bg-brand-600" : "bg-gray-200"}`}
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${disabled
+                    ? "cursor-not-allowed opacity-50"
+                    : "cursor-pointer"
+                    } ${enabled ? "bg-blue-600" : "bg-white/10"}`}
             >
                 <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enabled ? "translate-x-5" : "translate-x-0"
@@ -268,12 +268,12 @@ export default function SettingsPage() {
     const allReady = setupStatus?.proxy_server_running && setupStatus?.ca_trusted && setupStatus?.proxy_configured;
 
     return (
-        <div className="mx-auto max-w-2xl space-y-8">
+        <div className="mx-auto max-w-2xl space-y-8 px-6 py-10">
             {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold text-white/90">Governance Settings</h1>
-                <p className="mt-1 text-sm text-white/60">
-                    Control how AI traffic is monitored, classified, and enforced across your organization.
+                <h1 className="text-2xl font-black text-white tracking-tighter">Settings</h1>
+                <p className="mt-1 text-sm text-white/40">
+                    Global AI governance controls for your organization.
                 </p>
             </div>
 
@@ -294,15 +294,15 @@ export default function SettingsPage() {
 
             {/* 1. AI Monitoring Controls (Primary Section) */}
             <div className="card">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                         </svg>
                     </div>
                     <div>
-                        <h2 className="text-base font-bold text-gray-900">AI Monitoring Controls</h2>
-                        <p className="text-xs text-gray-500">Master controls for AI governance and visibility</p>
+                        <h2 className="text-base font-bold text-white">AI Monitoring Controls</h2>
+                        <p className="text-xs text-white/40">Master controls for AI governance and visibility</p>
                     </div>
                 </div>
 
@@ -338,11 +338,11 @@ export default function SettingsPage() {
                     />
 
                     {/* Risk Posture Selector */}
-                    <div className="py-6 border-t border-gray-100 mt-2">
+                    <div className="py-6 border-t border-white/10 mt-2">
                         <div className="flex justify-between items-end mb-4">
                             <div>
-                                <p className="text-sm font-semibold text-gray-800">Risk Posture</p>
-                                <p className="text-xs text-gray-500 mt-0.5">Define your organization's tolerance for AI risk.</p>
+                                <p className="text-sm font-bold text-white">Risk Posture</p>
+                                <p className="text-xs text-white/40 mt-0.5">Define your organization's tolerance for AI risk.</p>
                             </div>
                         </div>
 
@@ -367,9 +367,9 @@ export default function SettingsPage() {
                                     <button
                                         key={option.id}
                                         onClick={() => handleSave({ riskThreshold: option.val })}
-                                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-150 border ${isActive
-                                            ? "bg-brand-50 border-brand-200 text-brand-700 shadow-sm ring-1 ring-brand-200"
-                                            : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-all duration-150 border ${isActive
+                                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20"
+                                            : "bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/80"
                                             }`}
                                     >
                                         {option.label}
@@ -379,7 +379,7 @@ export default function SettingsPage() {
                         </div>
 
                         {/* Dynamic Description */}
-                        <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 border border-gray-100 transition-all duration-200 min-h-[60px] flex flex-col justify-center">
+                        <div className="bg-white/5 rounded-lg p-3 text-xs text-white/50 border border-white/10 transition-all duration-200 min-h-[60px] flex flex-col justify-center">
                             {(() => {
                                 const val = settings.riskThreshold;
                                 let title = "";
@@ -401,16 +401,16 @@ export default function SettingsPage() {
 
                                 return (
                                     <>
-                                        <p className="font-semibold text-gray-900 mb-1">{title}</p>
-                                        <p className="text-gray-500 leading-relaxed">{desc}</p>
+                                        <p className="font-bold text-white mb-1">{title}</p>
+                                        <p className="text-white/40 leading-relaxed">{desc}</p>
                                     </>
                                 );
                             })()}
                         </div>
 
                         <div className="mt-3 flex items-center justify-end px-1">
-                            <p className="text-[10px] uppercase tracking-wider font-medium text-gray-400">
-                                Numeric Threshold: <span className="font-mono text-gray-600">{settings.riskThreshold}</span>
+                            <p className="text-[10px] uppercase tracking-wider font-medium text-white/30">
+                                Numeric Threshold: <span className="font-mono text-white/60">{settings.riskThreshold}</span>
                             </p>
                         </div>
                     </div>
@@ -418,34 +418,62 @@ export default function SettingsPage() {
             </div>
 
             {/* 2. Divider */}
-            <hr className="border-gray-100" />
+            <hr className="border-white/10" />
 
-            {/* 3. Monitoring Agent Deployment */}
+            {/* 3. Browser Security Shield */}
             <div className="card">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.856.12-1.685.344-2.469" />
                             </svg>
                         </div>
                         <div>
-                            <h2 className="text-base font-bold text-gray-900">Browser Security Shield</h2>
-                            <p className="text-xs text-gray-500">Managed browser extension for real-time AI governance</p>
+                            <h2 className="text-base font-bold text-white">Browser Security Shield</h2>
+                            <p className="text-xs text-white/40">Managed browser extension for real-time AI governance</p>
                         </div>
                     </div>
+                    {/* Live status indicator */}
                     <div className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${extensionStatus?.connected ? "bg-green-500" : "bg-gray-300"}`} />
-                        <span className="text-xs font-bold text-gray-600 uppercase tracking-tight">
+                        <span className={`relative flex h-2.5 w-2.5 rounded-full ${extensionStatus?.connected ? "bg-green-500" : "bg-white/20"
+                            }`}>
+                            {extensionStatus?.connected && (
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                            )}
+                        </span>
+                        <span className="text-xs font-bold text-white/50 uppercase tracking-tight">
                             {extensionStatus?.connected ? "ACTIVE" : "INACTIVE"}
                         </span>
                     </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 mb-6">
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                        The Complyze extension monitors AI usage within your browser. It applies organization-wide policies and redacts sensitive data before it reaches LLM providers.
-                    </p>
+                {/* 3-dot status checklist */}
+                <div className="bg-white/5 rounded-xl p-4 border border-white/10 mb-5 flex flex-col gap-2.5">
+                    <div className="flex items-center gap-2.5">
+                        <span className={`flex h-2.5 w-2.5 rounded-full ${extensionStatus !== null ? "bg-green-500" : "bg-white/20"
+                            }`} />
+                        <span className={`text-xs font-medium ${extensionStatus !== null ? "text-green-400" : "text-white/30"
+                            }`}>Extension Installed</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                        <span className={`flex h-2.5 w-2.5 rounded-full ${extensionStatus?.connected ? "bg-green-500" : "bg-white/20"
+                            }`} />
+                        <span className={`text-xs font-medium ${extensionStatus?.connected ? "text-green-400" : "text-white/30"
+                            }`}>Connection Active</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                        <span className={`flex h-2.5 w-2.5 rounded-full ${extensionStatus?.connected && settings.proxyEnabled ? "bg-green-500" : "bg-white/20"
+                            }`} />
+                        <span className={`text-xs font-medium ${extensionStatus?.connected && settings.proxyEnabled ? "text-green-400" : "text-white/30"
+                            }`}>Shield Enabled</span>
+                    </div>
+                    {extensionStatus?.connected && (
+                        <div className="pt-1 border-t border-white/10 mt-1 text-[10px] text-white/30 font-mono">
+                            Last seen: {extensionStatus.minutes_ago === 0 ? "just now" : `${extensionStatus.minutes_ago}m ago`}
+                            {extensionStatus.hostname && <> · Host: <strong className="text-white/50">{extensionStatus.hostname}</strong></>}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -458,29 +486,22 @@ export default function SettingsPage() {
                         </svg>
                         {extensionStatus?.connected ? "Manage Extension" : "Activate Extension"}
                     </Link>
-                    {!isCloud && (
-                        <button
-                            onClick={checkSetupStatus}
-                            disabled={setupLoading === "check-status"}
-                            className="btn-secondary py-3 px-4 flex items-center justify-center gap-2"
-                        >
-                            <svg className={`h-4 w-4 ${setupLoading === "check-status" ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                            </svg>
-                            Check Connection
-                        </button>
-                    )}
+                    {/* Check Connection: always visible, uses heartbeat (works on cloud + local) */}
+                    <button
+                        onClick={async () => {
+                            setSetupLoading("check-connection");
+                            await checkExtensionStatus();
+                            setSetupLoading(null);
+                        }}
+                        disabled={setupLoading === "check-connection"}
+                        className="btn-secondary py-3 px-4 flex items-center justify-center gap-2"
+                    >
+                        <svg className={`h-4 w-4 ${setupLoading === "check-connection" ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        {setupLoading === "check-connection" ? "Checking..." : "Check Connection"}
+                    </button>
                 </div>
-
-                {extensionStatus?.connected && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-                        <div className="flex items-center gap-4">
-                            <span>Hash: <strong>{extensionStatus.hostname}</strong></span>
-                            <span>Interaction: <strong>{extensionStatus.minutes_ago === 0 ? "Just now" : `${extensionStatus.minutes_ago}m ago`}</strong></span>
-                        </div>
-                        <span className="text-gray-300">v1.2.0</span>
-                    </div>
-                )}
             </div>
 
             {/* 4. Divider */}
@@ -488,16 +509,16 @@ export default function SettingsPage() {
 
             {/* 5. Advanced Settings */}
             <div className="card">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-white/40">
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </div>
                     <div>
-                        <h2 className="text-base font-bold text-gray-900">Advanced Governance</h2>
-                        <p className="text-xs text-gray-500">Fine-grained configuration and data policies</p>
+                        <h2 className="text-base font-bold text-white">Advanced Governance</h2>
+                        <p className="text-xs text-white/40">Fine-grained configuration and data policies</p>
                     </div>
                 </div>
 
@@ -525,15 +546,15 @@ export default function SettingsPage() {
                         disabled={isSaving}
                     />
 
-                    <div className="py-6 border-t border-gray-100 flex items-center justify-between">
+                    <div className="py-6 border-t border-white/10 flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-semibold text-gray-800">Retention Period</p>
-                            <p className="text-xs text-gray-500 mt-0.5">Duration for storing audit logs before auto-purging.</p>
+                            <p className="text-sm font-bold text-white">Retention Period</p>
+                            <p className="text-xs text-white/40 mt-0.5">Duration for storing audit logs before auto-purging.</p>
                         </div>
                         <select
                             value={settings.retentionDays}
                             onChange={(e) => handleSave({ retentionDays: parseInt(e.target.value, 10) })}
-                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-brand-500 outline-none"
+                            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 outline-none"
                         >
                             {[30, 90, 180, 365].map((d) => (
                                 <option key={d} value={d}>{d} Days</option>

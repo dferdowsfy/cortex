@@ -4,9 +4,9 @@ const { spawn } = require('child_process');
 const assert = require('assert');
 
 // ─── Test Configuration ───
-const PROXY_PORT = 8080;
-const MOCK_API_PORT = 8081; // Pretend to be api.openai.com
-const MOCK_BACKEND_PORT = 3737; // Pretend to be complyze.co
+const PROXY_PORT = 8089;
+const MOCK_API_PORT = 8082; // Pretend to be api.openai.com
+const MOCK_BACKEND_PORT = 3738; // Pretend to be complyze.co
 
 let proxyProc;
 const interceptedTelemetry = [];
@@ -41,28 +41,44 @@ const mockBackendServer = http.createServer((req, res) => {
 // ─── 3. Utility: Fire Traffic Through Proxy ───
 async function curlThroughProxy(prompt) {
     return new Promise((resolve) => {
-        const req = http.request({
-            hostname: '127.0.0.1', // The upstream domain we are hitting via proxy
-            port: MOCK_API_PORT,
-            method: 'POST',
-            path: '/v1/chat/completions',
-            headers: {
-                'Host': 'api.openai.com', // Spoof host so proxy thinks it's AI
-                'Content-Type': 'application/json',
-            },
-            agent: new http.Agent({
-                host: '127.0.0.1',
-                port: PROXY_PORT
-            })
-        }, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => resolve({ status: res.statusCode, body: data }));
+        // 1. Establish TCP to proxy
+        const proxySocket = require('net').connect(PROXY_PORT, '127.0.0.1', () => {
+            // 2. Send HTTP CONNECT
+            proxySocket.write('CONNECT api.openai.com:443 HTTP/1.1\r\nHost: api.openai.com:443\r\n\r\n');
         });
 
-        req.on('error', (e) => resolve({ error: e.message }));
-        req.write(JSON.stringify({ prompt }));
-        req.end();
+        proxySocket.on('data', (chunk) => {
+            const str = chunk.toString();
+            if (str.includes('200 Connection Established')) {
+                // 3. Upgrade to TLS
+                const tlsSocket = require('tls').connect({
+                    socket: proxySocket,
+                    rejectUnauthorized: false,
+                    servername: 'api.openai.com'
+                }, () => {
+                    // 4. Send HTTPS payload
+                    const reqStr = `POST /v1/chat/completions HTTP/1.1\r\nHost: api.openai.com\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(JSON.stringify({ prompt }))}\r\nConnection: close\r\n\r\n${JSON.stringify({ prompt })}`;
+                    tlsSocket.write(reqStr);
+                });
+
+                let responseData = '';
+                tlsSocket.on('data', (tlsChunk) => {
+                    responseData += tlsChunk.toString();
+                });
+                tlsSocket.on('end', () => {
+                    const [headersStr, bodyStr] = responseData.split('\r\n\r\n');
+                    const statusLine = headersStr ? headersStr.split('\r\n')[0] : '';
+                    const statusCode = statusLine ? parseInt(statusLine.split(' ')[1]) : -1;
+                    resolve({ status: statusCode, body: bodyStr });
+                });
+                tlsSocket.on('error', (e) => resolve({ error: e.message }));
+            } else if (str.startsWith('HTTP/1.1 5') || str.startsWith('HTTP/1.1 4')) {
+                const statusCode = parseInt(str.split(' ')[1]);
+                resolve({ status: statusCode, error: 'Proxy rejected connect' });
+            }
+        });
+
+        proxySocket.on('error', (e) => resolve({ error: e.message }));
     });
 }
 
@@ -80,11 +96,13 @@ async function runTests() {
     // Boot the Proxy in MONITOR mode explicitly
     console.log("⚙️  Booting Proxy Server (Monitor Mode)...");
     proxyProc = spawn('node', ['scripts/proxy-server.js', '--port', PROXY_PORT.toString()], {
+        stdio: 'inherit',
         env: {
             ...process.env,
             ENFORCEMENT_MODE: 'monitor',
             BLOCK_HIGH_RISK: 'false',
-            COMPLYZE_API: `http://localhost:${MOCK_BACKEND_PORT}/api/proxy/intercept`
+            COMPLYZE_API: `http://localhost:${MOCK_BACKEND_PORT}/api/proxy/intercept`,
+            TEST_MOCK_API_PORT: MOCK_API_PORT.toString()
         }
     });
 
@@ -116,11 +134,13 @@ async function runTests() {
     console.log("⚙️  Restarting Proxy Server (Block Mode)...");
     proxyProc.kill();
     proxyProc = spawn('node', ['scripts/proxy-server.js', '--port', PROXY_PORT.toString()], {
+        stdio: 'inherit',
         env: {
             ...process.env,
             ENFORCEMENT_MODE: 'block',
             // Purposely leaving legacy BLOCK_HIGH_RISK undefined to prove ENFORCEMENT_MODE works
-            COMPLYZE_API: `http://localhost:${MOCK_BACKEND_PORT}/api/proxy/intercept`
+            COMPLYZE_API: `http://localhost:${MOCK_BACKEND_PORT}/api/proxy/intercept`,
+            TEST_MOCK_API_PORT: MOCK_API_PORT.toString()
         }
     });
 

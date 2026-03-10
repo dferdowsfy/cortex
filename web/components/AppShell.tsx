@@ -24,7 +24,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         normalizedPath === "/request-demo" ||
         normalizedPath === "/login" ||
         normalizedPath === "/signup" ||
-        normalizedPath === "/install"
+        normalizedPath === "/install" ||
+        normalizedPath === "/privacy"
     ) {
         return <main className="min-h-screen main-content-area">{children}</main>;
     }
@@ -49,7 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* ── Main Content ── */}
             <main className="flex-1 overflow-y-auto main-content-area">
-                <div className={`${normalizedPath === "/dashboard" || normalizedPath === "/governance" || normalizedPath === "/admin" ? "" : "mx-auto max-w-7xl px-6 py-8"}`}>
+                <div className={`${normalizedPath === "/dashboard" || normalizedPath === "/admin" || normalizedPath === "/settings" ? "" : "mx-auto max-w-7xl px-6 py-8"}`}>
                     {children}
                 </div>
             </main>

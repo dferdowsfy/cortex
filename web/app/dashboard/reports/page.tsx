@@ -151,6 +151,126 @@ function downloadCSV(rows: ActivityRow[]) {
   URL.revokeObjectURL(url);
 }
 
+function triggerHtmlDownload(html: string, filename: string) {
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportExecutiveReport(data: ExecutiveData, orgId: string) {
+  const date = new Date().toISOString().slice(0, 10);
+  const scoreColor = data.riskScore >= 70 ? "#dc2626" : data.riskScore >= 40 ? "#d97706" : "#16a34a";
+  const trendIcon = data.trend === "Down" ? "↓" : data.trend === "Up" ? "↑" : "→";
+  const catRows = data.categories
+    .map((c) => `<tr><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#111827;">${c.name}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;"><div style="background:#e5e7eb;border-radius:4px;height:8px;width:100%;"><div style="background:#1d4ed8;border-radius:4px;height:8px;width:${c.pct}%"></div></div></td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;text-align:right;">${c.pct}%</td></tr>`)
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Complyze Executive Summary — ${date}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; background: #ffffff; padding: 48px; }
+    h1 { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #6b7280; margin-bottom: 32px; }
+    .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .metric-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; }
+    .metric-value { font-size: 36px; font-weight: 800; }
+    .metric-label { font-size: 12px; color: #6b7280; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th { text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+    .summary-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 20px; margin-top: 32px; color: #166534; font-size: 14px; line-height: 1.6; }
+    .footer { margin-top: 48px; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; text-align: center; }
+    h2 { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Complyze Executive AI Risk Summary</h1>
+  <p class="subtitle">Generated ${date} · Organization ${orgId} · Last 30 Days</p>
+
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-value" style="color:${scoreColor}">${data.riskScore}<span style="font-size:16px;color:#9ca3af;">/100</span> ${trendIcon}</div>
+      <div class="metric-label">AI Risk Score</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:#1d4ed8">${data.totalPrompts.toLocaleString()}</div>
+      <div class="metric-label">Prompts Analyzed</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:#dc2626">${data.blockedEvents}</div>
+      <div class="metric-label">Blocked Events</div>
+    </div>
+  </div>
+
+  <h2>Risk Category Breakdown</h2>
+  <table>
+    <thead><tr><th>Category</th><th>Distribution</th><th>%</th></tr></thead>
+    <tbody>${catRows}</tbody>
+  </table>
+
+  <div class="summary-box">
+    <strong>Assessment:</strong> ${data.summary}
+  </div>
+
+  <div class="footer">© ${new Date().getFullYear()} Complyze AI Governance Platform · Confidential</div>
+</body>
+</html>`;
+
+  triggerHtmlDownload(html, `complyze-executive-summary-${date}.html`);
+}
+
+function exportEnforcementReport(rows: EnforcementRow[], orgId: string) {
+  const date = new Date().toISOString().slice(0, 10);
+  const statusColor: Record<EnforcementRow["status"], string> = {
+    green: "#16a34a", amber: "#d97706", red: "#dc2626", neutral: "#6b7280",
+  };
+  const rowsHtml = rows
+    .map((r) => `<tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#111827;">${r.label}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:${statusColor[r.status]};font-weight:600;">${r.value}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${statusColor[r.status]};"></span>
+      </td>
+    </tr>`)
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Complyze Enforcement Assurance — ${date}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; background: #ffffff; padding: 48px; }
+    h1 { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #6b7280; margin-bottom: 32px; }
+    table { width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+    th { text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; background: #f9fafb; }
+    tr:last-child td { border-bottom: none; }
+    .footer { margin-top: 48px; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Complyze Enforcement Assurance Report</h1>
+  <p class="subtitle">Generated ${date} · Organization ${orgId}</p>
+  <table>
+    <thead><tr><th>Control</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+  <div class="footer">© ${new Date().getFullYear()} Complyze AI Governance Platform · Confidential</div>
+</body>
+</html>`;
+
+  triggerHtmlDownload(html, `complyze-enforcement-assurance-${date}.html`);
+}
+
 /* ─────────────────────────────────────────────
    Schedule Modal
 ───────────────────────────────────────────── */
@@ -786,7 +906,7 @@ export default function ReportsPage() {
           title="Executive Summary"
           description="High-level AI risk posture for leadership visibility."
           onView={() => setActiveModal({ type: "view-executive" })}
-          onExport={() => window.print()}
+          onExport={() => exportExecutiveReport(execData, orgId)}
           onSchedule={() =>
             setActiveModal({ type: "schedule", reportTitle: "Executive Summary" })
           }
@@ -795,7 +915,7 @@ export default function ReportsPage() {
           title="Enforcement Assurance"
           description="Technical validation of policy enforcement and extension compliance."
           onView={() => setActiveModal({ type: "view-enforcement" })}
-          onExport={() => window.print()}
+          onExport={() => exportEnforcementReport(enforcementRows, orgId)}
           onSchedule={() =>
             setActiveModal({
               type: "schedule",

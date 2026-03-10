@@ -45,8 +45,14 @@ export async function PATCH(req: NextRequest) {
     try {
         const url = new URL(req.url);
         const workspaceId = url.searchParams.get("workspaceId") || "default";
-        const { user_id, ...updates } = await req.json();
+        const { user_id, regenerate_license, ...updates } = await req.json();
         if (!user_id) return NextResponse.json({ error: "user_id is required" }, { status: 400 });
+
+        if (regenerate_license) {
+            const newKey = await userStore.regenerateLicenseKey(user_id, workspaceId);
+            return NextResponse.json({ license_key: newKey });
+        }
+
         const user = await userStore.updateUser(user_id, updates, workspaceId);
         if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
         return NextResponse.json({ user });
