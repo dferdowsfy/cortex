@@ -1,10 +1,38 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import MarketingNav from "@/components/MarketingNav";
 import MarketingFooter from "@/components/MarketingFooter";
 
 export default function PricingPage() {
+    const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+    const handleCheckout = async (plan: string, defaultHref: string) => {
+        if (plan === "ENTERPRISE") {
+            window.location.href = defaultHref;
+            return;
+        }
+
+        setLoadingPlan(plan);
+        try {
+            const res = await fetch("/api/stripe/checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ planId: plan, quantity: 100 }), // Default min
+            });
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                alert("Checkout failed: " + (data.error || "Unknown"));
+            }
+        } catch (err: any) {
+            alert("Error initiating checkout: " + err.message);
+        } finally {
+            setLoadingPlan(null);
+        }
+    };
     const tiers = [
         {
             name: "STARTER",
@@ -143,12 +171,13 @@ export default function PricingPage() {
                                     ))}
                                 </ul>
 
-                                <Link
-                                    href={tier.href}
-                                    className="w-full py-3 px-6 rounded-lg text-center font-bold tracking-wide bg-[white] text-white hover:bg-[#4d48ef] transition-all duration-200"
+                                <button
+                                    onClick={() => handleCheckout(tier.name, tier.href)}
+                                    disabled={loadingPlan === tier.name}
+                                    className="w-full py-3 px-6 rounded-lg text-center font-bold tracking-wide bg-[white] text-white hover:bg-[#4d48ef] transition-all duration-200 disabled:opacity-50"
                                 >
-                                    {tier.cta}
-                                </Link>
+                                    {loadingPlan === tier.name ? "Redirecting..." : tier.cta}
+                                </button>
                             </div>
                         ))}
                     </div>
