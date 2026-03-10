@@ -23,12 +23,11 @@ export default function LandingPage() {
                 Now Supporting ChatGPT, Gemini & Claude
               </div>
               <h1 className="text-4xl sm:text-6xl lg:text-[4.75rem] font-semibold tracking-tight text-neutral-800 dark:text-white leading-[1.15] mb-8">
-                Control Your <br />
-                AI Governance. <br />
-                <span className="text-[#7261fd] font-medium">Enterprise Oversight.</span>
+                Stop blocking AI. <br />
+                <span className="text-[#7261fd] font-medium">Start using it safely.</span>
               </h1>
               <p className="text-xl text-neutral-600 dark:text-neutral-400 mb-10 leading-relaxed max-w-xl">
-                Complyze centralizes AI tool inventory, automates governance workflows, and enforces real-time policy via the <strong>Complyze Browser Shield</strong>.
+                Complyze protects sensitive data, monitors AI activity, and applies smart policies so teams can use AI with confidence.
               </p>
               <div className="flex flex-col sm:flex-row gap-5 mb-16">
                 <Link
