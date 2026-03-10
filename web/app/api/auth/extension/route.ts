@@ -49,15 +49,38 @@ export async function POST(req: NextRequest) {
         let orgId: string | null = null;
         let orgName = "No Org";
         let shieldActive = true;
+        let plan = "SAFE";
+        let role = "user";
+        let features: any = null;
 
         try {
             if (adminDb) {
-                // Search users node by email
                 const usersSnap = await adminDb.ref("extension_users").orderByChild("email").equalTo(verifiedEmail).get();
                 if (usersSnap.exists()) {
                     const userData = Object.values(usersSnap.val() as Record<string, any>)[0] as any;
                     orgId = userData.orgId || null;
                     shieldActive = userData.shieldActive !== false;
+                    if (userData.plan) plan = userData.plan;
+                    if (userData.role) role = userData.role;
+                    if (userData.features) features = userData.features;
+                }
+
+                if (!features) {
+                    features = {
+                        promptMonitoring: true,
+                        sensitiveDataDetection: true,
+                        riskScore: true,
+                        aiAppDetection: true,
+                        alerts: true,
+                        redaction: false,
+                        blocking: false,
+                        attachmentScanning: false,
+                        adminDashboard: false,
+                        auditLogs: false,
+                        teamPolicies: false,
+                        sso: false,
+                        apiAccess: false
+                    };
                 }
 
                 // Fallback: search organizations by member email
@@ -87,6 +110,9 @@ export async function POST(req: NextRequest) {
                     orgId: orgId || null,
                     lastSeen: new Date().toISOString(),
                     shieldActive,
+                    plan,
+                    role,
+                    features // save the features correctly
                 });
 
                 // ── 4. Register / update device (Extension Installation) ──────
@@ -109,6 +135,24 @@ export async function POST(req: NextRequest) {
         } catch (dbErr) {
             console.error("[auth/extension] RTDB operations failed:", dbErr);
             // Non-fatal — return minimal response
+        }
+
+        if (!features) {
+            features = {
+                promptMonitoring: true,
+                sensitiveDataDetection: true,
+                riskScore: true,
+                aiAppDetection: true,
+                alerts: true,
+                redaction: false,
+                blocking: false,
+                attachmentScanning: false,
+                adminDashboard: false,
+                auditLogs: false,
+                teamPolicies: false,
+                sso: false,
+                apiAccess: false
+            };
         }
 
         // ── 5. Generate a short-lived SSO token for web auto-login ────────────
@@ -134,6 +178,9 @@ export async function POST(req: NextRequest) {
             shieldActive,
             ssoToken,
             dashboardUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3737",
+            plan,
+            role,
+            features
         });
 
     } catch (err: any) {

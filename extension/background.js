@@ -206,6 +206,23 @@ async function completeSignIn(firebaseData) {
         orgName: backendInfo?.orgName || 'No Org',
         shieldActive: backendInfo?.shieldActive !== false,
         ssoToken: backendInfo?.ssoToken || idToken,
+        plan: backendInfo?.plan || 'SAFE',
+        role: backendInfo?.role || 'user',
+        features: backendInfo?.features || {
+            promptMonitoring: true,
+            sensitiveDataDetection: true,
+            riskScore: true,
+            aiAppDetection: true,
+            alerts: true,
+            redaction: false,
+            blocking: false,
+            attachmentScanning: false,
+            adminDashboard: false,
+            auditLogs: false,
+            teamPolicies: false,
+            sso: false,
+            apiAccess: false
+        }
     };
 
     await saveUser(user);
@@ -235,7 +252,24 @@ async function loginWithLicense(licenseKey) {
             orgId: data.orgId,
             orgName: data.orgName,
             shieldActive: data.shieldActive !== false,
-            ssoToken: data.ssoToken
+            ssoToken: data.ssoToken,
+            plan: data.plan || 'SAFE',
+            role: data.role || 'user',
+            features: data.features || {
+                promptMonitoring: true,
+                sensitiveDataDetection: true,
+                riskScore: true,
+                aiAppDetection: true,
+                alerts: true,
+                redaction: false,
+                blocking: false,
+                attachmentScanning: false,
+                adminDashboard: false,
+                auditLogs: false,
+                teamPolicies: false,
+                sso: false,
+                apiAccess: false
+            }
         };
         await saveUser(user);
         // Pre-cache policies from the response if available

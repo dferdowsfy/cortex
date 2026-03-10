@@ -343,6 +343,17 @@ function bypassAndSubmit(originalEvent, triggerEl) {
 let isScanning = false;
 const AI_TOOL = detectPlatform();
 
+async function getFeatures() {
+    const res = await safeSendMessage({ type: 'GET_AUTH_STATE' }, 1000);
+    if (res && res.user && res.user.features) {
+        return res.user.features;
+    }
+    return {
+        promptMonitoring: true, sensitiveDataDetection: true, riskScore: true,
+        blocking: true, redaction: true, attachmentScanning: true
+    };
+}
+
 async function interceptAndScan(originalEvent, inputEl, actionEl) {
     if (!isAIPage()) return;
     if (isScanning) { haltEvent(originalEvent); return; }
@@ -355,12 +366,26 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
     isScanning = true;
 
     const triggerEl = actionEl || inputEl;
+
+    const features = await getFeatures();
+
+    if (!features.promptMonitoring) {
+        bypassAndSubmit(originalEvent, triggerEl);
+        isScanning = false;
+        return;
+    }
+
     const snippet = text.substring(0, 80);
     let dlpResult = { action: 'allow', findings: [], redactedText: text };
 
     try {
         // ── STEP 1: Client-side DLP (instant, no network) ─────────────────────
-        dlpResult = runDLPPreflight(text);
+        if (features.sensitiveDataDetection) {
+            dlpResult = runDLPPreflight(text);
+        }
+
+        if (!features.blocking && dlpResult.action === 'block') dlpResult.action = 'warn';
+        if (!features.redaction && dlpResult.action === 'redact') dlpResult.action = 'warn';
 
         if (dlpResult.action === 'block') {
             const labels = dlpResult.findings.map(f => f.label).join(', ');
@@ -405,16 +430,20 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
         }
 
         // ── STEP 3: Apply backend decision ────────────────────────────────────
-        const finalAction = backendResult.action || 'allow';
+        let finalAction = backendResult.action || 'allow';
         const finalText = backendResult.redactedText || dlpResult.redactedText;
+        let riskScore = features.riskScore ? backendResult.riskScore || 0 : undefined;
 
-        console.log(`[Complyze] Result: action=${finalAction} | riskScore=${backendResult.riskScore}`);
+        if (!features.blocking && finalAction === 'block') finalAction = 'warn';
+        if (!features.redaction && finalAction === 'redact') finalAction = 'warn';
+
+        console.log(`[Complyze] Result: action=${finalAction} | riskScore=${riskScore}`);
 
         // Log activity
         safeSendMessage({
             type: 'LOG_ACTIVITY', payload: {
                 aiTool: AI_TOOL, promptLength: text.length,
-                riskScore: backendResult.riskScore || 0,
+                riskScore: riskScore !== undefined ? riskScore : 0,
                 action: finalAction, blocked: finalAction === 'block',
                 findings: backendResult.details || dlpResult.findings.map(f => f.label),
                 timestamp: new Date().toISOString(),
@@ -496,14 +525,26 @@ function initFileInterceptor() {
 }
 
 async function handleFileUpload(file, inputEl) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
+        const features = await getFeatures();
+        if (!features.attachmentScanning) {
+            resolve();
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = async (e) => {
             const content = e.target.result;
             if (!content) { resolve(); return; }
 
             // 1. Preflight DLP on file content
-            const dlp = runDLPPreflight(content);
+            let dlp = { action: 'allow', findings: [] };
+            if (features.sensitiveDataDetection) {
+                dlp = runDLPPreflight(content);
+            }
+
+            if (!features.blocking && dlp.action === 'block') dlp.action = 'warn';
+
             if (dlp.action === 'block') {
                 enforceFileBlock(inputEl, file.name, 'Sensitive data found: ' + dlp.findings.map(f => f.label).join(', '));
                 resolve();
@@ -523,18 +564,27 @@ async function handleFileUpload(file, inputEl) {
             }, 6000);
 
             if (result && result.action === 'block') {
-                enforceFileBlock(inputEl, file.name, result.message || 'Blocked by policy');
+                if (!features.blocking) {
+                    // Graceful degrade: show warning
+                    showOverlay({
+                        type: 'warn',
+                        title: '⚠️ Attachment Warning',
+                        body: `<strong style="color:#fbbf24">${file.name}</strong><br>Contains sensitive data: ${result.message}`
+                    });
+                } else {
+                    enforceFileBlock(inputEl, file.name, result.message || 'Blocked by policy');
 
-                // Log activity
-                safeSendMessage({
-                    type: 'LOG_ACTIVITY', payload: {
-                        aiTool: AI_TOOL, promptLength: content.length,
-                        riskScore: result.riskScore || 90,
-                        action: 'block', blocked: true,
-                        findings: [`File: ${file.name}`, result.message || 'Sensitive Attachment'],
-                        timestamp: new Date().toISOString(),
-                    }
-                }, 3000);
+                    // Log activity
+                    safeSendMessage({
+                        type: 'LOG_ACTIVITY', payload: {
+                            aiTool: AI_TOOL, promptLength: content.length,
+                            riskScore: features.riskScore ? result.riskScore || 90 : 0,
+                            action: 'block', blocked: true,
+                            findings: [`File: ${file.name}`, result.message || 'Sensitive Attachment'],
+                            timestamp: new Date().toISOString(),
+                        }
+                    }, 3000);
+                }
             }
             resolve();
         };

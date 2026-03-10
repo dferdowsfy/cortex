@@ -20,6 +20,8 @@ export interface ManagedUser {
     enrolled_device_count: number;
     license_key?: string;
     last_activity?: string;
+    plan?: string;
+    features?: Record<string, boolean>;
 }
 
 function generateLicenseKey(): string {

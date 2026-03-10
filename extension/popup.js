@@ -124,6 +124,12 @@ function renderMain(user, stats, lastScan) {
         statBlocked.textContent = stats.blockedToday ?? '—';
     }
 
+    if (user.features && user.features.adminDashboard === false) {
+        btnDash.style.display = 'none';
+    } else {
+        btnDash.style.display = 'flex';
+    }
+
     renderScanCard(lastScan);
 }
 

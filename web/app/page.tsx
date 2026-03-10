@@ -131,42 +131,56 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-bold text-neutral-800 dark:text-white mb-6 tracking-tight">
-              Built for Enterprise AI Governance
+              Use AI Safely. Stay in Control.
             </h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-12 text-center lg:text-left">
-            <div className="flex flex-col gap-4">
-              <div className="w-16 h-16 flex items-center justify-center bg-primary/10 rounded-xl text-primary mx-auto lg:mx-0">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Feature 1 */}
+            <div className="flex flex-col gap-6 group p-8 rounded-3xl bg-gradient-to-b from-neutral-800/20 to-transparent border border-neutral-800/50 hover:border-blue-500/30 transition-all duration-500 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-blue-500/10 transition-all duration-500"></div>
+              <div className="w-14 h-14 flex items-center justify-center bg-blue-500/10 rounded-xl text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.15)] group-hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] transition-all duration-300 border border-blue-500/20 relative z-10">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-white">Extension Shield</h3>
-              <p className="text-lg sm:text-xl text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Deploy the Complyze Shield directly to browsers to monitor, redact, and block sensitive AI interactions in real-time.
-              </p>
+              <div className="relative z-10">
+                <h3 className="text-xl font-bold text-neutral-800 dark:text-white mb-3">Shield Extension</h3>
+                <p className="text-base text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                  Protect AI conversations in real time. Detect, redact, or block sensitive data before it’s shared with AI tools.
+                </p>
+              </div>
             </div>
-            <div className="flex flex-col gap-6">
-              <div className="w-16 h-16 flex items-center justify-center bg-primary/10 rounded-xl text-primary mx-auto lg:mx-0">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+            {/* Feature 2 */}
+            <div className="flex flex-col gap-6 group p-8 rounded-3xl bg-gradient-to-b from-neutral-800/20 to-transparent border border-neutral-800/50 hover:border-violet-500/30 transition-all duration-500 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-violet-500/5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-violet-500/10 transition-all duration-500"></div>
+              <div className="w-14 h-14 flex items-center justify-center bg-violet-500/10 rounded-xl text-violet-400 shadow-[0_0_20px_rgba(167,139,250,0.15)] group-hover:shadow-[0_0_30px_rgba(167,139,250,0.3)] transition-all duration-300 border border-violet-500/20 relative z-10">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-white">Structured Risk Assessments</h3>
-              <p className="text-lg sm:text-xl text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Run versioned assessments with defined ownership, review cycles, and approval workflows. Lock assessments for audit defensibility.
-              </p>
+              <div className="relative z-10">
+                <h3 className="text-xl font-bold text-neutral-800 dark:text-white mb-3">Smart Risk Insights</h3>
+                <p className="text-base text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                  Understand how AI is being used across your team with simple risk scoring and visibility into sensitive prompts.
+                </p>
+              </div>
             </div>
-            <div className="flex flex-col gap-6">
-              <div className="w-16 h-16 flex items-center justify-center bg-primary/10 rounded-xl text-primary mx-auto lg:mx-0">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+            {/* Feature 3 */}
+            <div className="flex flex-col gap-6 group p-8 rounded-3xl bg-gradient-to-b from-neutral-800/20 to-transparent border border-neutral-800/50 hover:border-teal-500/30 transition-all duration-500 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-teal-500/10 transition-all duration-500"></div>
+              <div className="w-14 h-14 flex items-center justify-center bg-teal-500/10 rounded-xl text-teal-400 shadow-[0_0_20px_rgba(45,212,191,0.15)] group-hover:shadow-[0_0_30px_rgba(45,212,191,0.3)] transition-all duration-300 border border-teal-500/20 relative z-10">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-white">Governance Automation</h3>
-              <p className="text-lg sm:text-xl text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Automate reassessments, policy validation, and governance reporting with scheduled review triggers and structured audit trails.
-              </p>
+              <div className="relative z-10">
+                <h3 className="text-xl font-bold text-neutral-800 dark:text-white mb-3">Automated Guardrails</h3>
+                <p className="text-base text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                  Set policies that automatically protect sensitive information while allowing teams to keep using AI tools.
+                </p>
+              </div>
             </div>
           </div>
         </div>

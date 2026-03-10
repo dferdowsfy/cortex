@@ -7,11 +7,11 @@ import MarketingFooter from "@/components/MarketingFooter";
 export default function PricingPage() {
     const tiers = [
         {
-            name: "VISIBILITY",
-            tagline: "See Your AI Exposure",
+            name: "STARTER",
+            tagline: "Essential Visibility",
             displayPrice: "$700",
             priceDetails: "$7 per employee / month · Minimum 100 employees · Billed annually",
-            description: "Monitor AI usage and understand your exposure risk.",
+            description: "Understand your team's AI usage and uncover hidden risks.",
             features: [
                 "AI app detection (desktop + browser)",
                 "Prompt monitoring (read-only)",
@@ -25,11 +25,11 @@ export default function PricingPage() {
             href: "/request-demo",
         },
         {
-            name: "CONTROL",
-            tagline: "See It. Score It. Stop It.",
+            name: "SHIELD",
+            tagline: "Total AI Protection",
             displayPrice: "$1,200",
             priceDetails: "$12 per employee / month · Minimum 100 employees · Billed annually",
-            description: "Full monitoring plus real-time enforcement.",
+            description: "Real-time enforcement and deep attachment scanning.",
             features: [
                 "All Visibility features included",
                 "Attachment scanning (local-first)",
@@ -46,10 +46,10 @@ export default function PricingPage() {
         },
         {
             name: "ENTERPRISE",
-            tagline: "Institutional AI Governance",
+            tagline: "Advanced Organization Safety",
             displayPrice: "Custom",
             priceDetails: "Tailored for organization-wide scale",
-            description: "Institutional AI governance for complex organizations.",
+            description: "Comprehensive control and support for large teams.",
             features: [
                 "Unlimited endpoints",
                 "SSO integration",
@@ -86,11 +86,11 @@ export default function PricingPage() {
             <main className="pt-16 pb-12">
                 {/* Hero Section */}
                 <div className="max-w-4xl mx-auto px-6 text-center mb-12">
-                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 text-white">
-                        Simple AI Risk Monitoring for Mid-Market Teams
+                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-8 text-white leading-tight">
+                        Use AI Safely. <br /><span className="text-[#7261fd]">Stay in Control.</span>
                     </h1>
-                    <p className="text-xl text-white/85 leading-relaxed">
-                        Complyze monitors AI usage across desktop and browser apps, scores exposure risk, and optionally blocks sensitive activity — without slowing teams down.
+                    <p className="text-xl text-white/80 leading-relaxed max-w-2xl mx-auto">
+                        Unlock AI productivity for your entire organization. Complyze provides the safety and visibility you need to scale AI usage with confidence.
                     </p>
                 </div>
 

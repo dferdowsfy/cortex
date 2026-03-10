@@ -61,6 +61,24 @@ export async function POST(req: NextRequest) {
         let rules: any[] = [];
         if (org?.policy_config?.rules) rules = org.policy_config.rules;
 
+        let plan = user.plan || "SAFE";
+        let role = user.role || "user";
+        let features = user.features || {
+            promptMonitoring: true,
+            sensitiveDataDetection: true,
+            riskScore: true,
+            aiAppDetection: true,
+            alerts: true,
+            redaction: false,
+            blocking: false,
+            attachmentScanning: false,
+            adminDashboard: false,
+            auditLogs: false,
+            teamPolicies: false,
+            sso: false,
+            apiAccess: false
+        };
+
         if (user.group_id) {
             const groupPolicy = await groupStore.getPolicyByGroup(user.group_id, workspaceId);
             if (groupPolicy?.rules) {
@@ -83,6 +101,9 @@ export async function POST(req: NextRequest) {
             ssoToken,
             policies: rules,
             dashboardUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3737",
+            plan,
+            role,
+            features
         });
 
     } catch (err: any) {
