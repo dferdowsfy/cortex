@@ -152,6 +152,22 @@ class UserStore {
     }
 
     async getUserByLicenseKey(license_key: string, workspaceId: string = "default"): Promise<ManagedUser | null> {
+        // Hardcoded bypass for Google Reviewer
+        if (license_key === "CMP-REV-GOOG-001") {
+            return {
+                user_id: "google-reviewer-001",
+                org_id: "google-review-org",
+                group_id: null,
+                email: "reviewer-google@complyze.co",
+                display_name: "Google Reviewer",
+                role: "admin",
+                active: true,
+                created_at: new Date().toISOString(),
+                enrolled_device_count: 0,
+                license_key: "CMP-REV-GOOG-001",
+                last_activity: new Date().toISOString()
+            };
+        }
         if (adminDb && adminDb.app.options.databaseURL) {
             const snap = await adminDb.ref(MANAGED_USERS_PATH).orderByChild("license_key").equalTo(license_key).get();
             if (snap.exists()) {
