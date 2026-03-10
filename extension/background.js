@@ -16,10 +16,10 @@
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 // The @complyze-build script replaces process.env values during deployment.
-const API_ENDPOINT = 'https://api.complyze.co';
-const FIREBASE_API_KEY = (typeof process !== 'undefined' && process.env.FIREBASE_API_KEY) || 'AIzaSyCXiD5MwlacKPF8f3sD8PSJPzbFgqGt04A';
-const FIREBASE_AUTH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_AUTH_URL) || 'https://identitytoolkit.googleapis.com/v1/accounts';
-const FIREBASE_REFRESH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_REFRESH_URL) || 'https://securetoken.googleapis.com/v1/token';
+var API_ENDPOINT = 'https://api.complyze.co';
+var FIREBASE_API_KEY = (typeof process !== 'undefined' && process.env.FIREBASE_API_KEY) || 'AIzaSyCXiD5MwlacKPF8f3sD8PSJPzbFgqGt04A';
+var FIREBASE_AUTH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_AUTH_URL) || 'https://identitytoolkit.googleapis.com/v1/accounts';
+var FIREBASE_REFRESH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_REFRESH_URL) || 'https://securetoken.googleapis.com/v1/token';
 
 // ── Runtime state ─────────────────────────────────────────────────────────────
 // All of these reset to their initial values on every SW cold-start.
@@ -374,185 +374,187 @@ async function ensureAlarmExists() {
 // ── Lifecycle entry points ────────────────────────────────────────────────────
 // Every entry point MUST call ensureInitialized() first.
 
-chrome.runtime.onInstalled.addListener(() => {
-    ensureInitialized().then(() => {
-        fetchAndCachePolicies().catch(() => { });
-        ensureAlarmExists();                                    // ← BUG-3 fix
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalled) {
+    chrome.runtime.onInstalled.addListener(() => {
+        ensureInitialized().then(() => {
+            fetchAndCachePolicies().catch(() => { });
+            ensureAlarmExists();                                    // ← BUG-3 fix
+        });
     });
-});
 
-chrome.runtime.onStartup.addListener(() => {
-    ensureInitialized().then(() => {
-        fetchAndCachePolicies().catch(() => { });
-        ensureAlarmExists();                                    // ← BUG-3 fix (recreate if cleared)
+    chrome.runtime.onStartup.addListener(() => {
+        ensureInitialized().then(() => {
+            fetchAndCachePolicies().catch(() => { });
+            ensureAlarmExists();                                    // ← BUG-3 fix (recreate if cleared)
+        });
     });
-});
 
-// FIX BUG-2: Alarm handler now calls ensureInitialized() before fetching policies
-// so auth headers are populated even when the SW cold-starts from an alarm wake.
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-    if (alarm.name !== 'policy_refresh') return;
-    await ensureInitialized();                                  // ← BUG-2 fix
-    await fetchAndCachePolicies().catch(() => { });
-    console.log('[Complyze] Alarm: policies refreshed at', new Date().toISOString());
-});
+    // FIX BUG-2: Alarm handler now calls ensureInitialized() before fetching policies
+    // so auth headers are populated even when the SW cold-starts from an alarm wake.
+    chrome.alarms.onAlarm.addListener(async (alarm) => {
+        if (alarm.name !== 'policy_refresh') return;
+        await ensureInitialized();                                  // ← BUG-2 fix
+        await fetchAndCachePolicies().catch(() => { });
+        console.log('[Complyze] Alarm: policies refreshed at', new Date().toISOString());
+    });
 
-// ── Sidebar toggle via native sidePanel ───────────────────────────────────────
-// We configure the side panel to open when the user clicks the extension's action.
-// This handles viewport resizing natively so content is never cut off.
-chrome.sidePanel
-    .setPanelBehavior({ openPanelOnActionClick: true })
-    .catch((error) => console.error(error));
+    // ── Sidebar toggle via native sidePanel ───────────────────────────────────────
+    // We configure the side panel to open when the user clicks the extension's action.
+    // This handles viewport resizing natively so content is never cut off.
+    chrome.sidePanel
+        .setPanelBehavior({ openPanelOnActionClick: true })
+        .catch((error) => console.error(error));
 
 
-// ── Message router ────────────────────────────────────────────────────────────
-// FIX BUG-4: All message handlers are now part of a single top-level async
-// function that awaits ensureInitialized() before doing anything. sendResponse
-// is always called synchronously relative to the resolved async path, so
-// Chrome's message port stays open (we return true from the sync listener
-// while the async work is in flight).
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    var type = message.type;
-    var payload = message.payload || {};
+    // ── Message router ────────────────────────────────────────────────────────────
+    // FIX BUG-4: All message handlers are now part of a single top-level async
+    // function that awaits ensureInitialized() before doing anything. sendResponse
+    // is always called synchronously relative to the resolved async path, so
+    // Chrome's message port stays open (we return true from the sync listener
+    // while the async work is in flight).
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        var type = message.type;
+        var payload = message.payload || {};
 
-    (async () => {
-        // ── Always restore state first (BUG-1 + BUG-2 fix) ──
-        await ensureInitialized();
+        (async () => {
+            // ── Always restore state first (BUG-1 + BUG-2 fix) ──
+            await ensureInitialized();
 
-        // ── Auth messages ─────────────────────────────────────────────────────
-        if (type === 'GET_AUTH_STATE') {
-            if (!currentUser) { sendResponse({ user: null }); return; }
-            var stats = await fetchStats().catch(() => ({ scannedToday: 0, blockedToday: 0 }));
+            // ── Auth messages ─────────────────────────────────────────────────────
+            if (type === 'GET_AUTH_STATE') {
+                if (!currentUser) { sendResponse({ user: null }); return; }
+                var stats = await fetchStats().catch(() => ({ scannedToday: 0, blockedToday: 0 }));
 
-            // Mirror local session stats for "Instant Live" feel
-            const localStats = await chrome.storage.local.get(['sessionScanned', 'sessionBlocked']);
-            stats.scannedToday = (stats.scannedToday || 0) + (localStats.sessionScanned || 0);
-            stats.blockedToday = (stats.blockedToday || 0) + (localStats.sessionBlocked || 0);
-
-            sendResponse({ user: currentUser, stats, apiEndpoint: API_ENDPOINT });
-            return;
-        }
-
-        if (type === 'SIGN_IN_EMAIL') {
-            await chrome.storage.local.set({ sessionScanned: 0, sessionBlocked: 0 }); // Reset local stats
-            try {
-                var fbData = await firebaseSignInEmail(payload.email, payload.password);
-                var result = await completeSignIn(fbData);
-                sendResponse(result);
-            } catch (e) { sendResponse({ error: e.message }); }
-            return;
-        }
-
-        if (type === 'SIGN_IN_LICENSE') {
-            await chrome.storage.local.set({ sessionScanned: 0, sessionBlocked: 0 });
-            try {
-                var result = await loginWithLicense(payload.licenseKey);
-                sendResponse(result);
-            } catch (e) { sendResponse({ error: e.message }); }
-            return;
-        }
-
-        if (type === 'SIGN_IN_GOOGLE') {
-            await chrome.storage.local.set({ sessionScanned: 0, sessionBlocked: 0 }); // Reset local stats
-            try {
-                var result = await signInWithGoogle();
-                sendResponse(result);
-            } catch (e) { sendResponse({ error: e.message }); }
-            return;
-        }
-
-        if (type === 'SIGN_OUT') {
-            await clearUser();
-            cachedPolicies = [];
-            await chrome.storage.local.set({ sessionScanned: 0, sessionBlocked: 0 });
-            console.log('[Complyze] User signed out (stats reset).');
-            sendResponse({ ok: true });
-            return;
-        }
-
-        if (type === 'SET_SHIELD_ACTIVE') {
-            if (currentUser) {
-                currentUser.shieldActive = payload.active;
-                chrome.storage.local.set({ currentUser });
-            }
-            sendResponse({ ok: true });
-            return;
-        }
-
-        if (type === 'REFRESH_STATS') {
-            try {
-                var stats = await fetchStats();
-                // Merge local stats even on refresh to keep them live
+                // Mirror local session stats for "Instant Live" feel
                 const localStats = await chrome.storage.local.get(['sessionScanned', 'sessionBlocked']);
                 stats.scannedToday = (stats.scannedToday || 0) + (localStats.sessionScanned || 0);
                 stats.blockedToday = (stats.blockedToday || 0) + (localStats.sessionBlocked || 0);
-                sendResponse({ user: currentUser, stats });
-            } catch (e) { sendResponse({ user: currentUser, stats: null }); }
-            return;
-        }
 
-        // ── Content script messages ───────────────────────────────────────────
-        if (type === 'SCAN_PROMPT') {
-            if (currentUser && currentUser.shieldActive === false) {
-                sendResponse({ action: 'allow', message: 'Shield disabled', riskScore: 0 });
+                sendResponse({ user: currentUser, stats, apiEndpoint: API_ENDPOINT });
                 return;
             }
-            try {
-                // Pre-increment local scanned count
-                const data = await chrome.storage.local.get(['sessionScanned']);
-                await chrome.storage.local.set({ sessionScanned: (data.sessionScanned || 0) + 1 });
 
-                var scanResult = await scanPrompt(payload);
+            if (type === 'SIGN_IN_EMAIL') {
+                await chrome.storage.local.set({ sessionScanned: 0, sessionBlocked: 0 }); // Reset local stats
+                try {
+                    var fbData = await firebaseSignInEmail(payload.email, payload.password);
+                    var result = await completeSignIn(fbData);
+                    sendResponse(result);
+                } catch (e) { sendResponse({ error: e.message }); }
+                return;
+            }
 
-                if (scanResult && scanResult.action === 'block') {
-                    const blk = await chrome.storage.local.get(['sessionBlocked']);
-                    await chrome.storage.local.set({ sessionBlocked: (blk.sessionBlocked || 0) + 1 });
+            if (type === 'SIGN_IN_LICENSE') {
+                await chrome.storage.local.set({ sessionScanned: 0, sessionBlocked: 0 });
+                try {
+                    var result = await loginWithLicense(payload.licenseKey);
+                    sendResponse(result);
+                } catch (e) { sendResponse({ error: e.message }); }
+                return;
+            }
+
+            if (type === 'SIGN_IN_GOOGLE') {
+                await chrome.storage.local.set({ sessionScanned: 0, sessionBlocked: 0 }); // Reset local stats
+                try {
+                    var result = await signInWithGoogle();
+                    sendResponse(result);
+                } catch (e) { sendResponse({ error: e.message }); }
+                return;
+            }
+
+            if (type === 'SIGN_OUT') {
+                await clearUser();
+                cachedPolicies = [];
+                await chrome.storage.local.set({ sessionScanned: 0, sessionBlocked: 0 });
+                console.log('[Complyze] User signed out (stats reset).');
+                sendResponse({ ok: true });
+                return;
+            }
+
+            if (type === 'SET_SHIELD_ACTIVE') {
+                if (currentUser) {
+                    currentUser.shieldActive = payload.active;
+                    chrome.storage.local.set({ currentUser });
                 }
+                sendResponse({ ok: true });
+                return;
+            }
 
-                sendResponse(scanResult);
-            } catch (e) { sendResponse({ action: 'allow', message: e.message }); }
-            return;
-        }
+            if (type === 'REFRESH_STATS') {
+                try {
+                    var stats = await fetchStats();
+                    // Merge local stats even on refresh to keep them live
+                    const localStats = await chrome.storage.local.get(['sessionScanned', 'sessionBlocked']);
+                    stats.scannedToday = (stats.scannedToday || 0) + (localStats.sessionScanned || 0);
+                    stats.blockedToday = (stats.blockedToday || 0) + (localStats.sessionBlocked || 0);
+                    sendResponse({ user: currentUser, stats });
+                } catch (e) { sendResponse({ user: currentUser, stats: null }); }
+                return;
+            }
 
-        if (type === 'LOG_ACTIVITY') {
-            try {
-                // ISSUE 2 FIX: If the content script logged a block, increment local counter
-                // so the sidebar updates instantly without waiting for a backend poll.
-                if (payload.action === 'block' || payload.blocked === true) {
-                    const blk = await chrome.storage.local.get(['sessionBlocked']);
-                    await chrome.storage.local.set({ sessionBlocked: (blk.sessionBlocked || 0) + 1 });
+            // ── Content script messages ───────────────────────────────────────────
+            if (type === 'SCAN_PROMPT') {
+                if (currentUser && currentUser.shieldActive === false) {
+                    sendResponse({ action: 'allow', message: 'Shield disabled', riskScore: 0 });
+                    return;
                 }
-                var logResult = await logActivity(payload);
-                sendResponse(logResult);
-            } catch (e) { sendResponse({ error: e.message }); }
-            return;
-        }
+                try {
+                    // Pre-increment local scanned count
+                    const data = await chrome.storage.local.get(['sessionScanned']);
+                    await chrome.storage.local.set({ sessionScanned: (data.sessionScanned || 0) + 1 });
 
-        if (type === 'SCAN_FILE') {
-            if (!inspectAttachments) {
-                sendResponse({ action: 'allow', message: 'Attachment inspection disabled' });
+                    var scanResult = await scanPrompt(payload);
+
+                    if (scanResult && scanResult.action === 'block') {
+                        const blk = await chrome.storage.local.get(['sessionBlocked']);
+                        await chrome.storage.local.set({ sessionBlocked: (blk.sessionBlocked || 0) + 1 });
+                    }
+
+                    sendResponse(scanResult);
+                } catch (e) { sendResponse({ action: 'allow', message: e.message }); }
                 return;
             }
-            if (currentUser && currentUser.shieldActive === false) {
-                sendResponse({ action: 'allow', message: 'Shield disabled' });
+
+            if (type === 'LOG_ACTIVITY') {
+                try {
+                    // ISSUE 2 FIX: If the content script logged a block, increment local counter
+                    // so the sidebar updates instantly without waiting for a backend poll.
+                    if (payload.action === 'block' || payload.blocked === true) {
+                        const blk = await chrome.storage.local.get(['sessionBlocked']);
+                        await chrome.storage.local.set({ sessionBlocked: (blk.sessionBlocked || 0) + 1 });
+                    }
+                    var logResult = await logActivity(payload);
+                    sendResponse(logResult);
+                } catch (e) { sendResponse({ error: e.message }); }
                 return;
             }
-            try {
-                // For files, we treat the filename + content as the prompt
-                var filePayload = {
-                    prompt: `[FILE: ${payload.fileName}] \n\n ${payload.content}`,
-                    aiTool: payload.aiTool || "Unknown Tool",
-                    context: "FILE_UPLOAD"
-                };
-                var scanResult = await scanPrompt(filePayload);
-                sendResponse(scanResult);
-            } catch (e) { sendResponse({ action: 'allow', message: e.message }); }
-            return;
-        }
 
-        // Unknown message type — respond to unblock the caller
-        sendResponse({ error: 'Unknown message type: ' + type });
-    })();
+            if (type === 'SCAN_FILE') {
+                if (!inspectAttachments) {
+                    sendResponse({ action: 'allow', message: 'Attachment inspection disabled' });
+                    return;
+                }
+                if (currentUser && currentUser.shieldActive === false) {
+                    sendResponse({ action: 'allow', message: 'Shield disabled' });
+                    return;
+                }
+                try {
+                    // For files, we treat the filename + content as the prompt
+                    var filePayload = {
+                        prompt: `[FILE: ${payload.fileName}] \n\n ${payload.content}`,
+                        aiTool: payload.aiTool || "Unknown Tool",
+                        context: "FILE_UPLOAD"
+                    };
+                    var scanResult = await scanPrompt(filePayload);
+                    sendResponse(scanResult);
+                } catch (e) { sendResponse({ action: 'allow', message: e.message }); }
+                return;
+            }
 
-    return true; // Keep the message channel open while async work runs
-});
+            // Unknown message type — respond to unblock the caller
+            sendResponse({ error: 'Unknown message type: ' + type });
+        })();
+
+        return true; // Keep the message channel open while async work runs
+    });
+}
