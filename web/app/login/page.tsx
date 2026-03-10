@@ -210,7 +210,7 @@ export default function LoginPage() {
                     </form>
                 </div>
                 <div className="mt-8 text-center">
-                    <Link href="/privacy" className="text-xs font-semibold text-gray-500 hover:text-brand-600 transition-colors uppercase tracking-widest">
+                    <Link href="/privacypolicy" className="text-xs font-semibold text-gray-500 hover:text-brand-600 transition-colors uppercase tracking-widest">
                         Privacy Policy
                     </Link>
                 </div>

@@ -17,7 +17,7 @@ export default function MarketingFooter() {
                         © {new Date().getFullYear()} Complyze. All rights reserved.
                     </div>
                     <div className="flex gap-6 text-sm text-neutral-500 dark:text-white/60 font-medium">
-                        <a href="#" className="hover:text-white transition-colors">Privacy</a>
+                        <a href="/privacypolicy" className="hover:text-white transition-colors">Privacy</a>
                         <a href="#" className="hover:text-white transition-colors">Terms</a>
                     </div>
                 </div>

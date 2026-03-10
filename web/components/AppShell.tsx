@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         normalizedPath === "/login" ||
         normalizedPath === "/signup" ||
         normalizedPath === "/install" ||
-        normalizedPath === "/privacy"
+        normalizedPath === "/privacypolicy"
     ) {
         return <main className="min-h-screen main-content-area">{children}</main>;
     }
