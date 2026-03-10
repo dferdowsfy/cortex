@@ -15,7 +15,7 @@ async function run() {
         console.log(`✅ Created Org: ${org.name} (${org.org_id})`);
 
         // 2. Create the Reviewer User
-        const reviewerEmail = "chrome-reviewer@complyze.co";
+        const reviewerEmail = "reviewer-google@complyze.co";
         const user = await userStore.createUser(
             org.org_id,
             reviewerEmail,
