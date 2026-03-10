@@ -21,10 +21,25 @@
         "identity",
         "alarms",
         "tabs",
-        "sidePanel"
+        "sidePanel",
+        "scripting"
     ],
     "host_permissions": [
-        "<all_urls>"
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://perplexity.ai/*",
+        "https://www.perplexity.ai/*",
+        "https://copilot.microsoft.com/*",
+        "https://chat.deepseek.com/*",
+        "https://chat.mistral.ai/*",
+        "https://huggingface.co/chat/*",
+        "https://poe.com/*",
+        "https://api.complyze.co/*",
+        "https://complyze.co/*",
+        "https://identitytoolkit.googleapis.com/*",
+        "https://securetoken.googleapis.com/*"
     ],
     "side_panel": {
         "default_path": "sidebar.html"
