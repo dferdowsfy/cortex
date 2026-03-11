@@ -3,13 +3,14 @@ import Stripe from "stripe";
 import { adminDb } from "@/lib/firebase/admin";
 import crypto from "crypto";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-    apiVersion: "2026-02-25.clover",
-});
+// Force dynamic to avoid build-time Stripe initialization
+export const dynamic = "force-dynamic";
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
 
 export async function POST(req: NextRequest) {
+    const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
+    const stripe = new Stripe(stripeSecret, { apiVersion: "2026-02-25.clover" });
     if (!adminDb || !adminDb.app.options.databaseURL) {
         return NextResponse.json({ error: "Firebase not configured" }, { status: 500 });
     }
