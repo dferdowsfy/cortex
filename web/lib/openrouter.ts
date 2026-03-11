@@ -1,7 +1,15 @@
 /**
- * OpenRouter LLM caller for Complyze pipeline
- * Uses OpenAI-compatible API format
+ * openrouter.ts — legacy compatibility shim
+ *
+ * All LLM inference now routes through the local Ollama `complyze-qwen` model.
+ * This file re-exports the Ollama-backed callLLM and parseJSON so that existing
+ * callers (extract, assess, report routes) need no import-path changes.
+ *
+ * The OpenRouter API is no longer used and the OPENROUTER_API_KEY env var is
+ * no longer required.
  */
+
+import { callOllama } from "@/lib/ollamaAnalysis";
 
 export interface LLMOptions {
   temperature?: number;
@@ -9,64 +17,21 @@ export interface LLMOptions {
   jsonMode?: boolean;
 }
 
+/**
+ * Drop-in replacement for the previous OpenRouter callLLM.
+ * Combines system + user prompts into a single Ollama `prompt` string.
+ */
 export async function callLLM(
   systemPrompt: string,
   userPrompt: string,
-  options: LLMOptions = {}
+  _options: LLMOptions = {},
 ): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = (process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash").trim();
-
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not set in environment variables");
-  }
-
-  const body: Record<string, unknown> = {
-    model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: options.temperature ?? 0.1,
-    max_tokens: options.maxTokens ?? 4096,
-  };
-
-  if (options.jsonMode !== false) {
-    body.response_format = { type: "json_object" };
-  }
-
-  const response = await fetch(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://complyze.ai",
-        "X-Title": "Complyze AI Governance",
-      },
-      body: JSON.stringify(body),
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `OpenRouter API error (${response.status}): ${errorText}`
-    );
-  }
-
-  const data = await response.json();
-
-  if (!data.choices?.[0]?.message?.content) {
-    throw new Error("No content in OpenRouter response");
-  }
-
-  return data.choices[0].message.content;
+  const combinedPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}`;
+  return callOllama(combinedPrompt);
 }
 
 /**
- * Parse JSON from LLM response, handling markdown code fences
+ * Parse JSON from LLM response, handling markdown code fences.
  */
 export function parseJSON(raw: string): unknown {
   let cleaned = raw.trim();

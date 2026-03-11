@@ -2,61 +2,78 @@ import { NextRequest, NextResponse } from "next/server";
 import { groupStore } from "@/lib/group-store";
 import { enrollmentStore } from "@/lib/enrollment-store";
 import { userStore } from "@/lib/user-store";
-import OpenAI from "openai";
+import {
+    analysePrompt,
+    buildFallbackResult,
+    type ComplyzeAnalysisResult,
+    type OllamaAnalysisError,
+} from "@/lib/ollamaAnalysis";
 
 export const dynamic = "force-dynamic";
-
-const openai = new OpenAI({
-    baseURL: process.env.OPENROUTER_API_KEY ? "https://openrouter.ai/api/v1" : undefined,
-    apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
-});
+export const maxDuration = 120;
 
 /**
  * POST /api/scanPrompt
- * Evaluates a given prompt against group/org policies dynamically using an LLM.
- * Bypasses full proxy interception logic. Returns structured JSON actions.
+ *
+ * Evaluates a submitted prompt against active group/org policies via the
+ * local `complyze-qwen` Ollama model.
+ *
+ * Accepts:
+ *   promptText | prompt  — the raw prompt to evaluate
+ *   aiTool               — name of the destination AI service
+ *   workspaceId          — organisation workspace identifier
+ *   orgId                — organisation ID (also accepted from X-Organization-ID header)
+ *   userEmail            — submitting user email (also from X-User-Email header)
+ *   context              — optional additional context strings
+ *   cachedPolicies       — array of policy rules cached by the extension
+ *   attachmentPresent    — boolean
+ *   attachmentType       — MIME / descriptive type
+ *   attachmentText       — extracted attachment content
+ *
+ * Returns fields expected by the existing dashboard + extension consumers.
  */
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const promptText = body.promptText || body.prompt;
-        const aiTool = body.aiTool || "Unknown Tool";
-        const workspaceId = body.workspaceId || "default";
-        const context = body.context || "";
+        const promptText: string = body.promptText || body.prompt || "";
+        const aiTool: string = body.aiTool || "Unknown Tool";
+        const workspaceId: string = body.workspaceId || "default";
+        const context: string | string[] = body.context || "";
 
-        const orgId = req.headers.get("X-Organization-ID") || body.orgId;
-        const authHeader = req.headers.get("Authorization");
-        const userEmail = req.headers.get("X-User-Email") || body.userEmail;
+        const orgId: string | null = req.headers.get("X-Organization-ID") || body.orgId || null;
+        const authHeader: string | null = req.headers.get("Authorization");
+        const userEmail: string | null = req.headers.get("X-User-Email") || body.userEmail || null;
 
         if (!promptText) {
             return NextResponse.json({ error: "promptText is required" }, { status: 400 });
         }
 
-        // Token check — skipped entirely in DEBUG_BYPASS mode
+        // ── Auth token check ──────────────────────────────────────────────────────
         if (!process.env.DEBUG_BYPASS) {
             if (orgId && authHeader && authHeader.startsWith("Bearer ")) {
                 const tokenValue = authHeader.replace("Bearer ", "").trim();
                 const token = await enrollmentStore.getToken(tokenValue, workspaceId);
                 if (!token || token.org_id !== orgId || token.revoked) {
-                    return NextResponse.json({ error: "Unauthorized: Invalid deployment token" }, { status: 401 });
+                    return NextResponse.json(
+                        { error: "Unauthorized: Invalid deployment token" },
+                        { status: 401 },
+                    );
                 }
             } else if (!orgId) {
-                return NextResponse.json({ error: "Unauthorized: Missing identity headers" }, { status: 401 });
+                return NextResponse.json(
+                    { error: "Unauthorized: Missing identity headers" },
+                    { status: 401 },
+                );
             }
         }
 
-        // ISSUE 3 FIX: Use cachedPolicies FROM the extension if provided.
-        // This is the most up-to-date policy set the user's extension has.
-        // Fall back to fetching from the database if not supplied.
-        let rules: any[] = [];
+        // ── Policy rule resolution ─────────────────────────────────────────────────
+        let rules: unknown[] = [];
 
-        if (body.cachedPolicies && Array.isArray(body.cachedPolicies) && body.cachedPolicies.length > 0) {
-            // Extension sent its locally-cached policies — use them directly
+        if (Array.isArray(body.cachedPolicies) && body.cachedPolicies.length > 0) {
             rules = body.cachedPolicies;
             console.log(`[scanPrompt] Using ${rules.length} extension-cached policy rules.`);
         } else if (orgId) {
-            // Fall back to DB lookup
-            let groupId = null;
             const org = await enrollmentStore.getOrganization(orgId, workspaceId);
             if (org?.policy_config?.rules) {
                 rules = org.policy_config.rules;
@@ -65,113 +82,150 @@ export async function POST(req: NextRequest) {
             if (userEmail && userEmail !== "unknown@domain.com") {
                 try {
                     const users = await userStore.listUsers(orgId, workspaceId);
-                    const foundUser = users.find((u: any) => u.email === userEmail);
-                    if (foundUser?.group_id) groupId = foundUser.group_id;
+                    const foundUser = users.find((u) => u.email === userEmail);
+                    if (foundUser?.group_id) {
+                        const groupPolicy = await groupStore.getPolicyByGroup(foundUser.group_id, workspaceId);
+                        const groupRules = groupPolicy?.rules || [];
+                        if (groupRules.length > 0) {
+                            rules = groupPolicy?.inherit_org_default ? [...rules, ...groupRules] : groupRules;
+                        }
+                    }
                 } catch (e) {
-                    console.error("Could not fetch user group", e);
-                }
-            }
-
-            if (groupId) {
-                const groupPolicy = await groupStore.getPolicyByGroup(groupId, workspaceId);
-                const groupRules = groupPolicy?.rules || [];
-                if (groupRules.length > 0) {
-                    rules = groupPolicy?.inherit_org_default ? [...rules, ...groupRules] : groupRules;
+                    console.error("[scanPrompt] Could not fetch user group", e);
                 }
             }
         }
 
-        const systemPrompt = `You are a strict enterprise AI security compliance officer.
-You are evaluating an employee's prompt to an AI tool (${aiTool}).
-Your primary job is to prevent data leakage and enforce policy.
+        // ── Build context string ───────────────────────────────────────────────────
+        const contextStr = Array.isArray(context) ? context.join("\n---\n") : context;
 
-CRITICAL: If the prompt contains ANY of the following, you MUST block or redact it:
-- AWS access keys (AKIA...)
-- API keys, secret keys, tokens
-- Social Security Numbers (SSN)
-- Passwords or credentials
-- Credit card numbers
-- Private keys or certificates
-
-Policy rules for this user:
-${JSON.stringify(rules.length ? rules : [{ type: "baseline", action: "monitor", description: "Block critical data leaks, secrets, PII." }], null, 2)}
-
-Return a JSON object with this EXACT schema:
-{
-  "action": "allow" | "block" | "redact" | "warn",
-  "message": "Reason for block/redaction",
-  "redactedText": "Cleaned text (only if action=redact)",
-  "riskScore": <0-100>
-}
-
-Rules:
-1. If prompt contains AWS keys, API secrets, SSNs, passwords and policy says block → action MUST be "block"
-2. If prompt contains sensitive data that can be masked → action is "redact"
-3. If prompt matches a 'warn' rule or is high risk but not blocked → action is "warn"
-4. If prompt is safe → action is "allow", riskScore < 30
-5. NEVER return "allow" if secrets are present. Unsafe prompts must NEVER be marked SAFE.`;
-
-        const userContextMessage = context ? `Context:\n${Array.isArray(context) ? context.join('\n---') : context}\n\n` : "";
-
-        let userContent: any = `${userContextMessage}Prompt to evaluate:\n${promptText}`;
-        if (typeof promptText === 'string' && promptText.startsWith('data:image/')) {
-            userContent = [
-                { type: "text", text: `${userContextMessage}Analyze this image/screenshot for sensitive data, secrets, or policy violations according to the system prompt.` },
-                { type: "image_url", image_url: { url: promptText } }
-            ];
-        }
-
-        const llmResponse = await openai.chat.completions.create({
-            model: process.env.OPENROUTER_MODEL || "gpt-4o-mini",
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userContent }
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.1,
-            max_tokens: 1000,
-        });
-
-        const resultText = llmResponse.choices[0]?.message?.content || "{}";
-        let parsedResult: any = {};
-
-        try {
-            parsedResult = JSON.parse(resultText);
-        } catch (e) {
-            console.error("LLM failed to return valid JSON", resultText);
-            parsedResult = { action: "allow", message: "Evaluation error", riskScore: 0 };
-        }
-
-        // NEVER let LLM override a clear DLP violation
-        // Server-side DLP safety net
+        // ── Server-side DLP safety net (runs before LLM, not after) ───────────────
         const criticalPatterns = [
             /\b(AKIA|AGPA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{12,20}\b/,
             /\bsk-(?:proj-)?[A-Za-z0-9]{20,}\b/,
             /\b(?!000|666|9\d{2})\d{3}-\d{2}-\d{4}\b/,
         ];
-        const hasCritical = criticalPatterns.some(p => p.test(promptText));
-        if (hasCritical && parsedResult.action === "allow") {
-            console.warn("[scanPrompt] LLM returned 'allow' but DLP found critical data — overriding to 'block'");
-            parsedResult.action = "block";
-            parsedResult.riskScore = Math.max(parsedResult.riskScore || 0, 90);
-            parsedResult.message = "Critical sensitive data detected (server-side override).";
+        const hasCritical = criticalPatterns.some((p) => p.test(promptText));
+
+        // ── Call Ollama analysis ───────────────────────────────────────────────────
+        let analysisResult: ComplyzeAnalysisResult;
+        let analysisError: OllamaAnalysisError | null = null;
+
+        try {
+            analysisResult = await analysePrompt({
+                promptText: contextStr ? `${contextStr}\n\n${promptText}` : promptText,
+                attachmentPresent: body.attachmentPresent === true,
+                attachmentType: body.attachmentType || undefined,
+                attachmentText: body.attachmentText || undefined,
+                policyRules: rules.length > 0 ? rules : undefined,
+                metadata: {
+                    ai_tool: aiTool,
+                    ...(orgId ? { org_id: orgId } : {}),
+                    ...(userEmail ? { user_email: userEmail } : {}),
+                },
+            });
+        } catch (err) {
+            const typed = err as Partial<OllamaAnalysisError>;
+            analysisError = {
+                code: typed.code ?? "UNKNOWN",
+                message: err instanceof Error ? err.message : String(err),
+                raw: typed.raw,
+            };
+            console.error(`[scanPrompt] Ollama analysis failed (${analysisError.code}):`, analysisError.message);
+            // Return a graceful fallback so the dashboard still renders
+            const fallback = buildFallbackResult(analysisError.message);
+            return NextResponse.json(
+                mapToLegacyResponse(fallback, aiTool, { analysisError }),
+                { status: 200 },
+            );
         }
 
-        console.log(`[scanPrompt] Final: action=${parsedResult.action} | riskScore=${parsedResult.riskScore} | tool=${aiTool}`);
+        // ── DLP override: never allow if critical secrets found ───────────────────
+        if (hasCritical && analysisResult.recommended_action === "allow") {
+            console.warn(
+                "[scanPrompt] Ollama returned 'allow' but DLP found critical data — overriding to 'block'",
+            );
+            analysisResult.recommended_action = "block";
+            analysisResult.overall_risk_score = Math.max(analysisResult.overall_risk_score, 90);
+            analysisResult.severity = "critical";
+        }
 
-        return NextResponse.json({
-            riskScore: parsedResult.riskScore || 0,
-            action: parsedResult.action || "allow",
-            message: parsedResult.message || "",
-            redactedText: parsedResult.redactedText || "",
-            categories: ["llm_evaluated"],
-            riskCategory: parsedResult.riskScore > 75 ? "critical" : (parsedResult.riskScore > 50 ? "high" : "low"),
-            policyViolation: parsedResult.action === "block",
-            details: [parsedResult.message],
-        });
+        console.log(
+            `[scanPrompt] Final: action=${analysisResult.recommended_action} | ` +
+            `riskScore=${analysisResult.overall_risk_score} | tool=${aiTool}`,
+        );
 
-    } catch (err: any) {
-        console.error("LLM evaluation failed:", err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json(mapToLegacyResponse(analysisResult, aiTool, {}));
+    } catch (err) {
+        console.error("[scanPrompt] Unexpected error:", err);
+        return NextResponse.json(
+            { error: err instanceof Error ? err.message : "Unknown error" },
+            { status: 500 },
+        );
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Map the rich ComplyzeAnalysisResult to the legacy response shape expected by
+// the existing dashboard, extension, and proxy consumers.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function mapToLegacyResponse(
+    result: ComplyzeAnalysisResult & { _error?: string },
+    aiTool: string,
+    extras: { analysisError?: OllamaAnalysisError | null },
+) {
+    // Map recommended_action → legacy `action`
+    const actionMap: Record<string, string> = {
+        allow: "allow",
+        allow_with_redaction: "redact",
+        warn: "warn",
+        block: "block",
+        manual_review: "warn",
+    };
+    const legacyAction = actionMap[result.recommended_action] ?? "allow";
+
+    const riskCategory =
+        result.overall_risk_score > 75
+            ? "critical"
+            : result.overall_risk_score > 50
+                ? "high"
+                : result.overall_risk_score > 25
+                    ? "medium"
+                    : "low";
+
+    return {
+        // Legacy fields (extension + proxy consumers)
+        riskScore: result.overall_risk_score,
+        action: legacyAction,
+        message: result.prompt_summary,
+        redactedText: result.redacted_prompt,
+        categories: result.sensitive_categories,
+        riskCategory,
+        policyViolation: legacyAction === "block",
+        details: result.findings.map((f) => `[${f.severity.toUpperCase()}] ${f.reason}`),
+
+        // Extended Complyze schema fields (dashboard consumers)
+        analysis: {
+            analysis_version: result.analysis_version,
+            prompt_summary: result.prompt_summary,
+            redacted_prompt: result.redacted_prompt,
+            overall_risk_score: result.overall_risk_score,
+            severity: result.severity,
+            confidence: result.confidence,
+            sensitive_categories: result.sensitive_categories,
+            contextual_risks: result.contextual_risks,
+            findings: result.findings,
+            attachment_analysis: result.attachment_analysis,
+            recommended_action: result.recommended_action,
+            dashboard_metrics: result.dashboard_metrics,
+            graph_data: result.graph_data,
+        },
+
+        // Surface errors cleanly for dashboard display
+        ...(result._error ? { analysisError: result._error } : {}),
+        ...(extras.analysisError ? { analysisErrorCode: extras.analysisError.code } : {}),
+
+        aiTool,
+    };
 }
