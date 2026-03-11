@@ -42,11 +42,17 @@ export default function MarketingNav() {
                             href="/login"
                             className="text-base font-medium text-white/75 hover:text-white/90 transition-colors"
                         >
-                            Sign In
+                            Log In
+                        </Link>
+                        <Link
+                            href="/signup"
+                            className="text-base font-medium text-white/75 hover:text-white/90 transition-colors"
+                        >
+                            Sign Up
                         </Link>
                         <Link
                             href="/request-demo"
-                            className="bg-primary hover:bg-primary/90 text-white text-base font-semibold px-5 py-2.5 rounded shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
+                            className="bg-primary hover:bg-primary/90 text-white text-base font-semibold px-5 py-2.5 rounded shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all border border-primary/20"
                         >
                             Request Demo
                         </Link>
@@ -94,7 +100,14 @@ export default function MarketingNav() {
                             className="block text-lg font-medium text-white/75 hover:text-white/90"
                             onClick={() => setIsMenuOpen(false)}
                         >
-                            Sign In
+                            Log In
+                        </Link>
+                        <Link
+                            href="/signup"
+                            className="block text-lg font-medium text-white/75 hover:text-white/90"
+                            onClick={() => setIsMenuOpen(false)}
+                        >
+                            Sign Up
                         </Link>
                         <Link
                             href="/request-demo"

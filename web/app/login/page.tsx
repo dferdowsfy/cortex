@@ -1,36 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    updateProfile
+    signInWithEmailAndPassword
 } from "firebase/auth";
-import { auth, rtdb } from "@/lib/firebase/config";
-import { ref, set } from "firebase/database";
+import { auth } from "@/lib/firebase/config";
+import { Shield, ArrowRight, Lock, Mail } from "lucide-react";
 
 export default function LoginPage() {
-    const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [name, setName] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-    const [configError, setConfigError] = useState(false);
 
-    useEffect(() => {
-        if (!auth) {
-            setConfigError(true);
-        }
-    }, []);
-
-    async function handleAuth(e: React.FormEvent) {
+    async function handleLogin(e: React.FormEvent) {
         e.preventDefault();
         if (!auth) {
-            setError("Authentication is not configured. Missing API Key.");
+            setError("Authentication is not configured.");
             return;
         }
 
@@ -38,181 +27,93 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, password);
-            } else {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-
-                // Update profile
-                await updateProfile(user, { displayName: name });
-
-                // Create user profile in RTDB
-                if (rtdb) {
-                    await set(ref(rtdb, `users/${user.uid}/profile`), {
-                        uid: user.uid,
-                        email: user.email,
-                        displayName: name,
-                        role: "admin",
-                        createdAt: new Date().toISOString(),
-                        organizationId: "org_" + Math.random().toString(36).substr(2, 9),
-                    });
-                }
-            }
+            await signInWithEmailAndPassword(auth, email, password);
             router.push("/dashboard");
         } catch (err: any) {
             console.error(err);
-            let msg = "Authentication failed";
-            if (err.code === "auth/invalid-credential") msg = "Invalid email or password. Please check and try again.";
-            if (err.code === "auth/wrong-password") msg = "Incorrect password. Please try again.";
-            if (err.code === "auth/user-not-found") msg = "No account found with this email. Try creating a new account.";
-            if (err.code === "auth/invalid-email") msg = "Invalid email address format.";
-            if (err.code === "auth/email-already-in-use") msg = "This email is already registered. Try signing in instead.";
-            if (err.code === "auth/weak-password") msg = "Password should be at least 6 characters.";
-            if (err.code === "auth/too-many-requests") msg = "Too many failed attempts. Please wait a moment and try again.";
+            let msg = "Invalid email or password.";
+            if (err.code === "auth/user-not-found") msg = "No account found with this email.";
+            if (err.code === "auth/wrong-password") msg = "Incorrect password.";
             setError(msg);
         } finally {
             setLoading(false);
         }
     }
 
-    if (configError) {
-        return (
-            <div className="flex min-h-screen flex-col justify-center bg-gray-50 dark:bg-background-dark py-12 sm:px-6 lg:px-8">
-                <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                    <div className="rounded-md bg-red-50 p-4 border border-red-200">
-                        <div className="flex">
-                            <div className="ml-3">
-                                <h3 className="text-sm font-medium text-red-800">
-                                    Configuration Missing
-                                </h3>
-                                <div className="mt-2 text-sm text-red-700">
-                                    <p>
-                                        Firebase API Key is missing. Please add <code>NEXT_PUBLIC_FIREBASE_API_KEY</code> to your <code>.env.local</code> file.
-                                    </p>
-                                </div>
-                            </div>
+    return (
+        <div className="flex min-h-screen bg-[#020617] text-white">
+            <div className="w-full flex items-center justify-center p-8">
+                <div className="w-full max-w-md space-y-8">
+                    <div className="flex justify-center flex-col items-center gap-6">
+                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <Shield className="w-7 h-7 text-white" />
+                        </div>
+                        <div className="text-center space-y-2">
+                            <h2 className="text-3xl font-black tracking-tight uppercase">Sign In</h2>
+                            <p className="text-white/40 font-medium">Welcome back to the Complyze Hub.</p>
                         </div>
                     </div>
-                </div>
-            </div>
-        );
-    }
 
-    return (
-        <div className="flex min-h-screen flex-col justify-center bg-gray-50 dark:bg-background-dark py-12 sm:px-6 lg:px-8">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="flex justify-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 shadow-lg">
-                        <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                        </svg>
-                    </div>
-                </div>
-                <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-                    {isLogin ? "Sign in to Complyze" : "Create your account"}
-                </h2>
-                <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-                    {isLogin ? "Or" : "Already have an account?"}{" "}
-                    <button
-                        onClick={() => setIsLogin(!isLogin)}
-                        className="font-medium text-brand-600 hover:text-brand-500"
-                    >
-                        {isLogin ? "create a new account" : "sign in instead"}
-                    </button>
-                </p>
-            </div>
-
-            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white dark:bg-neutral-800 dark:border dark:border-neutral-700 py-8 px-4 shadow sm:rounded-lg sm:px-10">
-                    <form className="space-y-6" onSubmit={handleAuth}>
-                        {!isLogin && (
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Full Name
-                                </label>
-                                <div className="mt-1">
-                                    <input
-                                        id="name"
-                                        name="name"
-                                        type="text"
-                                        autoComplete="name"
-                                        required
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        className="block w-full appearance-none rounded-md border border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white px-3 py-2 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-brand-500 sm:text-sm"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Email address
-                            </label>
-                            <div className="mt-1">
+                    <form onSubmit={handleLogin} className="space-y-5">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1">Email address</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                                 <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
                                     required
+                                    type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="block w-full appearance-none rounded-md border border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white px-3 py-2 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-brand-500 sm:text-sm"
+                                    placeholder="alex@company.com"
+                                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500 transition-all font-medium"
                                 />
                             </div>
                         </div>
 
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Password
-                            </label>
-                            <div className="mt-1">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1">Password</label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                                 <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete={isLogin ? "current-password" : "new-password"}
                                     required
+                                    type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="block w-full appearance-none rounded-md border border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white px-3 py-2 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-brand-500 sm:text-sm"
+                                    placeholder="••••••••"
+                                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500 transition-all font-medium"
                                 />
                             </div>
                         </div>
 
                         {error && (
-                            <div className="rounded-md bg-red-50 dark:bg-red-950/30 p-4 border border-red-200 dark:border-red-900/50">
-                                <div className="flex">
-                                    <div className="ml-3">
-                                        <h3 className="text-sm font-medium text-red-800 dark:text-red-200">{error}</h3>
-                                    </div>
-                                </div>
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-sm font-bold text-red-400">
+                                {error}
                             </div>
                         )}
 
-                        <div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="flex w-full justify-center rounded-md border border-transparent bg-brand-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {loading ? (
-                                    <svg className="mr-3 h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                ) : null}
-                                {isLogin ? "Sign in" : "Create Account"}
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                        >
+                            {loading ? "Authenticating..." : "Sign In to Hub"}
+                            {!loading && <ArrowRight className="w-4 h-4" />}
+                        </button>
                     </form>
-                </div>
-                <div className="mt-8 text-center">
-                    <Link href="/privacypolicy" className="text-xs font-semibold text-gray-500 hover:text-brand-600 transition-colors uppercase tracking-widest">
-                        Privacy Policy
-                    </Link>
+
+                    <div className="pt-4 text-center">
+                        <p className="text-sm text-white/40 font-medium">
+                            Don&apos;t have an account?{" "}
+                            <Link href="/signup" className="text-blue-500 hover:underline font-bold">
+                                Create one for free
+                            </Link>
+                        </p>
+                    </div>
+
+                    <div className="pt-8 flex justify-center gap-8 border-t border-white/5">
+                        <Link href="/privacypolicy" className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white/40">Privacy Policy</Link>
+                        <Link href="/" className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white/40">Home</Link>
+                    </div>
                 </div>
             </div>
         </div>

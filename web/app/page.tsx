@@ -31,8 +31,14 @@ export default function LandingPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-5 mb-16">
                 <Link
-                  href="/request-demo"
+                  href="/signup"
                   className="bg-primary hover:bg-primary/90 text-white text-lg font-semibold px-8 py-4 rounded-lg shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center justify-center gap-2"
+                >
+                  Sign Up For Free
+                </Link>
+                <Link
+                  href="/request-demo"
+                  className="bg-white/5 hover:bg-white/10 text-white text-lg font-semibold px-8 py-4 rounded-lg border border-white/10 transition-all flex items-center justify-center gap-2"
                 >
                   Request Demo
                 </Link>
