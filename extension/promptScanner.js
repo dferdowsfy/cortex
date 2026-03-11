@@ -126,19 +126,23 @@ function detectPlatform() {
 function runDLPPreflight(text) {
     const findings = [];
     let redacted = text;
-    const rank = { allow: 0, redact: 1, block: 2 };
-    let highest = 'allow';
+    let hasCritical = false;
 
     for (const rule of DLP_PATTERNS) {
         const rx = new RegExp(rule.pattern.source, rule.pattern.flags);
         if (rx.test(text)) {
-            findings.push({ id: rule.id, label: rule.label, action: rule.action, severity: rule.severity });
-            if (rank[rule.action] > rank[highest]) highest = rule.action;
+            findings.push({
+                id: rule.id,
+                label: rule.label,
+                severity: rule.severity,
+                action_suggestion: rule.action
+            });
+            if (rule.severity === 'critical') hasCritical = true;
             const ry = new RegExp(rule.pattern.source, rule.pattern.flags);
             redacted = redacted.replace(ry, rule.replacement);
         }
     }
-    return { action: highest, findings, redactedText: redacted, source: 'dlp_preflight' };
+    return { findings, redactedText: redacted, hasCritical, source: 'dlp_preflight' };
 }
 
 // ── Notify Popup via chrome.storage ──────────────────────────────────────────
@@ -376,41 +380,55 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
     }
 
     const snippet = text.substring(0, 80);
-    let dlpResult = { action: 'allow', findings: [], redactedText: text };
+    let dlpResult = { findings: [], redactedText: text, hasCritical: false };
 
     try {
-        // ── STEP 1: Client-side DLP (instant, no network) ─────────────────────
+        // ── STEP 1: Client-side DLP Precheck (Signal only, no early block) ─────
         if (features.sensitiveDataDetection) {
             dlpResult = runDLPPreflight(text);
+            if (dlpResult.findings.length > 0) {
+                console.log('[Complyze] Local DLP precheck findings:', dlpResult.findings.length);
+            }
         }
 
-        if (dlpResult.action === 'block') {
-            const labels = dlpResult.findings.map(f => f.label).join(', ');
-            console.log('[Complyze] DLP BLOCK:', labels);
-            notifyLastScan(dlpResult, snippet);
-            enforceBlock(inputEl, 'Sensitive data detected and blocked by policy.', dlpResult.findings);
-
-            safeSendMessage({
-                type: 'LOG_ACTIVITY', payload: {
-                    aiTool: AI_TOOL, promptLength: text.length, riskScore: 95,
-                    action: 'block', blocked: true,
-                    findings: dlpResult.findings.map(f => f.label),
-                    promptText: text,
-                    timestamp: new Date().toISOString(),
-                }
-            }, 2000);
-            return;
-        }
-
-        // ── STEP 2: Backend LLM scan ──────────────────────────────────────────
+        // ── STEP 2: Backend Scan & Policy Decision ───────────────────────────
         const backendResult = await safeSendMessage({
             type: 'SCAN_PROMPT',
-            payload: { prompt: text, aiTool: AI_TOOL, context: '' }
-        }, 6000);
+            payload: {
+                prompt: text,
+                aiTool: AI_TOOL,
+                context: '',
+                dlpFindings: dlpResult.findings,
+                hasCritical: dlpResult.hasCritical
+            }
+        }, 8000);
 
         if (!backendResult) {
-            // Backend unreachable
-            if (dlpResult.action === 'redact' && dlpResult.findings.length > 0) {
+            // Backend unreachable — Emergency local fail-safe 
+            if (dlpResult.hasCritical) {
+                const labels = dlpResult.findings.map(f => f.label).join(', ');
+                console.log('[Complyze] EMERGENCY LOCAL BLOCK (Backend offline):', labels);
+
+                enforceBlock(inputEl, 'Offline Safety Net: Critical data blocked because the security service is unreachable.', dlpResult.findings);
+
+                // Still try to log the event (it will be queued if background allows)
+                safeSendMessage({
+                    type: 'LOG_ACTIVITY', payload: {
+                        aiTool: AI_TOOL, promptLength: text.length, riskScore: 90,
+                        action: 'block', blocked: true,
+                        findings: dlpResult.findings.map(f => f.label),
+                        promptText: text,
+                        decision_source: 'local_emergency_block',
+                        blocked_locally: true,
+                        timestamp: new Date().toISOString(),
+                    }
+                }, 2000);
+
+                notifyLastScan({ action: 'block', findings: dlpResult.findings, source: 'offline_emergency' }, snippet);
+                return;
+            }
+
+            if (dlpResult.findings.length > 0) {
                 await enforceRedaction(inputEl, dlpResult.redactedText);
                 const labels = dlpResult.findings.map(f => f.label).join(', ');
                 showOverlay({
@@ -427,30 +445,23 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
             return;
         }
 
-        // ── STEP 3: Apply backend decision (authoritative) ────────────────────
-        let finalAction = backendResult.action || 'allow';
+        // ── STEP 3: Apply authoritative backend decision ─────────────────────
+        const policy = backendResult.policy_decision || { action: 'allow', reason: 'Safe' };
+        let finalAction = policy.action || 'allow';
         const finalText = backendResult.redactedText || dlpResult.redactedText;
         let riskScore = features.riskScore ? backendResult.riskScore || 0 : undefined;
 
-        console.log(`[Complyze] Result: action=${finalAction} | riskScore=${riskScore}`);
+        console.log(`[Complyze] Backend Policy: action=${finalAction} | source=${policy.source || 'backend_policy'}`);
 
-        // Log activity
-        safeSendMessage({
-            type: 'LOG_ACTIVITY', payload: {
-                aiTool: AI_TOOL, promptLength: text.length,
-                riskScore: riskScore !== undefined ? riskScore : 0,
-                action: finalAction, blocked: finalAction === 'block',
-                findings: backendResult.details || dlpResult.findings.map(f => f.label),
-                promptText: text,
-                timestamp: new Date().toISOString(),
-            }
-        }, 2000);
+        // Note: We don't log locally here anymore because the backend handles its own logging
+        // to ensure Dashboard consistency. Backend scanPrompt now writes to Activity log.
+        // If we want the extension to log additional metadata, we can, but let's trust the backend.
 
         notifyLastScan({
             action: finalAction,
-            findings: dlpResult.findings,
-            message: backendResult.message || (finalAction === 'redact' ? 'Redacted sensitive data' : ''),
-            source: 'backend',
+            findings: backendResult.analysis_result?.findings || dlpResult.findings,
+            message: policy.reason || backendResult.message || '',
+            source: policy.source || 'backend',
         }, snippet);
 
         if (finalAction === 'block') {
