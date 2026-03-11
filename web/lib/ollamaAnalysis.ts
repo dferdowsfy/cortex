@@ -1,20 +1,60 @@
 /**
  * Complyze Ollama Analysis Service
  *
- * Routes all prompt-risk analysis through the self-hosted `complyze-qwen` model
- * running on the Complyze VPS at http://72.62.83.236:11434.
+ * Routes all prompt-risk analysis through the remotely-hosted `complyze-qwen`
+ * model running on the Complyze VPS.
+ *
+ * Connectivity notes:
+ *  - The Ollama server is NOT local — it runs on a remote VPS.
+ *  - Port 11434 is the native Ollama service port, not an indicator of
+ *    local-only access. It is fully reachable over the public internet.
+ *  - If you later place a reverse proxy (nginx, Caddy, Cloudflare Tunnel)
+ *    in front of Ollama, update OLLAMA_BASE_URL to the proxy URL and the
+ *    port can be hidden behind 443/80.
+ *
+ * Configuration (all env-driven, no hardcoding):
+ *  OLLAMA_BASE_URL   — remote base URL, e.g. http://72.62.83.236:11434
+ *  OLLAMA_MODEL      — model name served by Ollama, e.g. complyze-qwen
+ *  OLLAMA_TIMEOUT_MS — request timeout in ms (default 60000)
  *
  * Architecture:
  *  1. Build prompt payload (user prompt + attachment context + metadata)
- *  2. POST /api/generate with the full Complyze JSON schema as `format`
+ *  2. POST ${OLLAMA_BASE_URL}/api/generate with the full Complyze JSON schema
  *  3. Parse the outer Ollama envelope, then parse `response` as JSON
  *  4. Normalise / validate the parsed object against the schema
  *  5. Return the validated ComplyzeAnalysisResult or throw a typed error
  */
 
-const OLLAMA_BASE_URL = "http://72.62.83.236:11434";
-const OLLAMA_MODEL = "complyze-qwen";
-const OLLAMA_TIMEOUT_MS = 60_000; // 60 s
+// ─────────────────────────────────────────────────────────────────────────────
+// Remote Ollama configuration — resolved entirely from environment variables.
+// These MUST be set in .env (dev) and in the Vercel / hosting dashboard (prod).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getOllamaConfig() {
+    const baseUrl = (process.env.OLLAMA_BASE_URL || "").trim();
+    const model = (process.env.OLLAMA_MODEL || "").trim();
+    const timeout = parseInt(process.env.OLLAMA_TIMEOUT_MS || "60000", 10);
+
+    if (!baseUrl) {
+        throw new Error(
+            "[ollamaAnalysis] OLLAMA_BASE_URL is not set. " +
+            "Add it to .env (dev) or your hosting environment variables (prod). " +
+            "Example: OLLAMA_BASE_URL=http://72.62.83.236:11434"
+        );
+    }
+    if (!model) {
+        throw new Error(
+            "[ollamaAnalysis] OLLAMA_MODEL is not set. " +
+            "Example: OLLAMA_MODEL=complyze-qwen"
+        );
+    }
+
+    return {
+        baseUrl: baseUrl.replace(/\/$/, ""), // strip trailing slash
+        model,
+        timeoutMs: isNaN(timeout) ? 60_000 : timeout,
+    };
+}
 
 const DEV = process.env.NODE_ENV === "development";
 
@@ -414,8 +454,12 @@ function normaliseAndValidate(raw: unknown): ComplyzeAnalysisResult {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Analyses a prompt via the local Ollama `complyze-qwen` model.
+ * Analyses a prompt via the remotely-hosted Ollama model on the Complyze VPS.
+ * Configuration is read from OLLAMA_BASE_URL / OLLAMA_MODEL / OLLAMA_TIMEOUT_MS.
  * Throws an OllamaAnalysisError (with `.code`) on any failure.
+ *
+ * Note: port 11434 is Ollama's native service port on the VPS. It is not
+ * localhost — the request travels over the network to the remote host.
  */
 export async function analysePrompt(
     input: ComplyzeAnalysisInput,
@@ -433,8 +477,16 @@ export async function analysePrompt(
         });
     }
 
+    // Resolve remote config on every call so env changes are picked up
+    // without restarting the server (useful when rotating hosts).
+    const { baseUrl, model, timeoutMs } = getOllamaConfig();
+
+    if (DEV) {
+        console.log(`[ollamaAnalysis] Remote target: ${baseUrl} | model: ${model}`);
+    }
+
     const body = JSON.stringify({
-        model: OLLAMA_MODEL,
+        model,
         prompt,
         stream: false,
         format: COMPLYZE_SCHEMA,
@@ -444,11 +496,11 @@ export async function analysePrompt(
 
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
         let res: Response;
         try {
-            res = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+            res = await fetch(`${baseUrl}/api/generate`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body,
@@ -547,18 +599,21 @@ export async function analysePrompt(
 
         // Handle AbortController signal (timeout)
         if (error instanceof Error && error.name === "AbortError") {
+            const { baseUrl: b, timeoutMs: t } = getOllamaConfig();
             const err: OllamaAnalysisError = {
                 code: "TIMEOUT",
-                message: `Ollama request timed out after ${OLLAMA_TIMEOUT_MS}ms`,
+                message: `Ollama request to ${b} timed out after ${t}ms`,
             };
             throw Object.assign(new Error(err.message), err);
         }
 
-        // Handle fetch / network errors
+        // Handle fetch / network errors (DNS failure, connection refused, etc.)
         if (error instanceof TypeError) {
+            const { baseUrl: b } = getOllamaConfig();
             const err: OllamaAnalysisError = {
                 code: "UNREACHABLE",
-                message: `Cannot reach Ollama host at ${OLLAMA_BASE_URL}: ${error.message}`,
+                message: `Cannot reach remote Ollama host at ${b}: ${error.message}. ` +
+                    "Verify OLLAMA_BASE_URL is reachable from this environment.",
             };
             throw Object.assign(new Error(err.message), err);
         }
@@ -619,7 +674,8 @@ export function buildFallbackResult(errorMessage: string): ComplyzeAnalysisResul
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic Ollama text completion (for non-analysis routes: extract, assess, report)
-// Replaces the previous callLLM from openrouter.ts
+// Replaces the previous OpenRouter callLLM.
+// Sends requests to the remote VPS via OLLAMA_BASE_URL.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface OllamaTextOptions {
@@ -642,8 +698,10 @@ export async function callOllama(
         console.log("[callOllama] Sending prompt (first 500 chars):", prompt.slice(0, 500));
     }
 
+    const { baseUrl, model, timeoutMs } = getOllamaConfig();
+
     const body: Record<string, unknown> = {
-        model: OLLAMA_MODEL,
+        model,
         prompt,
         stream: false,
     };
@@ -653,11 +711,11 @@ export async function callOllama(
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     let res: Response;
     try {
-        res = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+        res = await fetch(`${baseUrl}/api/generate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),

@@ -1,12 +1,12 @@
 /**
  * openrouter.ts — legacy compatibility shim
  *
- * All LLM inference now routes through the local Ollama `complyze-qwen` model.
+ * All LLM inference now routes through the remotely-hosted `complyze-qwen`
+ * model on the Complyze VPS via OLLAMA_BASE_URL.
  * This file re-exports the Ollama-backed callLLM and parseJSON so that existing
  * callers (extract, assess, report routes) need no import-path changes.
  *
- * The OpenRouter API is no longer used and the OPENROUTER_API_KEY env var is
- * no longer required.
+ * The OpenRouter API is no longer used. OPENROUTER_API_KEY is no longer required.
  */
 
 import { callOllama } from "@/lib/ollamaAnalysis";
