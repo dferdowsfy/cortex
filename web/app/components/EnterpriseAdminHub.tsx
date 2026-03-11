@@ -1,1027 +1,305 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, memo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/lib/hooks/use-toast";
 import { ToastContainer } from "./ToastContainer";
-import {
-    Shield, Users, Monitor, Key, Settings, Plus, Trash2, RefreshCw,
-    CheckCircle, XCircle, Download, Copy, Eye, EyeOff,
-    UserX, UserCheck, Globe, Building2, ChevronRight,
-    ChevronDown, Layers, Bot, Search, SlidersHorizontal,
-} from "lucide-react";
-import {
-    AI_TOOL_REGISTRY, AI_CATEGORY_REGISTRY,
-    type ToolId, type CategoryId, type RuleTargetType,
-    serializeRuleTarget, parseRuleTarget,
-} from "@/lib/ai-tool-registry";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { AI_TOOL_REGISTRY } from "@/lib/ai-tool-registry";
 
-/* ─── Types ─────────────────────────────────────────────── */
-interface Organization { id: string; name: string; created_at: string; plan?: string; seatsPurchased?: number; seatsUsed?: number; }
-interface Group { group_id: string; org_id: string; name: string; description?: string; policy_id: string | null; created_at: string; }
+interface Organization { id: string; name: string; plan?: string; }
+interface Group { group_id: string; org_id: string; name: string; policy_id: string | null; }
+interface ManagedUser { user_id: string; org_id: string; group_id: string | null; email: string; display_name?: string; active: boolean; }
+interface ExtensionStatus { status: string; }
 interface PolicyRule { rule_id: string; type: string; target: string; action: "block" | "allow" | "audit_only" | "redact"; priority: number; enabled: boolean; }
-interface GroupPolicy { policy_id: string; group_id: string; version: number; rules: PolicyRule[]; inherit_org_default: boolean; }
-interface ManagedUser { user_id: string; org_id: string; group_id: string | null; email: string; display_name?: string; role: string; active: boolean; created_at: string; license_key?: string; last_activity?: string; }
-interface ExtensionStatus { device_id: string; hostname: string; browser?: string; extension_version?: string; last_sync: string; status: string; }
-interface EnrollmentToken { id: string; token: string; status: "active" | "revoked" | "expired"; expires_at: string; uses_count: number; max_uses: number | null; org_id: string; }
 
-/* ─── Constants (outside component — fixes Issue 3) ─────── */
-type Tab = "people" | "policy" | "deploy";
-const TABS: { key: Tab; label: string; Icon: React.ElementType }[] = [
-    { key: "people", label: "Groups & Users", Icon: Users },
-    { key: "policy", label: "Policies", Icon: Settings },
-    { key: "deploy", label: "Deploy", Icon: Key },
-];
+const ACTIONS: PolicyRule["action"][] = ["block", "allow", "audit_only", "redact"];
 
-const ACTION_BADGE: Record<string, string> = {
-    block: "bg-red-500/15 text-red-400 border border-red-500/30",
-    allow: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30",
-    audit_only: "bg-blue-500/15 text-blue-400 border border-blue-500/30",
-    redact: "bg-amber-500/15 text-amber-400 border border-amber-500/30",
-};
-
-/* ─── Memoised sub-components ───────────────────────────── */
-const StatCard = memo(function StatCard({ label, value, sub, color = "text-white" }: { label: string; value: string | number; sub?: string; color?: string }) {
-    return (
-        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col gap-1.5">
-            <p className="text-[12px] font-black uppercase tracking-[0.25em] text-white/30">{label}</p>
-            <p className={`text-4xl font-black tabular-nums ${color}`}>{value}</p>
-            {sub && <p className="text-[13px] text-white/30 font-bold uppercase tracking-widest">{sub}</p>}
-        </div>
-    );
-});
-
-/**
- * Human-readable relative time helper
- */
-function timeSince(timestamp: number) {
-    const seconds = Math.floor((new Date().getTime() - timestamp) / 1000);
-    let interval = seconds / 31536000;
-
-    if (interval > 1) return Math.floor(interval) + " years ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hours ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
-    if (seconds < 10) return "Just now";
-    return Math.floor(seconds) + " seconds ago";
-}
-
-/* ─── Main Component ─────────────────────────────────────── */
 export default function EnterpriseAdminHub() {
-    const { user } = useAuth();
-    const wid = user?.uid || "default";
-    const { toasts, toast, dismiss } = useToast();
+  const { user } = useAuth();
+  const wid = user?.uid || "default";
+  const { toasts, toast, dismiss } = useToast();
 
-    /* ── Core data ── */
-    const [organizations, setOrganizations] = useState<Organization[]>([]);
-    const [activeOrgId, setActiveOrgId] = useState("");
-    const [groups, setGroups] = useState<Group[]>([]);
-    const [users, setUsers] = useState<ManagedUser[]>([]);
-    const [devices, setDevices] = useState<ExtensionStatus[]>([]);
-    const [tokens, setTokens] = useState<EnrollmentToken[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [activeOrgId, setActiveOrgId] = useState("");
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [devices, setDevices] = useState<ExtensionStatus[]>([]);
 
-    /* ── Policy state ── */
-    const [policyTarget, setPolicyTarget] = useState<"org" | "group" | "user">("group");
-    const [activeGroupId, setActiveGroupId] = useState("");
-    const [activeUserId, setActiveUserId] = useState("");
-    const [policyMap, setPolicyMap] = useState<Record<string, PolicyRule[]>>({});  // keyed by groupId or userId
-    const [newRule, setNewRule] = useState<Partial<PolicyRule>>({ type: "ai_tool", action: "block", priority: 50, enabled: true });
-    // Rule builder structured state
-    const [ruleTargetType, setRuleTargetType] = useState<RuleTargetType>("ai_tool");
-    const [selectedTool, setSelectedTool] = useState<ToolId>("chatgpt");
-    const [selectedCategories, setSelectedCategories] = useState<CategoryId[]>([]);
-    const [rawTargetValue, setRawTargetValue] = useState("");
-    const [toolSearch, setToolSearch] = useState("");
-    const [showAdvancedTarget, setShowAdvancedTarget] = useState(false);
+  const [policyTarget, setPolicyTarget] = useState<"org" | "group" | "user">("org");
+  const [activeGroupId, setActiveGroupId] = useState("");
+  const [activeUserId, setActiveUserId] = useState("");
+  const [policyMap, setPolicyMap] = useState<Record<string, PolicyRule[]>>({});
 
-    /* ── UI state ── */
-    const [tab, setTab] = useState<Tab>("people");
-    const [loading, setLoading] = useState(true);
-    const [revoking, setRevoking] = useState<string | null>(null);
-    const [savingPolicy, setSavingPolicy] = useState(false);
-    const [showGroupForm, setShowGroupForm] = useState(false);
-    const [showUserForm, setShowUserForm] = useState(false);
-    const [showOrgForm, setShowOrgForm] = useState(false);
-    const [newGroupName, setNewGroupName] = useState("");
-    const [newGroupDesc, setNewGroupDesc] = useState("");
-    const [newUserEmail, setNewUserEmail] = useState("");
-    const [newUserName, setNewUserName] = useState("");
-    const [newUserGroup, setNewUserGroup] = useState("");
-    const [newUserRole, setNewUserRole] = useState("member");
-    const [userEmailError, setUserEmailError] = useState("");
-    const [newOrgName, setNewOrgName] = useState("");
-    const [creating, setCreating] = useState<Record<string, boolean>>({});
-    const [generatedToken, setGeneratedToken] = useState<string | null>(null);
-    const [tokenVisible, setTokenVisible] = useState(false);
-    const [tokenCopied, setTokenCopied] = useState(false);
+  const [selectedTool, setSelectedTool] = useState("chatgpt");
+  const [selectedAction, setSelectedAction] = useState<PolicyRule["action"]>("block");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [groupListOpen, setGroupListOpen] = useState(false);
 
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserGroup, setNewUserGroup] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [savingPolicy, setSavingPolicy] = useState(false);
 
-    /* ── Memoised derived ── */
-    const activeOrg = useMemo(() => organizations.find(o => o.id === activeOrgId), [organizations, activeOrgId]);
-    const activeDevices = useMemo(() => devices.filter(d => d.status === "active" || d.status === "Healthy"), [devices]);
-    const revokedDevices = useMemo(() => devices.filter(d => d.status === "revoked"), [devices]);
-    const activeUsers = useMemo(() => users.filter(u => u.active), [users]);
-    const currentPolicy = useMemo(() => {
-        if (policyTarget === "group") return policyMap[activeGroupId] || [];
-        if (policyTarget === "user") return policyMap[`u:${activeUserId}`] || [];
-        return policyMap["org"] || [];
-    }, [policyMap, policyTarget, activeGroupId, activeUserId]);
+  const activeOrg = useMemo(() => organizations.find((o) => o.id === activeOrgId), [organizations, activeOrgId]);
+  const activeExtensions = useMemo(() => devices.filter((d) => d.status === "active" || d.status === "Healthy").length, [devices]);
 
-    /* ── Fetchers ─────────────────────────────────────────── */
-    const fetchOrgs = useCallback(async () => {
-        const r = await fetch(`/api/admin/organizations?workspaceId=${wid}`);
-        if (!r.ok) return;
-        const { organizations: orgs } = await r.json();
-        setOrganizations(orgs || []);
-        setActiveOrgId(prev => prev || orgs?.[0]?.id || "");
-    }, [wid]);
+  const policyKey = useMemo(() => {
+    if (policyTarget === "org") return `org:${activeOrgId}`;
+    if (policyTarget === "group") return `group:${activeGroupId}`;
+    return `user:${activeUserId}`;
+  }, [policyTarget, activeGroupId, activeOrgId, activeUserId]);
 
-    const fetchGroups = useCallback(async (orgId: string) => {
-        if (!orgId) return;
-        const r = await fetch(`/api/admin/groups?org_id=${orgId}&workspaceId=${wid}`);
-        if (!r.ok) return;
-        const { groups: g } = await r.json();
-        setGroups(g || []);
-    }, [wid]);
+  const currentPolicy = policyMap[policyKey] || [];
 
-    const fetchUsers = useCallback(async (orgId: string) => {
-        if (!orgId) return;
-        const r = await fetch(`/api/admin/users?org_id=${orgId}&workspaceId=${wid}`);
-        if (!r.ok) return;
-        const { users: u } = await r.json();
-        setUsers(u || []);
-    }, [wid]);
+  const fetchOrgs = useCallback(async () => {
+    const r = await fetch(`/api/admin/organizations?workspaceId=${wid}`);
+    if (!r.ok) return;
+    const { organizations: orgs } = await r.json();
+    setOrganizations(orgs || []);
+    setActiveOrgId((prev) => prev || orgs?.[0]?.id || "");
+  }, [wid]);
 
-    const fetchDevices = useCallback(async () => {
-        const r = await fetch(`/api/agent/heartbeat?workspaceId=${wid}`);
-        if (!r.ok) return;
-        const { agents } = await r.json();
-        setDevices(agents || []);
-    }, [wid]);
+  const fetchGroups = useCallback(async (orgId: string) => {
+    const r = await fetch(`/api/admin/groups?org_id=${orgId}&workspaceId=${wid}`);
+    if (!r.ok) return;
+    const { groups: g } = await r.json();
+    setGroups(g || []);
+  }, [wid]);
 
-    const fetchTokens = useCallback(async (orgId: string) => {
-        if (!orgId) return;
-        const r = await fetch(`/api/admin/enrollment/tokens?organizationId=${orgId}&workspaceId=${wid}`);
-        if (!r.ok) return;
-        const { tokens: t } = await r.json();
-        setTokens(t || []);
-    }, [wid]);
+  const fetchUsers = useCallback(async (orgId: string) => {
+    const r = await fetch(`/api/admin/users?org_id=${orgId}&workspaceId=${wid}`);
+    if (!r.ok) return;
+    const { users: u } = await r.json();
+    setUsers(u || []);
+  }, [wid]);
 
-    /* Load policy for a specific group/user on-demand */
-    const loadGroupPolicy = useCallback(async (gid: string) => {
-        if (!gid || policyMap[gid] !== undefined) return; // cached
-        const r = await fetch(`/api/admin/groups/${gid}/policy?workspaceId=${wid}`);
-        if (!r.ok) return;
-        const { policy } = await r.json();
-        setPolicyMap(prev => ({ ...prev, [gid]: policy?.rules || [] }));
-    }, [wid, policyMap]);
+  const fetchDevices = useCallback(async () => {
+    const r = await fetch(`/api/agent/heartbeat?workspaceId=${wid}`);
+    if (!r.ok) return;
+    const { agents } = await r.json();
+    setDevices(agents || []);
+  }, [wid]);
 
-    /* ── Boot ── */
-    useEffect(() => {
-        (async () => {
-            setLoading(true);
-            await Promise.all([fetchOrgs(), fetchDevices()]);
-            setLoading(false);
-        })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+  const loadPolicy = useCallback(async (scope: "org" | "group" | "user", id: string) => {
+    if (!id) return;
+    const key = `${scope}:${id}`;
+    if (policyMap[key] !== undefined) return;
+    const path = scope === "org" ? `/api/admin/orgs/${id}/policy` : scope === "group" ? `/api/admin/groups/${id}/policy` : `/api/admin/users/${id}/policy`;
+    const r = await fetch(`${path}?workspaceId=${wid}`);
+    if (!r.ok) return;
+    const { policy } = await r.json();
+    setPolicyMap((prev) => ({ ...prev, [key]: policy?.rules || [] }));
+  }, [policyMap, wid]);
 
-    /* Org-dependent data — triggered only when activeOrgId changes */
-    useEffect(() => {
-        if (!activeOrgId) return;
-        fetchGroups(activeOrgId);
-        fetchUsers(activeOrgId);
-        fetchTokens(activeOrgId);
-    }, [activeOrgId, fetchGroups, fetchUsers, fetchTokens]);
+  useEffect(() => { fetchOrgs(); fetchDevices(); }, [fetchOrgs, fetchDevices]);
 
-    /* Lazy-load group policy only when Policy tab is open and group selected */
-    useEffect(() => {
-        if (tab === "policy" && policyTarget === "group" && activeGroupId) {
-            loadGroupPolicy(activeGroupId);
-        }
-    }, [tab, policyTarget, activeGroupId, loadGroupPolicy]);
+  useEffect(() => {
+    if (!activeOrgId) return;
+    fetchGroups(activeOrgId);
+    fetchUsers(activeOrgId);
+    loadPolicy("org", activeOrgId);
+    setPolicyTarget("org");
+  }, [activeOrgId, fetchGroups, fetchUsers, loadPolicy]);
 
-    /* 30s background heartbeat only for devices (lightest call) */
-    useEffect(() => {
-        const iv = setInterval(fetchDevices, 30_000);
-        return () => clearInterval(iv);
-    }, [fetchDevices]);
+  useEffect(() => {
+    if (policyTarget === "group" && activeGroupId) loadPolicy("group", activeGroupId);
+    if (policyTarget === "user" && activeUserId) loadPolicy("user", activeUserId);
+  }, [policyTarget, activeGroupId, activeUserId, loadPolicy]);
 
-    /* ── Actions ─────────────────────────────────────────── */
-    const setCreatingKey = (k: string, v: boolean) =>
-        setCreating(p => ({ ...p, [k]: v }));
+  const handleInviteUser = async () => {
+    if (!newUserEmail.trim() || !newUserName.trim() || !activeOrgId) return;
+    const r = await fetch(`/api/admin/users?workspaceId=${wid}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ org_id: activeOrgId, email: newUserEmail.trim(), display_name: newUserName.trim(), group_id: newUserGroup || null }),
+    });
+    if (!r.ok) return toast("Failed to invite user.", "error");
+    setNewUserEmail(""); setNewUserName(""); setNewUserGroup(""); setInviteOpen(false);
+    toast("User invited.", "success");
+    fetchUsers(activeOrgId);
+  };
 
-    const handleCreateOrg = async () => {
-        if (!newOrgName.trim()) return;
-        setCreatingKey("org", true);
-        try {
-            const r = await fetch(`/api/admin/organizations?workspaceId=${wid}`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: newOrgName.trim() }),
-            });
-            if (r.ok) {
-                const org = await r.json();
-                await fetchOrgs();
-                setActiveOrgId(org.org_id || org.id);
-                setNewOrgName(""); setShowOrgForm(false);
-                toast("Organization created.", "success");
-            } else { toast("Failed to create org.", "error"); }
-        } finally { setCreatingKey("org", false); }
-    };
+  const handleRemoveUser = async (userId: string) => {
+    const r = await fetch(`/api/admin/users?user_id=${userId}&workspaceId=${wid}`, { method: "DELETE" });
+    if (!r.ok) return toast("Failed to remove user.", "error");
+    setUsers((prev) => prev.filter((u) => u.user_id !== userId));
+    toast("User removed.", "warning");
+  };
 
-    /* Issue 1 fix: optimistic update + toast */
-    const handleCreateGroup = async () => {
-        if (!newGroupName.trim() || !activeOrgId) return;
-        setCreatingKey("group", true);
+  const handleAssignGroup = async (userId: string, groupId: string | null) => {
+    const r = await fetch(`/api/admin/users?workspaceId=${wid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, group_id: groupId }),
+    });
+    if (!r.ok) return toast("Failed to update group.", "error");
+    setUsers((prev) => prev.map((u) => (u.user_id === userId ? { ...u, group_id: groupId } : u)));
+    toast("Group updated.", "success");
+  };
 
-        // Optimistic insert so dropdowns are instantly populated
-        const tempId = `temp-${Date.now()}`;
-        const optimistic: Group = {
-            group_id: tempId, org_id: activeOrgId,
-            name: newGroupName.trim(), description: newGroupDesc,
-            policy_id: null, created_at: new Date().toISOString(),
-        };
-        setGroups(prev => [...prev, optimistic]);
+  const handleAddRule = (type = "ai_tool", target = selectedTool, action = selectedAction) => {
+    const rule: PolicyRule = { rule_id: crypto.randomUUID(), type, target, action, priority: 50, enabled: true };
+    setPolicyMap((prev) => ({ ...prev, [policyKey]: [...(prev[policyKey] || []), rule] }));
+  };
 
-        try {
-            const r = await fetch(`/api/admin/groups?workspaceId=${wid}`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ org_id: activeOrgId, name: newGroupName.trim(), description: newGroupDesc }),
-            });
-            if (r.ok) {
-                const { group } = await r.json();
-                // Replace optimistic row with real one
-                setGroups(prev => prev.map(g => g.group_id === tempId ? group : g));
-                setNewGroupName(""); setNewGroupDesc(""); setShowGroupForm(false);
-                toast(`Group "${group.name}" created successfully.`, "success");
-            } else {
-                setGroups(prev => prev.filter(g => g.group_id !== tempId));
-                toast("Failed to create group.", "error");
-            }
-        } catch {
-            setGroups(prev => prev.filter(g => g.group_id !== tempId));
-            toast("Network error creating group.", "error");
-        } finally { setCreatingKey("group", false); }
-    };
+  const handleSavePolicy = async () => {
+    setSavingPolicy(true);
+    try {
+      let path = "";
+      let body: any = { rules: currentPolicy };
+      if (policyTarget === "org") path = `/api/admin/orgs/${activeOrgId}/policy`;
+      if (policyTarget === "group") { path = `/api/admin/groups/${activeGroupId}/policy`; body = { org_id: activeOrgId, rules: currentPolicy, inherit_org_default: true }; }
+      if (policyTarget === "user") { path = `/api/admin/users/${activeUserId}/policy`; body = { org_id: activeOrgId, rules: currentPolicy }; }
+      const r = await fetch(`${path}?workspaceId=${wid}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!r.ok) return toast("Failed to save policy.", "error");
+      toast(`Saved ${policyTarget.toUpperCase()} policy.`, "success");
+    } finally {
+      setSavingPolicy(false);
+    }
+  };
 
-    const handleDeleteGroup = async (group_id: string) => {
-        if (!confirm("Delete this group? Users in this group will lose their group policy.")) return;
-        setGroups(prev => prev.filter(g => g.group_id !== group_id)); // optimistic
-        const r = await fetch(`/api/admin/groups?group_id=${group_id}&workspaceId=${wid}`, { method: "DELETE" });
-        if (!r.ok) {
-            await fetchGroups(activeOrgId); // rollback
-            toast("Failed to delete group.", "error");
-        } else { toast("Group deleted.", "info"); }
-    };
+  return (
+    <div className="max-w-6xl mx-auto px-8 py-10 text-white space-y-6">
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <h1 className="text-2xl font-black">Manage</h1>
 
-    const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      <section className="border border-white/10 rounded-xl px-4 py-3 flex items-center gap-4 text-sm bg-white/[0.02]">
+        <select className="bg-transparent font-bold" value={activeOrgId} onChange={(e) => setActiveOrgId(e.target.value)}>
+          {organizations.map((org) => <option key={org.id} value={org.id} className="text-black">{org.name}</option>)}
+        </select>
+        <span className="text-white/40">|</span>
+        <span>{activeOrg?.plan || "Starter"} Plan</span>
+        <span className="text-white/40">|</span>
+        <span>{users.length} User{users.length === 1 ? "" : "s"}</span>
+        <span className="text-white/40">|</span>
+        <span>{activeExtensions} Active Extension{activeExtensions === 1 ? "" : "s"}</span>
+      </section>
 
-    const handleCreateUser = async () => {
-        if (!newUserEmail.trim() || !activeOrgId || !newUserName.trim()) return;
-        if (!validateEmail(newUserEmail.trim())) {
-            setUserEmailError("Enter a valid email address.");
-            return;
-        }
-        setUserEmailError("");
-        setCreatingKey("user", true);
-        // Optimistic insert
-        const tempId = `temp-user-${Date.now()}`;
-        const optimistic: ManagedUser = {
-            user_id: tempId, org_id: activeOrgId,
-            group_id: newUserGroup || null,
-            email: newUserEmail.trim(),
-            display_name: newUserName.trim(),
-            role: newUserRole, active: true,
-            created_at: new Date().toISOString(),
-        };
-        setUsers(prev => [...prev, optimistic]);
-        try {
-            const r = await fetch(`/api/admin/users?workspaceId=${wid}`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ org_id: activeOrgId, email: newUserEmail.trim(), display_name: newUserName.trim(), role: newUserRole, group_id: newUserGroup || null }),
-            });
-            if (r.ok) {
-                const { user: u } = await r.json();
-                setUsers(prev => prev.map(x => x.user_id === tempId ? u : x));
-                setNewUserEmail(""); setNewUserName(""); setNewUserGroup(""); setNewUserRole("member"); setShowUserForm(false);
-                toast(`User "${u.email}" added successfully.`, "success");
-            } else {
-                setUsers(prev => prev.filter(x => x.user_id !== tempId));
-                toast("Failed to add user.", "error");
-            }
-        } catch {
-            setUsers(prev => prev.filter(x => x.user_id !== tempId));
-            toast("Network error adding user.", "error");
-        } finally { setCreatingKey("user", false); }
-    };
-
-    const handleToggleUser = async (u: ManagedUser) => {
-        setUsers(prev => prev.map(x => x.user_id === u.user_id ? { ...x, active: !x.active } : x));
-        const r = await fetch(`/api/admin/users?workspaceId=${wid}`, {
-            method: "PATCH", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: u.user_id, active: !u.active }),
-        });
-        if (!r.ok) {
-            setUsers(prev => prev.map(x => x.user_id === u.user_id ? { ...x, active: u.active } : x));
-            toast("Failed to update user.", "error");
-        }
-    };
-
-    const handleAssignUserGroup = async (user_id: string, group_id: string | null) => {
-        setUsers(prev => prev.map(x => x.user_id === user_id ? { ...x, group_id } : x));
-        const r = await fetch(`/api/admin/users?workspaceId=${wid}`, {
-            method: "PATCH", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id, group_id }),
-        });
-        if (!r.ok) {
-            toast("Failed to assign group.", "error");
-            fetchUsers(activeOrgId);
-        } else {
-            toast("User group updated.", "success");
-        }
-    };
-
-    const handleRegenerateKey = async (user_id: string) => {
-        if (!confirm("Regenerate license key? The old key will stop working immediately.")) return;
-        const r = await fetch(`/api/admin/users?workspaceId=${wid}`, {
-            method: "PATCH", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id, regenerate_license: true }),
-        });
-        if (r.ok) {
-            const { license_key } = await r.json();
-            setUsers(prev => prev.map(x => x.user_id === user_id ? { ...x, license_key } : x));
-            toast("License key regenerated.", "success");
-        } else {
-            toast("Failed to generate key.", "error");
-        }
-    };
-
-    const handleResetPassword = async (email: string) => {
-        toast(`Password reset link sent to ${email}`, "info");
-    };
-
-    const handleRevokeDevice = async (device_id: string) => {
-        if (!confirm("Revoke this extension instance? The shield will deactivate within 60 seconds.")) return;
-        setRevoking(device_id);
-        try {
-            const r = await fetch(`/api/admin/devices/${device_id}/revoke?workspaceId=${wid}`, { method: "POST" });
-            if (r.ok) {
-                setDevices(prev => prev.map(d => d.device_id === device_id ? { ...d, status: "revoked" } : d));
-                toast("Extension decommissioned.", "warning");
-            }
-        } finally { setRevoking(null); }
-    };
-
-    const handleGenerateToken = async () => {
-        if (!activeOrgId) return;
-        setCreatingKey("token", true);
-        try {
-            const r = await fetch(`/api/admin/enrollment/tokens?workspaceId=${wid}`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ organizationId: activeOrgId, expires_in_hours: 168, max_uses: null }),
-            });
-            if (r.ok) {
-                const data = await r.json();
-                setGeneratedToken(data.plain_token); setTokenVisible(true);
-                await fetchTokens(activeOrgId);
-                toast("Token generated. Copy it now — shown once.", "info");
-            }
-        } finally { setCreatingKey("token", false); }
-    };
-
-    const handleRevokeToken = async (tokenId: string) => {
-        await fetch(`/api/admin/enrollment/tokens/${tokenId}/revoke?workspaceId=${wid}`, { method: "POST" });
-        setTokens(prev => prev.map(t => t.id === tokenId ? { ...t, status: "revoked" } : t));
-        toast("Token revoked.", "warning");
-    };
-
-
-    /* Issue 2: policy save targets correct entity */
-    const handleSavePolicy = async () => {
-        setSavingPolicy(true);
-        try {
-            let url = ""; let body: object = {};
-            if (policyTarget === "group" && activeGroupId) {
-                url = `/api/admin/groups/${activeGroupId}/policy?workspaceId=${wid}`;
-                body = { org_id: activeOrgId, rules: currentPolicy, inherit_org_default: true };
-            }
-            // user-level and org-level stubs — extend as backend grows
-            if (!url) { toast("Select a Group or User to save this policy.", "error"); return; }
-            const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-            r.ok ? toast("Policy saved.", "success") : toast("Failed to save policy.", "error");
-        } finally { setSavingPolicy(false); }
-    };
-
-    const policyKey = () => policyTarget === "group" ? activeGroupId : policyTarget === "user" ? `u:${activeUserId}` : "org";
-
-    const ruleBuilderValid = useMemo(() => {
-        if (ruleTargetType === "ai_tool") return !!selectedTool;
-        if (ruleTargetType === "ai_category") return selectedCategories.length > 0;
-        return rawTargetValue.trim().length > 0;
-    }, [ruleTargetType, selectedTool, selectedCategories, rawTargetValue]);
-
-    const handleAddRule = () => {
-        if (!ruleBuilderValid) return;
-        const serializedTarget = serializeRuleTarget(
-            ruleTargetType,
-            ruleTargetType === "ai_tool" ? selectedTool : undefined,
-            ruleTargetType === "ai_category" ? selectedCategories : undefined,
-            (ruleTargetType === "domain" || ruleTargetType === "pattern") ? rawTargetValue.trim() : undefined,
-        );
-        const ruleType = ruleTargetType === "ai_tool" ? "ai_tool"
-            : ruleTargetType === "ai_category" ? "ai_category"
-                : ruleTargetType === "domain" ? "domain"
-                    : "dlp_pattern";
-        const rule: PolicyRule = {
-            rule_id: crypto.randomUUID(),
-            type: ruleType,
-            target: serializedTarget,
-            action: newRule.action || "block",
-            priority: newRule.priority || 50,
-            enabled: true,
-        };
-        const key = policyKey();
-        setPolicyMap(prev => ({ ...prev, [key]: [...(prev[key] || []), rule].sort((a, b) => a.priority - b.priority) }));
-        // Reset builder
-        setRuleTargetType("ai_tool");
-        setSelectedTool("chatgpt");
-        setSelectedCategories([]);
-        setRawTargetValue("");
-        setToolSearch("");
-        setNewRule({ type: "ai_tool", action: "block", priority: 50, enabled: true });
-    };
-
-    const handleRemoveRule = (rule_id: string) => {
-        const key = policyKey();
-        setPolicyMap(prev => ({ ...prev, [key]: (prev[key] || []).filter(r => r.rule_id !== rule_id) }));
-    };
-
-    const handleToggleRule = (rule_id: string) => {
-        const key = policyKey();
-        setPolicyMap(prev => ({ ...prev, [key]: (prev[key] || []).map(r => r.rule_id === rule_id ? { ...r, enabled: !r.enabled } : r) }));
-    };
-
-    if (loading) return (
-        <div className="flex items-center justify-center py-32">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white/20 mx-auto mb-4" />
-                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Syncing Enterprise State...</p>
-            </div>
+      <section className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.02]">
+        <div className="p-4 flex items-center justify-between border-b border-white/10">
+          <h2 className="font-bold">Users</h2>
+          <button onClick={() => setInviteOpen((v) => !v)} className="px-3 py-2 rounded-md bg-[var(--brand-color)] text-xs font-bold uppercase tracking-wider">Invite User</button>
         </div>
-    );
-
-    return (
-        <div className="max-w-[1200px] mx-auto px-6 pb-32 space-y-12 font-sans antialiased text-white">
-            <ToastContainer toasts={toasts} dismiss={dismiss} />
-
-            {/* Header + Org Switcher */}
-            <div className="flex items-end justify-between border-b border-white/5 pb-8 pt-2">
-                <div>
-                    <h1 className="text-2xl font-black tracking-tighter">Manage</h1>
-                    <p className="text-[12px] text-white/30 uppercase tracking-[0.2em] font-black mt-1">Organization Control Center</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Org:</span>
-                    {organizations.map(org => (
-                        <button key={org.id} onClick={() => setActiveOrgId(org.id)}
-                            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${activeOrgId === org.id ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)]" : "bg-white/5 text-zinc-400 border-transparent hover:border-white/20"}`}
-                        >
-                            {org.name}
-                        </button>
-                    ))}
-                    {showOrgForm ? (
-                        <div className="flex items-center gap-2">
-                            <input autoFocus value={newOrgName} onChange={e => setNewOrgName(e.target.value)}
-                                onKeyDown={e => { if (e.key === "Enter") handleCreateOrg(); if (e.key === "Escape") setShowOrgForm(false); }}
-                                placeholder="Org name…" className="bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-xs text-white w-36 focus:outline-none" />
-                            <button onClick={handleCreateOrg} disabled={creating.org} className="px-3 py-2 bg-[var(--brand-color)] text-white rounded-lg text-[10px] font-black uppercase disabled:opacity-50">{creating.org ? "…" : "Add"}</button>
-                            <button onClick={() => setShowOrgForm(false)} className="text-white/30 hover:text-white text-xs">✕</button>
-                        </div>
-                    ) : (
-                        <button onClick={() => setShowOrgForm(true)} className="w-8 h-8 rounded-lg bg-white/5 hover:border-white/20 border border-transparent flex items-center justify-center text-white/40 hover:text-white transition-all">
-                            <Plus className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* ══ SECTION 1: ORGANIZATION OVERVIEW ══ */}
-            <div className="space-y-3">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Organization Overview</h2>
-                <div className="flex items-stretch bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
-                    {[
-                        { label: "Organization", value: activeOrg?.name || "—", valueClass: "text-white" },
-                        { label: "Plan", value: activeOrg?.plan || "Starter", valueClass: "text-[#7261fd] uppercase" },
-                        { label: "Users", value: String(users.length), valueClass: "text-white" },
-                        { label: "Seats", value: `${activeOrg?.seatsUsed ?? 0} / ${activeOrg?.seatsPurchased ?? 1}`, valueClass: (activeOrg?.seatsUsed ?? 0) >= (activeOrg?.seatsPurchased ?? 1) ? "text-red-400" : "text-emerald-400" },
-                        { label: "Active Extensions", value: String(activeDevices.length), valueClass: "text-emerald-400" },
-                    ].map((item, i) => (
-                        <div key={item.label} className={`flex-1 px-6 py-5 ${i > 0 ? "border-l border-white/5" : ""}`}>
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-1.5">{item.label}</p>
-                            <p className={`text-sm font-black truncate ${item.valueClass}`}>{item.value}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* ══ SECTION 2: USERS & GROUPS ══ */}
-            <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Users &amp; Groups</h2>
-                    <div className="flex gap-2">
-                        <button onClick={() => setShowGroupForm(v => !v)}
-                            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg text-[10px] uppercase font-black tracking-widest transition-all">
-                            Create Group
-                        </button>
-                        <button onClick={() => setShowUserForm(v => !v)}
-                            className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-color)] text-white rounded-lg text-[10px] uppercase font-black tracking-widest shadow-lg hover:opacity-90 transition-all">
-                            <Plus className="w-3.5 h-3.5" /> Invite User
-                        </button>
+        {inviteOpen && (
+          <div className="p-4 border-b border-white/10 grid grid-cols-1 md:grid-cols-4 gap-2">
+            <input className="bg-white/5 rounded-md px-3 py-2 text-sm" placeholder="Name" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} />
+            <input className="bg-white/5 rounded-md px-3 py-2 text-sm" placeholder="Email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} />
+            <select className="bg-white/5 rounded-md px-3 py-2 text-sm" value={newUserGroup} onChange={(e) => setNewUserGroup(e.target.value)}>
+              <option value="">No group</option>
+              {groups.map((g) => <option key={g.group_id} value={g.group_id}>{g.name}</option>)}
+            </select>
+            <button onClick={handleInviteUser} className="bg-white/10 rounded-md px-3 py-2 text-xs font-bold uppercase">Send Invite</button>
+          </div>
+        )}
+        <table className="w-full text-sm">
+          <thead className="text-white/50 text-xs uppercase">
+            <tr>
+              <th className="text-left p-3">Name</th><th className="text-left p-3">Email</th><th className="text-left p-3">Group</th><th className="text-left p-3">Policy Status</th><th className="text-right p-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => {
+              const group = groups.find((g) => g.group_id === u.group_id);
+              const hasUserPolicy = (policyMap[`user:${u.user_id}`] || []).length > 0;
+              const status = hasUserPolicy ? "Custom User Policy" : group?.policy_id ? "Inherits Group" : "Inherits Org";
+              return (
+                <tr key={u.user_id} className="border-t border-white/5">
+                  <td className="p-3 font-medium">{u.display_name || "Unnamed"}</td>
+                  <td className="p-3 text-white/80">{u.email}</td>
+                  <td className="p-3">
+                    <select className="bg-white/5 rounded px-2 py-1" value={u.group_id || ""} onChange={(e) => handleAssignGroup(u.user_id, e.target.value || null)}>
+                      <option value="">No group</option>
+                      {groups.map((g) => <option key={g.group_id} value={g.group_id}>{g.name}</option>)}
+                    </select>
+                  </td>
+                  <td className="p-3 text-white/70">{status}</td>
+                  <td className="p-3">
+                    <div className="flex justify-end gap-2 text-xs">
+                      <button onClick={() => { setPolicyTarget("user"); setActiveUserId(u.user_id); }} className="px-2 py-1 bg-white/5 rounded">Edit Policy</button>
+                      <button onClick={() => handleRemoveUser(u.user_id)} className="px-2 py-1 bg-red-500/20 text-red-300 rounded inline-flex items-center gap-1"><Trash2 className="w-3 h-3" />Remove</button>
                     </div>
-                </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </section>
 
-                {/* Create Group Form */}
-                {showGroupForm && (
-                    <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 space-y-4 animate-in fade-in duration-200">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Create Group</p>
-                        <div className="grid grid-cols-2 gap-4">
-                            <input autoFocus value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
-                                onKeyDown={e => e.key === "Enter" && handleCreateGroup()}
-                                placeholder="Group name (e.g. Engineering)"
-                                className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 placeholder:text-white/20" />
-                            <input value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)}
-                                placeholder="Description (optional)"
-                                className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 placeholder:text-white/20" />
-                        </div>
-                        <div className="flex gap-3">
-                            <button onClick={handleCreateGroup} disabled={creating.group || !newGroupName.trim()}
-                                className="px-8 py-2.5 bg-[var(--brand-color)] text-white rounded-lg text-[10px] font-black uppercase disabled:opacity-50">
-                                {creating.group ? "Creating…" : "Create Group"}
-                            </button>
-                            <button onClick={() => setShowGroupForm(false)} className="text-white/30 hover:text-white text-xs px-4">Cancel</button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Invite User Form */}
-                {showUserForm && (
-                    <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 space-y-5 animate-in fade-in duration-200">
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-white/70">Invite User</p>
-                            <p className="text-xs text-white/40 mt-1">The user will appear immediately after creation.</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[9px] font-black text-white/50 uppercase tracking-widest">Full Name <span className="text-red-400">*</span></label>
-                                <input autoFocus value={newUserName} onChange={e => setNewUserName(e.target.value)}
-                                    onKeyDown={e => e.key === "Enter" && handleCreateUser()}
-                                    placeholder="Jane Smith"
-                                    className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--brand-color)]/60 placeholder:text-white/30 transition-colors" />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[9px] font-black text-white/50 uppercase tracking-widest">Work Email <span className="text-red-400">*</span></label>
-                                <input value={newUserEmail} onChange={e => { setNewUserEmail(e.target.value); setUserEmailError(""); }} type="email"
-                                    onKeyDown={e => e.key === "Enter" && handleCreateUser()}
-                                    placeholder="jane@company.com"
-                                    className={`bg-white/5 border rounded-lg px-4 py-3 text-sm text-white focus:outline-none placeholder:text-white/30 transition-colors ${userEmailError ? "border-red-500/60" : "border-white/10 focus:border-[var(--brand-color)]/60"}`} />
-                                {userEmailError && <p className="text-[10px] text-red-400 font-bold">{userEmailError}</p>}
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[9px] font-black text-white/50 uppercase tracking-widest">Role <span className="text-red-400">*</span></label>
-                                <div className="flex gap-2">
-                                    {(["member", "admin"] as const).map(r => (
-                                        <button key={r} onClick={() => setNewUserRole(r)}
-                                            className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${newUserRole === r ? "bg-[var(--brand-color)] border-[var(--brand-color)] text-white" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30"}`}>
-                                            {r}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[9px] font-black text-white/50 uppercase tracking-widest">Group</label>
-                                <select value={newUserGroup} onChange={e => setNewUserGroup(e.target.value)}
-                                    className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none">
-                                    <option value="">No group (unassigned)</option>
-                                    {groups.filter(g => !g.group_id.startsWith("temp-")).map(g =>
-                                        <option key={g.group_id} value={g.group_id}>{g.name}</option>
-                                    )}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button onClick={handleCreateUser} disabled={creating.user || !newUserEmail.trim() || !newUserName.trim()}
-                                className="flex items-center gap-2 px-8 py-2.5 bg-[var(--brand-color)] text-white rounded-lg text-[10px] font-black uppercase shadow-lg hover:opacity-90 disabled:opacity-40 transition-all">
-                                {creating.user ? <><span className="animate-spin w-3 h-3 border-2 border-white/20 border-b-white rounded-full" /> Adding…</> : <><Plus className="w-3.5 h-3.5" /> Add User</>}
-                            </button>
-                            <button onClick={() => { setShowUserForm(false); setUserEmailError(""); setNewUserName(""); setNewUserEmail(""); }}
-                                className="text-white/40 hover:text-white text-xs px-4 transition-colors">Cancel</button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Users Table */}
-                <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="text-[10px] font-black text-white/30 uppercase tracking-widest bg-white/[0.01] border-b border-white/5">
-                                <th className="px-5 py-3.5">Name</th>
-                                <th className="px-5 py-3.5">Email</th>
-                                <th className="px-5 py-3.5">Role</th>
-                                <th className="px-5 py-3.5">Group</th>
-                                <th className="px-5 py-3.5 text-right">Extension</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/[0.04]">
-                            {users.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-5 py-10 text-center text-xs text-white/30 uppercase tracking-widest font-black">No users yet — invite one above</td>
-                                </tr>
-                            ) : users.map(u => (
-                                <tr key={u.user_id} className={`hover:bg-white/[0.02] transition-colors ${!u.active ? "opacity-40" : ""}`}>
-                                    <td className="px-5 py-4 text-sm font-bold text-white/90">{u.display_name || "—"}</td>
-                                    <td className="px-5 py-4 text-xs text-white/50 font-mono">{u.email}</td>
-                                    <td className="px-5 py-4">
-                                        <span className="px-2 py-1 bg-white/5 border border-white/10 rounded text-[9px] font-black uppercase text-white/50">{u.role}</span>
-                                    </td>
-                                    <td className="px-5 py-4">
-                                        <select value={u.group_id || ""} onChange={e => handleAssignUserGroup(u.user_id, e.target.value || null)}
-                                            className="bg-transparent text-xs text-blue-400 font-bold focus:outline-none cursor-pointer hover:text-blue-300 transition-colors">
-                                            <option value="" className="text-black bg-white">Unassigned</option>
-                                            {groups.filter(g => !g.group_id.startsWith("temp-")).map(g =>
-                                                <option key={g.group_id} value={g.group_id} className="text-black bg-white">{g.name}</option>
-                                            )}
-                                        </select>
-                                    </td>
-                                    <td className="px-5 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <span className={`w-1.5 h-1.5 rounded-full ${u.active ? "bg-emerald-500" : "bg-red-500"}`} />
-                                            <span className={`text-[10px] font-black uppercase ${u.active ? "text-emerald-400" : "text-red-400"}`}>{u.active ? "Active" : "Revoked"}</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Groups List */}
-                {groups.length > 0 && (
-                    <div className="space-y-2">
-                        <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 pt-2">Groups ({groups.length})</p>
-                        <div className="grid gap-2">
-                            {groups.map(g => {
-                                const memberCount = users.filter(u => u.group_id === g.group_id).length;
-                                return (
-                                    <div key={g.group_id} className="bg-white/[0.02] border border-white/10 rounded-xl px-5 py-4 flex items-center justify-between group hover:border-white/20 transition-all">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-8 h-8 rounded-lg bg-[var(--brand-color)]/10 flex items-center justify-center">
-                                                <Shield className="w-4 h-4 text-[var(--brand-color)]" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-white/90">{g.name}</p>
-                                                <div className="flex gap-3 mt-0.5">
-                                                    <span className="text-[10px] font-black text-white/40 uppercase">{memberCount} members</span>
-                                                    <span className={`text-[10px] font-black uppercase ${g.policy_id ? "text-emerald-400" : "text-amber-400"}`}>{g.policy_id ? "Policy set" : "No policy"}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => { setActiveGroupId(g.group_id); setPolicyTarget("group"); setTab("policy"); }}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[10px] font-black uppercase text-white/60 hover:text-white transition-all">
-                                                <Settings className="w-3 h-3" /> Edit Policy
-                                            </button>
-                                            <button onClick={() => handleDeleteGroup(g.group_id)} disabled={g.group_id.startsWith("temp-")}
-                                                className="p-1.5 rounded-lg text-red-400/50 hover:bg-red-500/10 hover:text-red-400 transition-all disabled:opacity-30">
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* ══ SECTION 3: POLICIES ══ */}
-            <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Policies</h2>
-                    <button onClick={() => { setPolicyTarget("org"); setTab(prev => prev === "policy" ? "people" : "policy"); }}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-color)] text-white rounded-lg text-[10px] uppercase font-black tracking-widest shadow-lg hover:opacity-90 transition-all">
-                        <Plus className="w-3.5 h-3.5" />
-                        {tab === "policy" ? "Close Editor" : "Create Policy"}
-                    </button>
-                </div>
-
-                {/* Inline Policy Editor */}
-                {tab === "policy" && (
-                    <div className="bg-white/[0.03] border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.08)] rounded-2xl p-6 space-y-6 animate-in fade-in slide-in-from-top-4 duration-200">
-                        <div className="flex items-center justify-between">
-                            <p className="text-[12px] font-black uppercase tracking-widest text-white/70">Policy Editor — Editing: <span className="text-white">{policyTarget === "org" ? "Org Default" : policyTarget === "group" ? (groups.find(g => g.group_id === activeGroupId)?.name || "Group") : (users.find(u => u.user_id === activeUserId)?.email || "User")}</span></p>
-                            <button onClick={handleSavePolicy} disabled={savingPolicy}
-                                className="flex items-center gap-2 px-5 py-2 bg-[var(--brand-color)] text-white rounded-xl text-[10px] font-black uppercase shadow-lg hover:opacity-90 disabled:opacity-50 transition-all">
-                                {savingPolicy ? <span className="animate-spin w-3.5 h-3.5 border-2 border-white/20 border-b-white rounded-full" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                                {savingPolicy ? "Saving…" : "Save Policy"}
-                            </button>
-                        </div>
-
-                        {/* Scope Selector */}
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-                                {(["org", "group", "user"] as const).map(t => (
-                                    <button key={t} onClick={() => setPolicyTarget(t)}
-                                        className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${policyTarget === t ? "bg-white/15 text-white" : "text-white/30 hover:text-white/60"}`}>
-                                        {t}
-                                    </button>
-                                ))}
-                            </div>
-                            {policyTarget === "group" && (
-                                <select value={activeGroupId} onChange={e => setActiveGroupId(e.target.value)}
-                                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none">
-                                    <option value="">Select group…</option>
-                                    {groups.filter(g => !g.group_id.startsWith("temp-")).map(g =>
-                                        <option key={g.group_id} value={g.group_id}>{g.name}</option>
-                                    )}
-                                </select>
-                            )}
-                            {policyTarget === "user" && (
-                                <select value={activeUserId} onChange={e => setActiveUserId(e.target.value)}
-                                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none">
-                                    <option value="">Select user…</option>
-                                    {users.map(u => <option key={u.user_id} value={u.user_id}>{u.email}</option>)}
-                                </select>
-                            )}
-                        </div>
-
-                        {/* Active Rules */}
-                        <div className="space-y-2">
-                            <p className="text-[11px] font-black uppercase tracking-widest text-white/40">Active Rules ({currentPolicy.length})</p>
-                            {currentPolicy.length === 0 ? (
-                                <div className="bg-white/[0.01] border border-dashed border-white/10 rounded-xl p-8 text-center">
-                                    <p className="text-[10px] text-white/40 font-black uppercase">No rules — inherits from parent</p>
-                                </div>
-                            ) : currentPolicy.map(rule => {
-                                const parsed = parseRuleTarget(rule.target);
-                                const typeIcon = parsed.type === "ai_tool" ? <Bot className="w-3 h-3" />
-                                    : parsed.type === "ai_category" ? <Layers className="w-3 h-3" />
-                                        : <Globe className="w-3 h-3" />;
-                                return (
-                                    <div key={rule.rule_id} className={`flex items-center gap-3 bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3 group transition-all ${!rule.enabled ? "opacity-40" : ""}`}>
-                                        <span className="text-[10px] font-black text-white/40 font-mono w-6 text-center shrink-0">{rule.priority}</span>
-                                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase shrink-0 ${ACTION_BADGE[rule.action] || "bg-white/10 text-white/60"}`}>{rule.action}</span>
-                                        <span className="flex items-center gap-1.5 text-[10px] font-black text-white/40 uppercase shrink-0">{typeIcon}{parsed.type.replace(/_/g, " ")}</span>
-                                        <span className="flex-1 text-sm font-semibold text-white/80 truncate">{parsed.displayLabel || "unnamed target"}</span>
-                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                            <button onClick={() => handleToggleRule(rule.rule_id)} className="text-white/40 hover:text-white text-[9px] font-black uppercase">{rule.enabled ? "Disable" : "Enable"}</button>
-                                            <button onClick={() => handleRemoveRule(rule.rule_id)} className="text-red-400/60 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Rule Builder */}
-                        <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-5 space-y-5">
-                            <p className="text-[11px] font-black uppercase tracking-widest text-white/60">Add Rule</p>
-
-                            {/* Target Type */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                {([
-                                    { id: "ai_tool" as RuleTargetType, label: "AI Tool", icon: <Bot className="w-3.5 h-3.5" />, desc: "Specific product" },
-                                    { id: "ai_category" as RuleTargetType, label: "Category", icon: <Layers className="w-3.5 h-3.5" />, desc: "Group of tools" },
-                                    { id: "domain" as RuleTargetType, label: "Domain", icon: <Globe className="w-3.5 h-3.5" />, desc: "Advanced" },
-                                    { id: "pattern" as RuleTargetType, label: "Pattern", icon: <SlidersHorizontal className="w-3.5 h-3.5" />, desc: "Regex / DLP" },
-                                ] as const).map(({ id, label, icon, desc }) => (
-                                    <button key={id} onClick={() => { setRuleTargetType(id); if (id === "domain" || id === "pattern") setShowAdvancedTarget(true); }}
-                                        className={`flex flex-col items-start gap-1 px-3 py-2.5 rounded-xl border text-left transition-all ${ruleTargetType === id
-                                            ? "bg-orange-500/10 border-orange-500/50 text-white"
-                                            : "bg-white/[0.02] border-white/10 text-white/50 hover:border-white/25"}`}>
-                                        <div className="flex items-center gap-1.5">{icon}<span className="text-[11px] font-black uppercase">{label}</span></div>
-                                        <span className="text-[10px] text-white/30">{desc}</span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* AI Tool picker */}
-                            {ruleTargetType === "ai_tool" && (
-                                <div className="space-y-2">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
-                                        <input value={toolSearch} onChange={e => setToolSearch(e.target.value)} placeholder="Search tools…"
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-[var(--brand-color)]/60 placeholder:text-white/30" />
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
-                                        {Object.values(AI_TOOL_REGISTRY)
-                                            .filter(t => !toolSearch || t.display_name.toLowerCase().includes(toolSearch.toLowerCase()) || t.vendor.toLowerCase().includes(toolSearch.toLowerCase()))
-                                            .map(tool => (
-                                                <button key={tool.id} onClick={() => setSelectedTool(tool.id)}
-                                                    className={`flex flex-col gap-0.5 px-3 py-2.5 rounded-xl border text-left transition-all ${selectedTool === tool.id ? "bg-orange-500/10 border-orange-500/50" : "bg-white/[0.02] border-white/10 hover:border-white/25"}`}>
-                                                    <span className="text-xs font-bold text-white/90">{tool.display_name}</span>
-                                                    <span className="text-[9px] text-white/40">{tool.vendor}</span>
-                                                    <span className={`text-[8px] font-black uppercase mt-0.5 ${tool.risk_tier === "critical" ? "text-red-400" : tool.risk_tier === "high" ? "text-amber-400" : tool.risk_tier === "moderate" ? "text-blue-400" : "text-emerald-400"}`}>{tool.risk_tier} risk</span>
-                                                </button>
-                                            ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* AI Category multi-select */}
-                            {ruleTargetType === "ai_category" && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                    {Object.values(AI_CATEGORY_REGISTRY).map(cat => {
-                                        const active = selectedCategories.includes(cat.id);
-                                        return (
-                                            <button key={cat.id} onClick={() => setSelectedCategories(prev => active ? prev.filter(c => c !== cat.id) : [...prev, cat.id])}
-                                                className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all ${active ? "bg-orange-500/10 border-orange-500/50" : "bg-white/[0.02] border-white/10 hover:border-white/25"}`}>
-                                                <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${active ? "bg-orange-500 border-orange-500" : "border-white/30"}`}>
-                                                    {active && <CheckCircle className="w-2.5 h-2.5 text-white" />}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-white/90">{cat.display_name}</p>
-                                                    <p className="text-[10px] text-white/40 mt-0.5">{cat.description}</p>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            {/* Domain / Pattern */}
-                            {(ruleTargetType === "domain" || ruleTargetType === "pattern") && (
-                                <input autoFocus value={rawTargetValue} onChange={e => setRawTargetValue(e.target.value)}
-                                    onKeyDown={e => e.key === "Enter" && handleAddRule()}
-                                    placeholder={ruleTargetType === "domain" ? "e.g. openai.com" : "e.g. (SSN|\\d{9})"}
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-[var(--brand-color)]/60 placeholder:text-white/30" />
-                            )}
-
-                            {/* Action */}
-                            <div className="flex gap-2">
-                                {(["block", "allow", "audit_only", "redact"] as const).map(act => (
-                                    <button key={act} onClick={() => setNewRule(r => ({ ...r, action: act }))}
-                                        className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase border transition-all ${newRule.action === act
-                                            ? act === "block" ? "bg-red-500/20 border-orange-500/60 text-red-300"
-                                                : act === "allow" ? "bg-emerald-500/20 border-orange-500/60 text-emerald-300"
-                                                    : act === "audit_only" ? "bg-blue-500/20 border-orange-500/60 text-blue-300"
-                                                        : "bg-amber-500/20 border-orange-500/60 text-amber-300"
-                                            : "bg-white/5 border-white/10 text-white/40 hover:border-white/25"}`}>
-                                        {act === "audit_only" ? "Audit" : act.charAt(0).toUpperCase() + act.slice(1)}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2">
-                                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest">Priority</label>
-                                    <input type="number" value={newRule.priority} min={1} max={999}
-                                        onChange={e => setNewRule(r => ({ ...r, priority: parseInt(e.target.value) || 50 }))}
-                                        className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none" />
-                                </div>
-                                <button onClick={handleAddRule} disabled={!ruleBuilderValid}
-                                    className="flex items-center gap-2 px-8 py-2.5 bg-orange-600 text-white rounded-xl text-[11px] font-black uppercase hover:bg-orange-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                                    Add Rule
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Policies Table */}
-                <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="text-[10px] font-black text-white/30 uppercase tracking-widest bg-white/[0.01] border-b border-white/5">
-                                <th className="px-5 py-3.5">Policy Name</th>
-                                <th className="px-5 py-3.5">Applies To</th>
-                                <th className="px-5 py-3.5">Enforcement Mode</th>
-                                <th className="px-5 py-3.5 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/[0.04]">
-                            <tr className="hover:bg-white/[0.02] transition-colors">
-                                <td className="px-5 py-4 text-sm font-bold text-white/90">Default Org Policy</td>
-                                <td className="px-5 py-4 text-xs text-white/50 uppercase font-bold tracking-wider">Organization</td>
-                                <td className="px-5 py-4"><span className="px-2 py-1 bg-white/5 border border-white/10 rounded text-[9px] font-black uppercase text-white/50">Base Rules</span></td>
-                                <td className="px-5 py-4 text-right">
-                                    <button onClick={() => { setPolicyTarget("org"); setTab("policy"); }}
-                                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded text-[9px] tracking-widest uppercase font-black transition-all">
-                                        Edit Policy
-                                    </button>
-                                </td>
-                            </tr>
-                            {groups.map(g => (
-                                <tr key={g.group_id} className="hover:bg-white/[0.02] transition-colors">
-                                    <td className="px-5 py-4 text-sm font-bold text-white/90">{g.name} Policy</td>
-                                    <td className="px-5 py-4 text-xs text-white/50 uppercase font-bold tracking-wider">Group</td>
-                                    <td className="px-5 py-4">
-                                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase border ${g.policy_id ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-amber-500/10 border-amber-500/20 text-amber-400"}`}>
-                                            {g.policy_id ? "Custom Rules" : "Inherits Org"}
-                                        </span>
-                                    </td>
-                                    <td className="px-5 py-4 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <button onClick={() => { setActiveGroupId(g.group_id); setPolicyTarget("group"); setTab("policy"); }}
-                                                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded text-[9px] tracking-widest uppercase font-black transition-all">
-                                                Edit Policy
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* ══ SECTION 4: DEPLOYMENT ══ */}
-            <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Deployment</h2>
-                    <button onClick={handleGenerateToken} disabled={creating.token || !activeOrgId}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-white/10 disabled:opacity-50 transition-all">
-                        {creating.token ? <span className="animate-spin w-3.5 h-3.5 border-2 border-white/20 border-b-white rounded-full" /> : <Key className="w-3.5 h-3.5" />}
-                        Generate Enrollment Token
-                    </button>
-                </div>
-
-                {/* Generated token display */}
-                {generatedToken && (
-                    <div className="bg-emerald-500/5 border border-emerald-500/30 rounded-2xl p-6 space-y-4 animate-in fade-in duration-200">
-                        <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.25em]">Enrollment Token — Copy Now (shown once)</p>
-                            <button onClick={() => setGeneratedToken(null)} className="text-white/30 hover:text-white text-xs">✕ Dismiss</button>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <code className="flex-1 bg-black/30 rounded-xl px-4 py-3 text-xs font-mono text-emerald-300 break-all select-all">
-                                {tokenVisible ? generatedToken : generatedToken.replace(/./g, "•")}
-                            </code>
-                            <button onClick={() => setTokenVisible(v => !v)} className="p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all">
-                                {tokenVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                            <button onClick={async () => { await navigator.clipboard.writeText(generatedToken!); setTokenCopied(true); setTimeout(() => setTokenCopied(false), 2500); toast("Token copied.", "success"); }}
-                                className={`p-2.5 rounded-lg transition-all ${tokenCopied ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 hover:bg-white/10 text-white/40 hover:text-white"}`}>
-                                {tokenCopied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                            </button>
-                        </div>
-                        <div className="bg-black/20 rounded-xl px-5 py-4 font-mono text-[10px]">
-                            <p className="text-[9px] text-white/30 font-black uppercase mb-2">MDM Deploy Config:</p>
-                            <pre className="text-emerald-400 break-all leading-relaxed whitespace-pre-wrap">{JSON.stringify({ organizationId: { Value: activeOrgId }, apiEndpoint: { Value: "https://api.complyze.com" }, deploymentToken: { Value: generatedToken } }, null, 2)}</pre>
-                        </div>
-                    </div>
-                )}
-
-                {/* 3 deployment tool cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 flex flex-col gap-3 hover:border-white/20 transition-all group">
-                        <Monitor className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform duration-200" />
-                        <h3 className="text-sm font-bold text-white">Install Extension</h3>
-                        <p className="text-xs text-white/40 leading-relaxed flex-1">Install the Complyze extension from the Chrome Web Store for immediate use by your team.</p>
-                        <a href="https://chromewebstore.google.com/" target="_blank" rel="noreferrer" className="text-[10px] font-black tracking-[0.2em] uppercase text-blue-400 hover:text-blue-300 transition-colors">Chrome Web Store →</a>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 flex flex-col gap-3 hover:border-white/20 transition-all group">
-                        <Download className="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform duration-200" />
-                        <h3 className="text-sm font-bold text-white">Download Package</h3>
-                        <p className="text-xs text-white/40 leading-relaxed flex-1">Offline deployment package with MDM configuration profiles (.plist / .json) for bulk rollout.</p>
-                        <button onClick={handleGenerateToken} className="text-left text-[10px] font-black tracking-[0.2em] uppercase text-emerald-400 hover:text-emerald-300 transition-colors">Download ZIP →</button>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 flex flex-col gap-3 hover:border-white/20 transition-all group">
-                        <Building2 className="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform duration-200" />
-                        <h3 className="text-sm font-bold text-white">Enterprise MDM Guide</h3>
-                        <p className="text-xs text-white/40 leading-relaxed flex-1">Step-by-step deployment documentation for Jamf, Microsoft Intune, or Google Workspace Admin.</p>
-                        <a href="https://docs.complyze.com" target="_blank" rel="noreferrer" className="text-[10px] font-black tracking-[0.2em] uppercase text-purple-400 hover:text-purple-300 transition-colors">View Guide →</a>
-                    </div>
-                </div>
-
-                {/* Enrollment Tokens list */}
-                {tokens.length > 0 && (
-                    <div className="space-y-2 pt-2">
-                        <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20">Enrollment Tokens ({tokens.length})</p>
-                        {tokens.map(t => (
-                            <div key={t.id} className="bg-white/[0.02] border border-white/10 rounded-xl px-5 py-3.5 flex items-center justify-between group hover:border-white/20 transition-all">
-                                <div className="flex items-center gap-4 min-w-0">
-                                    <span className={`px-2 py-1 rounded text-[9px] font-black uppercase border shrink-0 ${t.status === "active" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : t.status === "revoked" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-zinc-700/50 text-zinc-400 border-zinc-600/30"}`}>{t.status}</span>
-                                    <span className="text-xs font-mono text-white/50 truncate">{t.token}</span>
-                                    <span className="text-[10px] text-white/40 font-black uppercase shrink-0">{t.uses_count} used</span>
-                                </div>
-                                <div className="flex items-center gap-4 shrink-0">
-                                    <span className="text-[9px] text-white/30 font-mono hidden md:block">exp {new Date(t.expires_at).toLocaleDateString()}</span>
-                                    {t.status === "active" && (
-                                        <button onClick={() => handleRevokeToken(t.id)}
-                                            className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 px-3 py-1.5 text-red-400 hover:bg-red-500/10 rounded-lg text-[9px] font-black uppercase border border-red-500/20 transition-all">
-                                            <Trash2 className="w-3 h-3" /> Revoke
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+      <section className="border border-white/10 rounded-xl p-4 bg-white/[0.02] space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold">Policy Editor</h2>
+          <button onClick={handleSavePolicy} disabled={savingPolicy} className="px-3 py-2 rounded-md bg-[var(--brand-color)] text-xs font-bold uppercase">{savingPolicy ? "Saving..." : `Save ${policyTarget.toUpperCase()} Policy`}</button>
         </div>
-    );
+
+        <div className="flex gap-2">
+          {(["org", "group", "user"] as const).map((t) => (
+            <button key={t} onClick={() => setPolicyTarget(t)} className={`px-3 py-1 rounded-md text-xs uppercase font-bold ${policyTarget === t ? "bg-white/15" : "bg-white/5"}`}>{t}</button>
+          ))}
+        </div>
+
+        {policyTarget === "group" && (
+          <select className="bg-white/5 rounded-md px-3 py-2 text-sm" value={activeGroupId} onChange={(e) => setActiveGroupId(e.target.value)}>
+            <option value="">Select Group</option>
+            {groups.map((g) => <option key={g.group_id} value={g.group_id}>{g.name}</option>)}
+          </select>
+        )}
+        {policyTarget === "user" && (
+          <select className="bg-white/5 rounded-md px-3 py-2 text-sm" value={activeUserId} onChange={(e) => setActiveUserId(e.target.value)}>
+            <option value="">Select User</option>
+            {users.map((u) => <option key={u.user_id} value={u.user_id}>{u.display_name || u.email}</option>)}
+          </select>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+          <select className="bg-white/5 rounded-md px-3 py-2 text-sm" value={selectedTool} onChange={(e) => setSelectedTool(e.target.value)}>
+            {Object.values(AI_TOOL_REGISTRY).map((tool) => <option key={tool.id} value={tool.id}>{tool.display_name}</option>)}
+          </select>
+          <div className="flex gap-2 flex-wrap">
+            {ACTIONS.map((action) => (
+              <button key={action} onClick={() => setSelectedAction(action)} className={`px-2 py-1 rounded text-xs uppercase font-bold ${selectedAction === action ? "bg-white/20" : "bg-white/5"}`}>{action === "audit_only" ? "AUDIT" : action}</button>
+            ))}
+          </div>
+          <button onClick={() => handleAddRule()} className="bg-white/10 rounded-md px-3 py-2 text-xs uppercase font-bold">Add Rule</button>
+        </div>
+
+        <button onClick={() => setAdvancedOpen((v) => !v)} className="text-sm text-white/80 inline-flex items-center gap-1">Advanced Rules {advancedOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}</button>
+        {advancedOpen && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <button onClick={() => handleAddRule("domain", "example.com")} className="bg-white/5 rounded-md px-3 py-2 text-xs">Add Domain Filter</button>
+            <button onClick={() => handleAddRule("dlp_pattern", "\\b\\d{3}-\\d{2}-\\d{4}\\b", "redact")} className="bg-white/5 rounded-md px-3 py-2 text-xs">Add Regex Pattern</button>
+            <button onClick={() => handleAddRule("ai_category", "coding_assistant")} className="bg-white/5 rounded-md px-3 py-2 text-xs">Add Category Policy</button>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {currentPolicy.map((rule) => (
+            <div key={rule.rule_id} className="border border-white/10 rounded-md px-3 py-2 flex items-center justify-between text-sm">
+              <span>{rule.target}</span>
+              <span className="uppercase text-xs font-bold text-white/70">{rule.action === "audit_only" ? "AUDIT" : rule.action}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border border-white/10 rounded-xl p-4 bg-white/[0.02]">
+        <button onClick={() => setGroupListOpen((v) => !v)} className="w-full text-left inline-flex items-center justify-between">
+          <span className="font-bold">Groups ({groups.length})</span>
+          {groupListOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {groupListOpen && (
+          <div className="mt-3 space-y-2">
+            {groups.map((g) => (
+              <div key={g.group_id} className="flex justify-between text-sm text-white/80">
+                <span>{g.name}</span>
+                <span>{users.filter((u) => u.group_id === g.group_id).length} user(s)</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
 }

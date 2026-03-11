@@ -297,7 +297,7 @@ export async function POST(req: NextRequest) {
             headers: {
                 "Content-Type": aiResponse.headers.get("Content-Type") || "application/json",
                 "X-Complyze-Event-Id": event.id,
-                "X-Complyze-Sensitivity": classification.sensitivity_score.toString(),
+                "X-Complyze-Sensitivity": riskScore.toString(),
                 "X-Complyze-Enforcement": activeMode,
                 "X-Complyze-Processing-Ms": (Date.now() - startTime).toString(),
             },
