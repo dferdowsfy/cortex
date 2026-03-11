@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import MarketingNav from "@/components/MarketingNav";
 import MarketingFooter from "@/components/MarketingFooter";
+import { PRICING } from "@/lib/pricing";
+
+export const dynamic = "force-dynamic";
 
 export default function PricingPage() {
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
@@ -16,10 +18,14 @@ export default function PricingPage() {
 
         setLoadingPlan(plan);
         try {
+            const config = plan === "SHIELD" ? PRICING.SHIELD : PRICING.STARTER;
             const res = await fetch("/api/stripe/checkout", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ planId: plan, quantity: 100 }), // Default min
+                body: JSON.stringify({
+                    planId: plan,
+                    quantity: config.minSeats
+                }),
             });
             const data = await res.json();
             if (data.url) {
@@ -33,12 +39,13 @@ export default function PricingPage() {
             setLoadingPlan(null);
         }
     };
+
     const tiers = [
         {
             name: "STARTER",
             tagline: "Essential Visibility",
-            displayPrice: "$700",
-            priceDetails: "$7 per employee / month · Minimum 100 employees · Billed annually",
+            displayPrice: `$${PRICING.STARTER.totalMonthly.toLocaleString()}`,
+            priceDetails: `$${PRICING.STARTER.pricePerSeat} per seat · Minimum ${PRICING.STARTER.minSeats} seats · Billed annually`,
             description: "Understand your team's AI usage and uncover hidden risks.",
             features: [
                 "AI app detection (desktop + browser)",
@@ -50,13 +57,14 @@ export default function PricingPage() {
                 "Monthly risk summary report",
             ],
             cta: "Start Monitoring",
-            href: "/request-demo",
+            href: "/signup",
+            buttonStyle: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-600/20"
         },
         {
             name: "SHIELD",
             tagline: "Total AI Protection",
-            displayPrice: "$1,200",
-            priceDetails: "$12 per employee / month · Minimum 100 employees · Billed annually",
+            displayPrice: `$${PRICING.SHIELD.totalMonthly.toLocaleString()}`,
+            priceDetails: `$${PRICING.SHIELD.pricePerSeat} per seat · Minimum ${PRICING.SHIELD.minSeats} seats · Billed annually`,
             description: "Real-time enforcement and deep attachment scanning.",
             features: [
                 "All Visibility features included",
@@ -69,8 +77,9 @@ export default function PricingPage() {
                 "Role-based admin controls",
             ],
             cta: "Enable Control",
-            href: "/request-demo",
+            href: "/signup",
             featured: true,
+            buttonStyle: "bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-600/20"
         },
         {
             name: "ENTERPRISE",
@@ -89,36 +98,37 @@ export default function PricingPage() {
             ],
             cta: "Contact Sales",
             href: "/request-demo",
+            buttonStyle: "bg-white/10 text-white hover:bg-white/20 border border-white/20"
         },
     ];
 
     const faqs = [
         {
             question: "How is pricing calculated?",
-            answer: "Pricing is based on total employees to ensure complete coverage.",
+            answer: `Pricing is seat-based with a minimum requirement of ${PRICING.STARTER.minSeats} seats to ensure complete organization-wide coverage and effective risk analysis.`,
         },
         {
             question: "Does this slow down employees?",
-            answer: "Visibility does not interfere. Control only blocks high-risk activity.",
+            answer: "No. Our visibility agents are lightweight and do not interfere with AI performance. Control features only trigger when high-risk policy violations occur.",
         },
         {
             question: "Do you store our prompts?",
-            answer: "No. Sensitive data detection is processed securely and locally when possible.",
+            answer: "No. Specifically for Shield customers, all sensitive data detection and redaction happens locally before data ever leaves the employee's browser.",
         },
     ];
 
     return (
-        <div className="bg-[#111121] text-white font-sans antialiased min-h-screen">
+        <div className="bg-[#020617] text-white font-sans antialiased min-h-screen">
             <MarketingNav />
 
-            <main className="pt-16 pb-12">
+            <main className="pt-24 pb-20">
                 {/* Hero Section */}
-                <div className="max-w-4xl mx-auto px-6 text-center mb-12">
-                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-8 text-white leading-tight">
-                        Use AI Safely. <br /><span className="text-[#7261fd]">Stay in Control.</span>
+                <div className="max-w-4xl mx-auto px-6 text-center mb-20">
+                    <h1 className="text-5xl md:text-[5rem] font-black tracking-tighter mb-8 text-white leading-[0.9]">
+                        SECURE YOUR <br /><span className="text-blue-500">AI FOOTPRINT.</span>
                     </h1>
-                    <p className="text-xl text-white/80 leading-relaxed max-w-2xl mx-auto">
-                        Unlock AI productivity for your entire organization. Complyze provides the safety and visibility you need to scale AI usage with confidence.
+                    <p className="text-xl text-white/50 font-medium max-w-2xl mx-auto leading-relaxed">
+                        Scale AI usage without the data risk. Choose a plan that fits your organization's security posture.
                     </p>
                 </div>
 
@@ -128,44 +138,43 @@ export default function PricingPage() {
                         {tiers.map((tier) => (
                             <div
                                 key={tier.name}
-                                className={`relative flex flex-col h-full p-6 rounded-xl border border-white/10 transition-all duration-200 ${tier.featured
-                                    ? "bg-white/[0.02] shadow-2xl ring-1 ring-white/20 -translate-y-2 z-10"
-                                    : "bg-transparent hover:border-white/20"
+                                className={`relative flex flex-col h-full p-8 rounded-2xl border transition-all duration-300 ${tier.featured
+                                    ? "bg-white/[0.03] border-purple-500/30 shadow-[0_0_50px_rgba(168,85,247,0.1)] -translate-y-2 z-10"
+                                    : "bg-white/[0.01] border-white/10 hover:border-white/20"
                                     }`}
                             >
                                 {tier.featured && (
-                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[white] text-white text-[10px] font-bold tracking-widest px-3 py-1 rounded-full uppercase">
-                                        Most Popular
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-purple-600 text-white text-[10px] font-black tracking-[0.2em] px-4 py-1.5 rounded-full uppercase shadow-lg">
+                                        RECOMMENDED
                                     </div>
                                 )}
 
-                                <div className="mb-5 text-center sm:text-left">
-                                    <h3 className="text-sm font-bold tracking-widest uppercase text-white/75 mb-2">
+                                <div className="mb-8">
+                                    <h3 className="text-xs font-black tracking-[0.3em] uppercase text-white/40 mb-4">
                                         {tier.name}
                                     </h3>
-                                    <p className="text-lg font-medium text-white mb-6">
-                                        {tier.tagline}
-                                    </p>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-baseline gap-2 justify-center sm:justify-start">
-                                            <span className="text-5xl font-bold tracking-tight">{tier.displayPrice}</span>
-                                            {tier.displayPrice !== "Custom" && <span className="text-white/75 text-sm">/ month</span>}
+                                    <div className="flex flex-col gap-1 mb-6">
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-5xl font-black tracking-tighter text-white">{tier.displayPrice}</span>
+                                            {tier.displayPrice !== "Custom" && <span className="text-white/40 text-sm font-bold uppercase">/mo</span>}
                                         </div>
-                                        <p className="text-[13px] text-white/60 mt-1 leading-relaxed font-medium">
+                                        <p className="text-[11px] font-black uppercase tracking-widest text-blue-400 mt-2">
                                             {tier.priceDetails}
                                         </p>
                                     </div>
-                                    <p className="text-sm text-white/85 mt-4 font-medium">
+                                    <p className="text-sm text-white/60 font-medium leading-relaxed">
                                         {tier.description}
                                     </p>
                                 </div>
 
-                                <ul className="space-y-3 mb-8 flex-grow border-t border-white/5 pt-5">
+                                <ul className="space-y-4 mb-10 flex-grow border-t border-white/5 pt-8">
                                     {tier.features.map((feature) => (
-                                        <li key={feature} className="flex items-start gap-3 text-sm text-white/80">
-                                            <svg className="w-5 h-5 text-[white] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
+                                        <li key={feature} className="flex items-start gap-3 text-sm font-bold text-white/80">
+                                            <div className="w-5 h-5 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                                                <svg className="w-3 h-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </div>
                                             <span>{feature}</span>
                                         </li>
                                     ))}
@@ -174,7 +183,7 @@ export default function PricingPage() {
                                 <button
                                     onClick={() => handleCheckout(tier.name, tier.href)}
                                     disabled={loadingPlan === tier.name}
-                                    className="w-full py-3 px-6 rounded-lg text-center font-bold tracking-wide bg-[white] text-white hover:bg-[#4d48ef] transition-all duration-200 disabled:opacity-50"
+                                    className={`w-full py-4 px-6 rounded-xl text-center font-black uppercase tracking-widest text-xs transition-all active:scale-[0.98] disabled:opacity-50 ${tier.buttonStyle}`}
                                 >
                                     {loadingPlan === tier.name ? "Redirecting..." : tier.cta}
                                 </button>
@@ -184,15 +193,19 @@ export default function PricingPage() {
                 </div>
 
                 {/* FAQ Section */}
-                <div className="max-w-3xl mx-auto px-6 mt-16 border-t border-white/5 pt-12">
-                    <h2 className="text-2xl font-bold text-center mb-8 text-white">Frequently Asked Questions</h2>
-                    <div className="grid gap-12 sm:grid-cols-1">
+                <div className="max-w-4xl mx-auto px-6 mt-32 border-t border-white/5 pt-20">
+                    <div className="text-center mb-16 space-y-2">
+                        <h2 className="text-xs font-black tracking-[0.3em] uppercase text-blue-500">Infrastructure</h2>
+                        <h3 className="text-3xl font-black tracking-tight text-white">Common Questions</h3>
+                    </div>
+
+                    <div className="grid gap-12 md:grid-cols-1">
                         {faqs.map((faq, index) => (
-                            <div key={index}>
-                                <h4 className="text-lg font-bold text-white mb-2">
-                                    {index + 1}. {faq.question}
+                            <div key={index} className="bg-white/[0.02] p-8 rounded-2xl border border-white/5">
+                                <h4 className="text-lg font-black text-white mb-4">
+                                    {faq.question}
                                 </h4>
-                                <p className="text-white/85 leading-relaxed">
+                                <p className="text-white/40 font-medium leading-relaxed">
                                     {faq.answer}
                                 </p>
                             </div>
