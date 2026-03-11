@@ -29,6 +29,7 @@ const btnDash = document.getElementById('btn-dash');
 const btnRefresh = document.getElementById('btn-refresh');
 const btnSignout = document.getElementById('btn-signout');
 const footerLink = document.getElementById('footer-link');
+const privacyLink = document.getElementById('privacy-link');
 
 // Scan status card
 const scanCard = document.getElementById('scan-status-card');
@@ -238,7 +239,8 @@ btnSignout.addEventListener('click', async () => {
 });
 
 // Footer
-footerLink.addEventListener('click', () => chrome.tabs.create({ url: 'https://api.complyze.co' }));
+footerLink.addEventListener('click', () => chrome.tabs.create({ url: 'https://complyze.co' }));
+privacyLink.addEventListener('click', () => chrome.tabs.create({ url: 'https://complyze.co/privacypolicy' }));
 
 // Auto-refresh scan status every 3s while popup is open
 setInterval(async () => {

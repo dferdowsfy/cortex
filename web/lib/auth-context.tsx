@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Redirect to login if not authenticated and trying to access protected routes
             // Normalize pathname to remove trailing slashes for consistent matching
             const normalizedPath = pathname === "/" ? "/" : pathname.replace(/\/$/, "");
-            const publicRoutes = ["", "/", "/platform", "/pricing", "/request-demo", "/login", "/signup"];
+            const publicRoutes = ["", "/", "/platform", "/pricing", "/request-demo", "/login", "/signup", "/privacypolicy", "/install"];
 
             if (!user && !publicRoutes.includes(normalizedPath)) {
                 console.log("[Auth] Protected route accessed without session, redirecting to login:", normalizedPath);
