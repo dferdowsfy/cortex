@@ -38,6 +38,10 @@ export interface Organization {
     policy_version: number;
     policy_config: Record<string, any>;
     signing_secret: string;
+    plan?: string;
+    seatsPurchased?: number;
+    seatsUsed?: number;
+    ownerUserId?: string;
 }
 
 export interface EnrollmentToken {
@@ -79,6 +83,9 @@ class EnrollmentStore {
             policy_version: 1,
             policy_config: {},
             signing_secret,
+            plan: "STARTER",
+            seatsPurchased: 1,
+            seatsUsed: 1,
         };
 
         if (adminDb && adminDb.app.options.databaseURL) {

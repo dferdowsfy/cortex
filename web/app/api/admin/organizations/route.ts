@@ -25,6 +25,9 @@ export async function GET(req: NextRequest) {
             name: org.name,
             created_at: org.created_at,
             policy_version: org.policy_version,
+            plan: org.plan || "STARTER",
+            seatsPurchased: org.seatsPurchased || 1,
+            seatsUsed: org.seatsUsed || 0,
         }));
 
         return NextResponse.json({ organizations });

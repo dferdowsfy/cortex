@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userStore } from "@/lib/user-store";
+import { enrollmentStore } from "@/lib/enrollment-store";
+import { adminDb } from "@/lib/firebase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +35,24 @@ export async function POST(req: NextRequest) {
         // Single user create
         const { org_id, email, role, group_id, display_name } = body;
         if (!org_id || !email) return NextResponse.json({ error: "org_id and email are required" }, { status: 400 });
+
+        // Seat Enforcement Logic
+        const org = await enrollmentStore.getOrganization(org_id, workspaceId);
+        if (org) {
+            const purchased = org.seatsPurchased || 0;
+            const used = org.seatsUsed || 0;
+            if (used >= purchased && purchased > 0) {
+                return NextResponse.json({ error: `Seat limit reached (${used}/${purchased}). Please upgrade your plan or increase seats.` }, { status: 403 });
+            }
+        }
+
         const user = await userStore.createUser(org_id, email, role || "member", group_id || null, display_name, workspaceId);
+
+        // Increment seatsUsed in background
+        if (org && adminDb) {
+            await adminDb.ref(`organizations/${org_id}/seatsUsed`).set((org.seatsUsed || 0) + 1);
+        }
+
         return NextResponse.json({ user }, { status: 201 });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });

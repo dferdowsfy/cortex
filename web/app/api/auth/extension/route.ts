@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase/admin";
-import { adminApp } from "@/lib/firebase/admin";
+import { adminDb, adminApp } from "@/lib/firebase/admin";
 import { getAuth } from "firebase-admin/auth";
 import { enrollmentStore } from "@/lib/enrollment-store";
+import { getFeaturesForPlan } from "@/lib/plans";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -55,59 +55,69 @@ export async function POST(req: NextRequest) {
 
         try {
             if (adminDb) {
-                const usersSnap = await adminDb.ref("extension_users").orderByChild("email").equalTo(verifiedEmail).get();
-                if (usersSnap.exists()) {
-                    const userData = Object.values(usersSnap.val() as Record<string, any>)[0] as any;
-                    orgId = userData.orgId || null;
-                    shieldActive = userData.shieldActive !== false;
-                    if (userData.plan) plan = userData.plan;
-                    if (userData.role) role = userData.role;
-                    if (userData.features) features = userData.features;
-                }
+                // 1. Find or Create Organization
+                const userEmailKey = verifiedEmail.replace(/\./g, ",");
 
-                if (!features) {
-                    features = {
-                        promptMonitoring: true,
-                        sensitiveDataDetection: true,
-                        riskScore: true,
-                        aiAppDetection: true,
-                        alerts: true,
-                        redaction: false,
-                        blocking: false,
-                        attachmentScanning: false,
-                        adminDashboard: false,
-                        auditLogs: false,
-                        teamPolicies: false,
-                        sso: false,
-                        apiAccess: false
-                    };
-                }
-
-                // Fallback: search organizations by member email
-                if (!orgId) {
-                    const orgsSnap = await adminDb.ref("organizations").get();
-                    if (orgsSnap.exists()) {
-                        const orgs = orgsSnap.val() as Record<string, any>;
-                        for (const [id, org] of Object.entries(orgs)) {
-                            if (org.members && org.members[verifiedEmail.replace(/\./g, ',')]) {
-                                orgId = id;
-                                orgName = org.name || id;
-                                break;
-                            }
+                // Fast lookup for existing membership
+                const orgsSnap = await adminDb.ref("organizations").get();
+                if (orgsSnap.exists()) {
+                    const orgs = orgsSnap.val() as Record<string, any>;
+                    for (const [id, org] of Object.entries(orgs)) {
+                        if (org.members && org.members[userEmailKey]) {
+                            orgId = id;
+                            orgName = org.name || id;
+                            plan = org.plan || "STARTER";
+                            role = org.members[userEmailKey].role || "member";
+                            break;
                         }
                     }
-                } else {
-                    const orgSnap = await adminDb.ref(`organizations/${orgId}`).get();
-                    if (orgSnap.exists()) orgName = orgSnap.val().name || orgId;
                 }
 
-                // ── 3. Upsert user record in extension_users ─────────────────
+                // CASE 1: Individual Signup — Create a default Org if none exists
+                if (!orgId) {
+                    orgId = crypto.randomUUID();
+                    orgName = `${verifiedEmail.split('@')[0]}'s Workspace`;
+                    plan = "STARTER";
+                    role = "owner";
+
+                    const newOrg = {
+                        id: orgId,
+                        name: orgName,
+                        plan: "STARTER",
+                        seatsPurchased: 1,
+                        seatsUsed: 1,
+                        ownerUserId: verifiedEmail,
+                        createdAt: new Date().toISOString(),
+                        members: {
+                            [userEmailKey]: {
+                                email: verifiedEmail,
+                                role: "owner",
+                                joinedAt: new Date().toISOString()
+                            }
+                        }
+                    };
+                    await adminDb.ref(`organizations/${orgId}`).set(newOrg);
+                    console.log("[auth/extension] Created initial STARTER org for new user:", verifiedEmail);
+                } else {
+                    // Refresh Org details if found
+                    const orgSnap = await adminDb.ref(`organizations/${orgId}`).get();
+                    if (orgSnap.exists()) {
+                        const org = orgSnap.val();
+                        orgName = org.name || orgId;
+                        plan = org.plan || "STARTER";
+                    }
+                }
+
+                // 2. Resolve Features from Plan
+                features = getFeaturesForPlan(plan);
+
+                // 3. Upsert user record in extension_users
                 const userKey = verifiedUid;
                 await adminDb.ref(`extension_users/${userKey}`).update({
                     uid: verifiedUid,
                     email: verifiedEmail,
                     displayName: displayName || verifiedEmail.split("@")[0],
-                    orgId: orgId || null,
+                    orgId: orgId,
                     lastSeen: new Date().toISOString(),
                     shieldActive,
                     plan,

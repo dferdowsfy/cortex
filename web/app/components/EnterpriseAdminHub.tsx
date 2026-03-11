@@ -17,7 +17,7 @@ import {
 } from "@/lib/ai-tool-registry";
 
 /* ─── Types ─────────────────────────────────────────────── */
-interface Organization { id: string; name: string; created_at: string; }
+interface Organization { id: string; name: string; created_at: string; plan?: string; seatsPurchased?: number; seatsUsed?: number; }
 interface Group { group_id: string; org_id: string; name: string; description?: string; policy_id: string | null; created_at: string; }
 interface PolicyRule { rule_id: string; type: string; target: string; action: "block" | "allow" | "audit_only" | "redact"; priority: number; enabled: boolean; }
 interface GroupPolicy { policy_id: string; group_id: string; version: number; rules: PolicyRule[]; inherit_org_default: boolean; }
@@ -490,7 +490,10 @@ export default function EnterpriseAdminHub() {
                     {organizations.map(org => (
                         <button key={org.id} onClick={() => setActiveOrgId(org.id)}
                             className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${activeOrgId === org.id ? "bg-[var(--brand-color)] text-white border-[var(--brand-color)]" : "bg-white/5 text-zinc-400 border-transparent hover:border-white/20"}`}
-                        >{org.name}</button>
+                        >
+                            {org.name}
+                            <span className="ml-2 opacity-50 text-[8px] border border-white/20 px-1 rounded">{org.plan || "STARTER"}</span>
+                        </button>
                     ))}
                     {showOrgForm ? (
                         <div className="flex items-center gap-2">
@@ -510,10 +513,10 @@ export default function EnterpriseAdminHub() {
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="Active Extensions" value={activeDevices.length} sub={`of ${devices.length} total`} color="text-emerald-400" />
-                <StatCard label="Revoked" value={revokedDevices.length} color={revokedDevices.length > 0 ? "text-red-400" : "text-white"} />
-                <StatCard label="Groups" value={groups.length} sub={`in ${activeOrg?.name || "—"}`} />
-                <StatCard label="Managed Users" value={activeUsers.length} sub={`of ${users.length} total`} color="text-blue-400" />
+                <StatCard label="Plan Tier" value={activeOrg?.plan || "STARTER"} sub="Subscription" color="text-[#7261fd]" />
+                <StatCard label="Seats Used" value={activeOrg?.seatsUsed || 0} sub={`of ${activeOrg?.seatsPurchased || 1} available`} color={activeOrg?.seatsUsed && activeOrg?.seatsPurchased && activeOrg.seatsUsed >= activeOrg.seatsPurchased ? "text-red-400" : "text-emerald-400"} />
+                <StatCard label="Active Extensions" value={activeDevices.length} sub={`of ${devices.length} total`} />
+                <StatCard label="Managed Users" value={activeUsers.length} sub={`${users.length} enrolled`} color="text-blue-400" />
             </div>
 
             {/* Tabs — Issue 3: TABS is a module constant, no recreation on render */}
