@@ -11,7 +11,7 @@ const baseObj = {
     sensitive_categories: [],
     contextual_risks: [],
     findings: [],
-    recommended_action: "allow",
+    suggested_action: "allow",
     dashboard_metrics: {},
     graph_data: {},
     attachment_analysis: {}
@@ -24,7 +24,7 @@ describe("ollamaAnalysis normalisation", () => {
             overall_risk_score: 90,
             severity: "Unknown",
             confidence: 85, // Integer (85%)
-            recommended_action: "BLOCK", // Enum cleanup test
+            suggested_action: "BLOCK", // Enum cleanup test
             sensitive_categories: [" PII_BASIC ", "INVALID_CAT"],
             contextual_risks: ["Data_Exfiltration  "],
             findings: [
@@ -78,13 +78,13 @@ describe("ollamaAnalysis normalisation", () => {
         const raw = {
             ...baseObj,
             overall_risk_score: 10,
-            recommended_action: "   wARn   ",
+            suggested_action: "   wARn   ",
             sensitive_categories: ["   SecreTS  ", "pii_basic"],
         };
 
         const result = normaliseAndValidate(raw, "Test");
 
-        expect(result.recommended_action).toBe("warn");
+        expect(result.suggested_action).toBe("warn");
         expect(result.sensitive_categories).toEqual(["secrets", "pii_basic"]);
     });
 });

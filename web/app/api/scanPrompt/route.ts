@@ -69,14 +69,18 @@ export async function POST(req: NextRequest) {
 
         // ── Policy rule resolution ─────────────────────────────────────────────────
         let rules: unknown[] = [];
+        let orgPolicyConfig: any = null;
 
         if (Array.isArray(body.cachedPolicies) && body.cachedPolicies.length > 0) {
             rules = body.cachedPolicies;
             console.log(`[scanPrompt] Using ${rules.length} extension-cached policy rules.`);
         } else if (orgId) {
             const org = await enrollmentStore.getOrganization(orgId, workspaceId);
-            if (org?.policy_config?.rules) {
-                rules = org.policy_config.rules;
+            if (org?.policy_config) {
+                orgPolicyConfig = org.policy_config;
+                if (org.policy_config.rules) {
+                    rules = org.policy_config.rules;
+                }
             }
 
             if (userEmail && userEmail !== "unknown@domain.com") {
@@ -134,28 +138,22 @@ export async function POST(req: NextRequest) {
             console.error(`[scanPrompt] Ollama analysis failed (${analysisError.code}):`, analysisError.message);
             // Return a graceful fallback so the dashboard still renders
             const fallback = buildFallbackResult(analysisError.message);
+            const fallbackDecision = { action: "warn" as const, reason: "Analysis engine failed. Allowed with warning." };
             return NextResponse.json(
-                mapToLegacyResponse(fallback, aiTool, { analysisError }),
+                mapToLegacyResponse(fallback, fallbackDecision, aiTool, { analysisError }),
                 { status: 200 },
             );
         }
 
-        // ── DLP override: never allow if critical secrets found ───────────────────
-        if (hasCritical && analysisResult.recommended_action === "allow") {
-            console.warn(
-                "[scanPrompt] Ollama returned 'allow' but DLP found critical data — overriding to 'block'",
-            );
-            analysisResult.recommended_action = "block";
-            analysisResult.overall_risk_score = Math.max(analysisResult.overall_risk_score, 90);
-            analysisResult.severity = "critical";
-        }
+        // ── Policy decision engine (dashboard config is the sole authority) ───────
+        const policyDecision = computePolicyDecision(analysisResult, orgPolicyConfig, hasCritical);
 
         console.log(
-            `[scanPrompt] Final: action=${analysisResult.recommended_action} | ` +
-            `riskScore=${analysisResult.overall_risk_score} | tool=${aiTool}`,
+            `[scanPrompt] Final: action=${policyDecision.action} | ` +
+            `reason=${policyDecision.reason} | riskScore=${analysisResult.overall_risk_score} | tool=${aiTool}`,
         );
 
-        return NextResponse.json(mapToLegacyResponse(analysisResult, aiTool, {}));
+        return NextResponse.json(mapToLegacyResponse(analysisResult, policyDecision, aiTool, {}));
     } catch (err) {
         console.error("[scanPrompt] Unexpected error:", err);
         return NextResponse.json(
@@ -170,21 +168,66 @@ export async function POST(req: NextRequest) {
 // the existing dashboard, extension, and proxy consumers.
 // ─────────────────────────────────────────────────────────────────────────────
 
+function computePolicyDecision(
+    analysis: ComplyzeAnalysisResult,
+    policyConfig: any,
+    hasCriticalDlpMatch: boolean
+): { action: "allow" | "redact" | "warn" | "block"; reason: string } {
+    const threshold = policyConfig?.risk_threshold ?? 60;
+    const blockHighRisk = policyConfig?.block_high_risk ?? true;
+    const auditMode = policyConfig?.audit_mode === true;
+
+    // 1. Audit mode overrides everything to allow
+    if (auditMode) {
+        return { action: "allow", reason: "Audit mode is enabled. Allowing prompt." };
+    }
+
+    // 2. Hard deterministic DLP override
+    if (hasCriticalDlpMatch) {
+        return { action: "block", reason: "Critical regex match (API Key, SSN). Automatic block." };
+    }
+
+    // 3. Block high risk score if enabled
+    if (blockHighRisk) {
+        if (analysis.overall_risk_score >= threshold) {
+            return { action: "block", reason: `Risk score (${analysis.overall_risk_score}) exceeds organization threshold (${threshold}).` };
+        }
+        if (analysis.severity === "critical" || analysis.severity === "high") {
+            return { action: "block", reason: `AI severity (${analysis.severity}) exceeds acceptable risk tolerance.` };
+        }
+    }
+
+    // 4. Attachment risk block
+    if (policyConfig?.scan_attachments !== false && analysis.attachment_analysis?.attachment_present) {
+        if (analysis.attachment_analysis.attachment_risk_score >= threshold) {
+            return { action: blockHighRisk ? "block" : "warn", reason: "Attachment risk score exceeds organization threshold." };
+        }
+    }
+
+    // 5. Automatic Redaction if configured
+    if (policyConfig?.auto_redaction !== false) {
+        if (analysis.sensitive_categories?.length > 0 || analysis.redacted_prompt !== analysis.prompt_summary) {
+            return { action: "redact", reason: "Sensitive categories detected. Enforcing auto-redaction." };
+        }
+    }
+
+    // 6. Final fallback: If AI strongly suggested a block or manual review, but org didn't enforce block above
+    if (analysis.suggested_action === "block" && blockHighRisk) {
+        return { action: "block", reason: "AI analyst explicitly suggested blocking." };
+    }
+    if (analysis.suggested_action === "warn" || analysis.suggested_action === "manual_review") {
+        return { action: "warn", reason: "AI analyst suggested warning or review." };
+    }
+
+    return { action: "allow", reason: "Prompt complies with organization policies." };
+}
+
 function mapToLegacyResponse(
     result: ComplyzeAnalysisResult & { _error?: string },
+    decision: { action: "allow" | "redact" | "warn" | "block"; reason: string },
     aiTool: string,
     extras: { analysisError?: OllamaAnalysisError | null },
 ) {
-    // Map recommended_action → legacy `action`
-    const actionMap: Record<string, string> = {
-        allow: "allow",
-        allow_with_redaction: "redact",
-        warn: "warn",
-        block: "block",
-        manual_review: "warn",
-    };
-    const legacyAction = actionMap[result.recommended_action] ?? "allow";
-
     const riskCategory =
         result.overall_risk_score > 75
             ? "critical"
@@ -195,18 +238,20 @@ function mapToLegacyResponse(
                     : "low";
 
     return {
-        // Legacy fields (extension + proxy consumers)
+        // Legacy fields mapping for proxy compatibility
         riskScore: result.overall_risk_score,
-        action: legacyAction,
-        message: result.prompt_summary,
+        action: decision.action,
+        message: decision.reason,
         redactedText: result.redacted_prompt,
         categories: result.sensitive_categories,
         riskCategory,
-        policyViolation: legacyAction === "block",
-        details: result.findings.map((f) => `[${f.severity.toUpperCase()}] ${f.reason}`),
+        policyViolation: decision.action === "block",
+        details: result.findings.map((f) => `[${f.severity.toUpperCase()}] ${f.evidence || f.reason}`),
+        aiTool,
 
-        // Extended Complyze schema fields (dashboard consumers)
-        analysis: {
+        // New strictly cleanly separated fields
+        policy_decision: decision,
+        analysis_result: {
             analysis_version: result.analysis_version,
             prompt_summary: result.prompt_summary,
             redacted_prompt: result.redacted_prompt,
@@ -217,15 +262,13 @@ function mapToLegacyResponse(
             contextual_risks: result.contextual_risks,
             findings: result.findings,
             attachment_analysis: result.attachment_analysis,
-            recommended_action: result.recommended_action,
+            suggested_action: result.suggested_action,
             dashboard_metrics: result.dashboard_metrics,
             graph_data: result.graph_data,
         },
 
-        // Surface errors cleanly for dashboard display
+        // Surface errors if any
         ...(result._error ? { analysisError: result._error } : {}),
         ...(extras.analysisError ? { analysisErrorCode: extras.analysisError.code } : {}),
-
-        aiTool,
     };
 }

@@ -122,7 +122,7 @@ export const COMPLYZE_SCHEMA = {
             },
             required: ["attachment_present", "attachment_type", "attachment_risk_score", "attachment_findings"],
         },
-        recommended_action: {
+        suggested_action: {
             type: "string",
             enum: ["allow", "allow_with_redaction", "warn", "block", "manual_review"],
         },
@@ -163,7 +163,7 @@ export const COMPLYZE_SCHEMA = {
         "analysis_version", "prompt_summary", "redacted_prompt",
         "overall_risk_score", "severity", "confidence",
         "sensitive_categories", "contextual_risks", "findings",
-        "attachment_analysis", "recommended_action",
+        "attachment_analysis", "suggested_action",
         "dashboard_metrics", "graph_data",
     ],
 } as const;
@@ -210,7 +210,7 @@ export interface ComplyzeAnalysisResult {
         attachment_risk_score: number;
         attachment_findings: string[];
     };
-    recommended_action: "allow" | "allow_with_redaction" | "warn" | "block" | "manual_review";
+    suggested_action: "allow" | "allow_with_redaction" | "warn" | "block" | "manual_review";
     dashboard_metrics: {
         pii_count: number;
         secret_count: number;
@@ -273,6 +273,8 @@ function buildAnalysisPrompt(input: ComplyzeAnalysisInput): string {
     const lines: string[] = [
         "You are the Complyze AI Security Analyst.",
         "Analyse the following prompt submission for data-security, privacy, and policy risks.",
+        "You are strictly an analysis engine. You do NOT make the final enforcement decision.",
+        "Provide a 'suggested_action' based on risk, but understand this is advisory only. The actual block/allow decision will be made by the backend policy engine.",
         "Return ONLY the structured JSON — no additional commentary.",
         "",
         `## User Prompt`,
@@ -474,7 +476,7 @@ export function normaliseAndValidate(raw: unknown, originalPromptText: string): 
                 ? aa.attachment_findings.filter((x) => typeof x === "string")
                 : [],
         },
-        recommended_action: normaliseAction(obj.recommended_action),
+        suggested_action: normaliseAction(obj.suggested_action ?? obj.recommended_action),
         dashboard_metrics: {
             pii_count: normaliseInt(dm.pii_count),
             secret_count: normaliseInt(dm.secret_count),
@@ -633,7 +635,7 @@ export async function analysePrompt(
             console.log("[ollamaAnalysis] Validated and normalized output:", {
                 overall_risk_score: validated.overall_risk_score,
                 severity: validated.severity,
-                recommended_action: validated.recommended_action,
+                suggested_action: validated.suggested_action,
                 confidence: validated.confidence,
                 findingsCount: validated.findings.length,
             });
@@ -699,7 +701,7 @@ export function buildFallbackResult(errorMessage: string): ComplyzeAnalysisResul
             attachment_risk_score: 0,
             attachment_findings: [],
         },
-        recommended_action: "manual_review",
+        suggested_action: "warn",
         dashboard_metrics: {
             pii_count: 0,
             secret_count: 0,

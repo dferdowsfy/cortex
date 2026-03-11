@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
                 ok: true,
                 overall_risk_score: result.overall_risk_score,
                 severity: result.severity,
-                recommended_action: result.recommended_action,
+                suggested_action: result.suggested_action,
                 confidence: result.confidence,
                 findings_count: result.findings.length,
                 sensitive_categories: result.sensitive_categories,

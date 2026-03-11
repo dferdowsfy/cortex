@@ -384,9 +384,6 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
             dlpResult = runDLPPreflight(text);
         }
 
-        if (!features.blocking && dlpResult.action === 'block') dlpResult.action = 'warn';
-        if (!features.redaction && dlpResult.action === 'redact') dlpResult.action = 'warn';
-
         if (dlpResult.action === 'block') {
             const labels = dlpResult.findings.map(f => f.label).join(', ');
             console.log('[Complyze] DLP BLOCK:', labels);
@@ -430,13 +427,10 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
             return;
         }
 
-        // ── STEP 3: Apply backend decision ────────────────────────────────────
+        // ── STEP 3: Apply backend decision (authoritative) ────────────────────
         let finalAction = backendResult.action || 'allow';
         const finalText = backendResult.redactedText || dlpResult.redactedText;
         let riskScore = features.riskScore ? backendResult.riskScore || 0 : undefined;
-
-        if (!features.blocking && finalAction === 'block') finalAction = 'warn';
-        if (!features.redaction && finalAction === 'redact') finalAction = 'warn';
 
         console.log(`[Complyze] Result: action=${finalAction} | riskScore=${riskScore}`);
 
@@ -545,8 +539,6 @@ async function handleFileUpload(file, inputEl) {
                 dlp = runDLPPreflight(content);
             }
 
-            if (!features.blocking && dlp.action === 'block') dlp.action = 'warn';
-
             if (dlp.action === 'block') {
                 enforceFileBlock(inputEl, file.name, 'Sensitive data found: ' + dlp.findings.map(f => f.label).join(', '));
                 resolve();
@@ -566,27 +558,24 @@ async function handleFileUpload(file, inputEl) {
             }, 6000);
 
             if (result && result.action === 'block') {
-                if (!features.blocking) {
-                    // Graceful degrade: show warning
-                    showOverlay({
-                        type: 'warn',
-                        title: '⚠️ Attachment Warning',
-                        body: `<strong style="color:#fbbf24">${file.name}</strong><br>Contains sensitive data: ${result.message}`
-                    });
-                } else {
-                    enforceFileBlock(inputEl, file.name, result.message || 'Blocked by policy');
+                enforceFileBlock(inputEl, file.name, result.message || 'Blocked by policy');
 
-                    // Log activity
-                    safeSendMessage({
-                        type: 'LOG_ACTIVITY', payload: {
-                            aiTool: AI_TOOL, promptLength: content.length,
-                            riskScore: features.riskScore ? result.riskScore || 90 : 0,
-                            action: 'block', blocked: true,
-                            findings: [`File: ${file.name}`, result.message || 'Sensitive Attachment'],
-                            timestamp: new Date().toISOString(),
-                        }
-                    }, 3000);
-                }
+                // Log activity
+                safeSendMessage({
+                    type: 'LOG_ACTIVITY', payload: {
+                        aiTool: AI_TOOL, promptLength: content.length,
+                        riskScore: features.riskScore ? result.riskScore || 90 : 0,
+                        action: 'block', blocked: true,
+                        findings: [`File: ${file.name}`, result.message || 'Sensitive Attachment'],
+                        timestamp: new Date().toISOString(),
+                    }
+                }, 3000);
+            } else if (result && result.action === 'warn') {
+                showOverlay({
+                    type: 'warn',
+                    title: '⚠️ Attachment Warning',
+                    body: `<strong style="color:#fbbf24">${file.name}</strong><br>Contains sensitive data: ${result.message}`
+                });
             }
             resolve();
         };
