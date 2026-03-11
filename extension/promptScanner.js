@@ -1,15 +1,25 @@
 /**
- * promptScanner.js — Complyze Zero-Trust Shield v1.2.0
+ * promptScanner.js — Complyze Zero-Trust Shield v1.3.0
  *
  * Content script injected into AI platform pages.
  * Intercepts prompts BEFORE they reach the AI provider.
  *
  * Enforcement pipeline:
- *  1. Client-side DLP preflight (regex) — instant, blocks SSNs/API keys/cards
- *  2. Backend LLM scan (async, 6s timeout + failsafe)
- *  3. Enforce action: allow / redact / block
- *  4. Show in-page overlay feedback
- *  5. Write lastScanResult to chrome.storage.local for popup display
+ *  1. Client-side DLP preflight (regex) — generates SIGNAL only, not a final decision
+ *  2. Backend scan — extension → backend → Ollama (complyze-qwen) → policy engine
+ *  3. Backend returns authoritative action (allow / redact / warn / block)
+ *  4. Extension enforces that backend decision in-page
+ *  5. Overlay feedback shown; lastScanResult written to storage for popup display
+ *
+ * Local DLP regex is NEVER the final arbiter for configurable policy cases.
+ * An emergency local fail-safe only activates when the backend is unreachable
+ * AND a critical pattern is detected — and even then it logs to backend.
+ *
+ * Debug fields in every backend response:
+ *   model_used      — was Ollama consulted?
+ *   policy_used     — was org policy applied?
+ *   blocked_locally — was this an offline emergency block?
+ *   decision_source — "backend_policy" | "local_emergency_block"
  */
 
 'use strict';
@@ -97,11 +107,22 @@ const AI_DOMAINS = [
     'chat.deepseek.com', 'chat.mistral.ai', 'huggingface.co', 'poe.com',
 ];
 
+// Input selectors ordered from most-specific to most-general.
+// ChatGPT uses a ProseMirror contenteditable div; Claude uses a similar pattern.
+// Keep these updated as AI platforms evolve their UIs.
 const INPUT_SELECTORS = [
-    'textarea#prompt-textarea',
+    // ChatGPT (current — ProseMirror inside a contenteditable div)
+    '#prompt-textarea',
+    'div[contenteditable="true"][data-testid]',
+    'div[contenteditable="true"][class*="ProseMirror"]',
+    // Generic contenteditable
     'div[contenteditable="true"]',
+    // Traditional textarea fallbacks
+    'textarea#prompt-textarea',
     'textarea[placeholder*="Ask"]',
+    'textarea[placeholder*="Message"]',
     'textarea[data-testid="chat-input"]',
+    'textarea[data-testid]',
     'div[data-placeholder]',
 ];
 
@@ -205,9 +226,16 @@ function isSendButton(target) {
     if (!target || !target.closest) return null;
     const btn = target.closest('button, [role="button"], [aria-label*="end"], [aria-label*="ubmit"]');
     if (!btn) return null;
-    const attrs = [btn.getAttribute('aria-label'), btn.getAttribute('data-testid'), btn.getAttribute('title')]
+
+    // ChatGPT current UI uses data-testid="send-button"
+    const testId = (btn.getAttribute('data-testid') || '').toLowerCase();
+    if (testId === 'send-button' || testId === 'fruitjuice-send-button') return btn;
+
+    const attrs = [btn.getAttribute('aria-label'), testId, btn.getAttribute('title')]
         .map(a => (a || '').toLowerCase());
     if (attrs.some(a => a.includes('send') || a.includes('submit') || a.includes('ask') || a.includes('message'))) return btn;
+
+    // SVG-only buttons (icon buttons adjacent to input)
     if (btn.querySelector('svg')) {
         let p = btn.parentElement;
         for (let i = 0; i < 5 && p; i++, p = p.parentElement) {
@@ -383,23 +411,35 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
     let dlpResult = { findings: [], redactedText: text, hasCritical: false };
 
     try {
-        // ── STEP 1: Client-side DLP Precheck (Signal only, no early block) ─────
+        // ── STEP 1: Client-side DLP Precheck ────────────────────────────────
+        // SIGNAL ONLY — results are forwarded to the backend as context.
+        // They do NOT make the final enforcement decision for configurable policy cases.
         if (features.sensitiveDataDetection) {
             dlpResult = runDLPPreflight(text);
             if (dlpResult.findings.length > 0) {
-                console.log('[Complyze] Local DLP precheck findings:', dlpResult.findings.length);
+                console.log('[Complyze] Local DLP precheck — signal findings:', dlpResult.findings.length,
+                    '| hasCritical:', dlpResult.hasCritical,
+                    '| blocked_locally: false (signal only)');
             }
         }
 
         // ── STEP 2: Backend Scan & Policy Decision ───────────────────────────
+        // Extension sends prompt + DLP signals → backend → Ollama → policy engine → decision.
+        // The backend is the SOLE source of truth for the final action.
+        console.log('[Complyze] Sending to backend for analysis...', {
+            promptLength: text.length,
+            dlpFindingsCount: dlpResult.findings.length,
+            hasCritical: dlpResult.hasCritical,
+        });
+
         const backendResult = await safeSendMessage({
             type: 'SCAN_PROMPT',
             payload: {
                 prompt: text,
                 aiTool: AI_TOOL,
                 context: '',
-                dlpFindings: dlpResult.findings,
-                hasCritical: dlpResult.hasCritical
+                dlpFindings: dlpResult.findings,   // DLP findings are advisory context
+                hasCritical: dlpResult.hasCritical  // Backend policy engine decides what to do with this
             }
         }, 8000);
 
@@ -446,12 +486,22 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
         }
 
         // ── STEP 3: Apply authoritative backend decision ─────────────────────
-        const policy = backendResult.policy_decision || { action: 'allow', reason: 'Safe' };
+        // The backend response IS the enforcement decision. Extension renders it.
+        const policy = backendResult.policy_decision || { action: 'allow', reason: 'Safe', source: 'backend_policy' };
         let finalAction = policy.action || 'allow';
         const finalText = backendResult.redactedText || dlpResult.redactedText;
         let riskScore = features.riskScore ? backendResult.riskScore || 0 : undefined;
 
-        console.log(`[Complyze] Backend Policy: action=${finalAction} | source=${policy.source || 'backend_policy'}`);
+        // Debug: log the complete decision path to verify correct architecture is used
+        console.log('[Complyze] Backend decision received:', {
+            action: finalAction,
+            decision_source: backendResult.decision_source || policy.source || 'backend_policy',
+            model_used: backendResult.model_used,      // was Ollama consulted?
+            policy_used: backendResult.policy_used,    // was org policy applied?
+            blocked_locally: backendResult.blocked_locally ?? false,
+            riskScore,
+            reason: policy.reason,
+        });
 
         // Note: We don't log locally here anymore because the backend handles its own logging
         // to ensure Dashboard consistency. Backend scanPrompt now writes to Activity log.

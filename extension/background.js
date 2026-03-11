@@ -190,6 +190,25 @@ async function fetchStats() {
     }
 }
 
+// ── Extension heartbeat (ping) ────────────────────────────────────────────────
+// Called alongside policy refresh so the dashboard shows "Extension Health: ONLINE".
+// Uses the same auth headers as all other API calls, so no extra credentials needed.
+async function sendExtensionPing() {
+    if (!currentUser) return;
+    try {
+        var res = await fetch(API_ENDPOINT + '/api/auth/extension/ping', {
+            method: 'POST',
+            headers: buildHeaders(),
+            body: JSON.stringify({ installationId }),
+        });
+        if (res.ok) {
+            console.log('[Complyze] Extension ping sent. Dashboard health updated.');
+        }
+    } catch (e) {
+        console.warn('[Complyze] Extension ping failed (non-fatal):', e.message);
+    }
+}
+
 // ── Full sign-in ──────────────────────────────────────────────────────────────
 async function completeSignIn(firebaseData) {
     var { idToken, refreshToken, localId: uid, email, displayName } = firebaseData;
@@ -227,6 +246,8 @@ async function completeSignIn(firebaseData) {
 
     await saveUser(user);
     fetchAndCachePolicies().catch(() => { });
+    // Immediately ping so dashboard shows ONLINE after login
+    sendExtensionPing().catch(() => { });
     var stats = await fetchStats();
     return { user, stats };
 }
@@ -336,7 +357,10 @@ async function fetchAndCachePolicies() {
             return;
         }
 
-        // 1. Fetch policy rules
+        // 1. Send extension heartbeat so dashboard shows ONLINE status
+        sendExtensionPing().catch(() => { });
+
+        // 2. Fetch policy rules
         var policies = await apiRequest('/api/policies', 'GET');
         if (Array.isArray(policies)) {
             cachedPolicies = policies;
@@ -344,7 +368,7 @@ async function fetchAndCachePolicies() {
             console.log('[Complyze] Policies refreshed:', cachedPolicies.length, 'rules.');
         }
 
-        // 2. Fetch proxy settings (inspect_attachments) — non-fatal, local-only endpoint
+        // 3. Fetch proxy settings (inspect_attachments) — non-fatal, local-only endpoint
         try {
             var settings = await apiRequest('/api/proxy/settings', 'GET');
             if (settings) {
@@ -364,18 +388,31 @@ async function fetchAndCachePolicies() {
 // ── Prompt scanning ────────────────────────────────────────────────────────────
 async function scanPrompt(payload) {
     await ensureFreshToken();
-    // ISSUE 3 FIX: Inject locally cached policies into the scan payload so the
-    // backend uses the correct policy rules without a second round-trip.
+    // Inject locally cached policies so the backend doesn't need a second round-trip.
     var enrichedPayload = Object.assign({}, payload);
     if (cachedPolicies && cachedPolicies.length > 0) {
         enrichedPayload.cachedPolicies = cachedPolicies;
     }
-    // Always send user context so the /api/scanPrompt backend can look up group policy
+    // Always send user/org identity so backend policy engine uses the correct user's rules.
     if (currentUser) {
         enrichedPayload.userEmail = currentUser.email;
+        enrichedPayload.user_id = currentUser.uid;          // explicit user identity
         enrichedPayload.orgId = currentUser.orgId;
+        enrichedPayload.organization_id = currentUser.orgId; // explicit org identity
+        // workspaceId MUST be orgId (not uid) so events land in the correct workspace bucket
         enrichedPayload.workspaceId = currentUser.orgId || currentUser.uid;
     }
+
+    console.log('[Complyze] Sending scan to backend:', {
+        tool: enrichedPayload.aiTool,
+        promptLength: (enrichedPayload.prompt || '').length,
+        dlpFindingsCount: (enrichedPayload.dlpFindings || []).length,
+        hasCritical: enrichedPayload.hasCritical,
+        workspaceId: enrichedPayload.workspaceId,
+        model_used: 'pending',
+        policy_used: 'pending',
+    });
+
     return apiRequest('/api/scanPrompt', 'POST', enrichedPayload);
 }
 
@@ -544,8 +581,23 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalle
                         await chrome.storage.local.set({ sessionBlocked: (blk.sessionBlocked || 0) + 1 });
                     }
 
+                    // Debug: log the full decision path so we can verify correct flow
+                    if (scanResult) {
+                        console.log('[Complyze] Scan result:', {
+                            action: scanResult.action,
+                            decision_source: scanResult.decision_source,
+                            model_used: scanResult.model_used,
+                            policy_used: scanResult.policy_used,
+                            blocked_locally: scanResult.blocked_locally,
+                            riskScore: scanResult.riskScore,
+                        });
+                    }
+
                     sendResponse(scanResult);
-                } catch (e) { sendResponse({ action: 'allow', message: e.message }); }
+                } catch (e) {
+                    console.error('[Complyze] Scan error:', e.message);
+                    sendResponse({ action: 'allow', message: e.message });
+                }
                 return;
             }
 

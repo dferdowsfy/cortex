@@ -144,11 +144,12 @@ export async function POST(req: NextRequest) {
             const fallback = buildFallbackResult(analysisError.message);
             const fallbackDecision = {
                 action: "warn" as const,
-                reason: "Analysis engine failed. Allowed with warning.",
+                reason: "Analysis engine (Ollama) failed. Prompt allowed with warning — check OLLAMA_BASE_URL.",
                 source: "backend_policy" as const,
-                model_used: false,
-                policy_used: true
+                model_used: false,   // Ollama call failed
+                policy_used: true,
             };
+            console.log(`[scanPrompt] Returning Ollama-failure fallback for ${aiTool}: ${analysisError.code}`);
             return NextResponse.json(
                 mapToLegacyResponse(fallback, fallbackDecision, aiTool, { analysisError }),
                 { status: 200 },
@@ -156,9 +157,13 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Policy decision engine (dashboard config is the sole authority) ───────
-        const policyDecision = computePolicyDecision(analysisResult, orgPolicyConfig, hasCritical);
+        // Pass ollamaWasCalled=true so model_used is accurately tracked in the decision.
+        const policyDecision = computePolicyDecision(analysisResult, orgPolicyConfig, hasCritical, true);
 
         // ── Persistent Activity Logging (Ensures Dashboard/Extension Sync) ────────
+        // workspaceId must match what the dashboard queries — prefer orgId over "default".
+        const resolvedWorkspaceId = workspaceId !== "default" ? workspaceId : (orgId || "default");
+
         const eventId = `scan_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
         const activityEvent: ActivityEvent = {
             id: eventId,
@@ -179,11 +184,11 @@ export async function POST(req: NextRequest) {
             findings: analysisResult.findings.map(f => f.reason),
             full_prompt: promptText,
 
-            // New metadata fields
+            // Decision attribution fields — single source of truth for UI + dashboard
             decision_source: policyDecision.source,
-            model_used: policyDecision.model_used,
-            policy_used: policyDecision.policy_used,
-            blocked_locally: false,
+            model_used: policyDecision.model_used,   // true = Ollama was consulted
+            policy_used: policyDecision.policy_used,  // true = org policy was applied
+            blocked_locally: false,                   // backend decision only
             analysis_score: analysisResult.overall_risk_score,
             contextual_risks: analysisResult.contextual_risks,
             prompt_preview: analysisResult.prompt_summary,
@@ -191,8 +196,8 @@ export async function POST(req: NextRequest) {
         };
 
         try {
-            await store.addEvent(activityEvent, workspaceId || orgId || "default");
-            console.log(`[scanPrompt] Activity logged: ${eventId}`);
+            await store.addEvent(activityEvent, resolvedWorkspaceId);
+            console.log(`[scanPrompt] Activity logged: ${eventId} → workspace: ${resolvedWorkspaceId}`);
         } catch (e) {
             console.error("[scanPrompt] Failed to log activity to store", e);
         }
@@ -217,10 +222,29 @@ export async function POST(req: NextRequest) {
 // the existing dashboard, extension, and proxy consumers.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * computePolicyDecision
+ *
+ * The logged-in user's org/admin policy config is the SOLE source of truth.
+ * Local DLP regex results (hasCriticalDlpMatch) are treated as SIGNALS only —
+ * they inform the policy engine but never make the final enforcement decision.
+ *
+ * Decision path:
+ *   1. Audit mode  → always allow (observation only)
+ *   2. Critical DLP signal → block ONLY if org policy has block_high_risk=true
+ *                         → warn otherwise (policy says don't block)
+ *   3. AI risk score / severity → block if score ≥ threshold AND block_high_risk=true
+ *   4. Attachment risk → block/warn per policy
+ *   5. Auto-redaction → redact if sensitive categories detected AND policy enables it
+ *   6. AI suggested action → advisory fallback (never overrides policy off switch)
+ *
+ * @param ollamaWasCalled - Whether Ollama was successfully invoked for this request
+ */
 function computePolicyDecision(
     analysis: ComplyzeAnalysisResult,
     policyConfig: any,
-    hasCriticalDlpMatch: boolean
+    hasCriticalDlpMatch: boolean,
+    ollamaWasCalled: boolean = true
 ): { action: "allow" | "redact" | "warn" | "block"; reason: string; source: "backend_policy"; model_used: boolean; policy_used: boolean } {
     const threshold = policyConfig?.risk_threshold ?? 60;
     const blockHighRisk = policyConfig?.block_high_risk ?? true;
@@ -230,69 +254,95 @@ function computePolicyDecision(
         action: "allow" as "allow" | "redact" | "warn" | "block",
         reason: "Prompt complies with organization policies.",
         source: "backend_policy" as const,
-        model_used: true,
-        policy_used: true
+        // model_used reflects whether Ollama was consulted — always true here since
+        // this function is only called after analysePrompt() succeeds.
+        model_used: ollamaWasCalled,
+        policy_used: true,
     };
 
-    // 1. Audit mode overrides everything to allow
+    // ── 1. Audit mode overrides all enforcement to allow ────────────────────
     if (auditMode) {
         result.action = "allow";
-        result.reason = "Audit mode is enabled. Allowing prompt.";
+        result.reason = "Audit mode is enabled. Prompts are logged for observation only — no enforcement applied.";
+        console.log("[policy] audit_mode=true → allow (observation only)");
         return result;
     }
 
-    // 2. Hard deterministic DLP override (Injected from patterns or server check)
+    // ── 2. Critical DLP signal — defer to org policy, NOT a hard override ───
+    // The regex is a reliable DETECTOR but the DECISION belongs to the policy engine.
+    // If an admin sets block_high_risk=false, a regex match must NOT override that.
     if (hasCriticalDlpMatch) {
-        result.action = "block";
-        result.reason = "Critical regex match (API Key, SSN). Automatic block.";
-        result.model_used = false; // Decided by regex before/alongside model
-        return result;
+        if (blockHighRisk) {
+            result.action = "block";
+            result.reason =
+                "Sensitive credential pattern detected (e.g. AWS key, SSN, API token). " +
+                "Blocked per organization policy (block_high_risk=true).";
+            console.log("[policy] critical DLP signal + block_high_risk=true → block (backend_policy)");
+            return result;
+        } else {
+            // Policy explicitly says don't block — issue a warning and let through.
+            result.action = "warn";
+            result.reason =
+                "Sensitive credential pattern detected. " +
+                "Your organization policy does not enforce blocking — issuing a warning instead.";
+            console.log("[policy] critical DLP signal + block_high_risk=false → warn (backend_policy)");
+            return result;
+        }
     }
 
-    // 3. Block high risk score if enabled
+    // ── 3. AI risk score / severity threshold ────────────────────────────────
     if (blockHighRisk) {
         if (analysis.overall_risk_score >= threshold) {
             result.action = "block";
-            result.reason = `Risk score (${analysis.overall_risk_score}) exceeds organization threshold (${threshold}).`;
+            result.reason = `AI risk score (${analysis.overall_risk_score}) exceeds org threshold (${threshold}). Blocked per policy.`;
+            console.log(`[policy] riskScore=${analysis.overall_risk_score} ≥ threshold=${threshold} → block`);
             return result;
         }
         if (analysis.severity === "critical" || analysis.severity === "high") {
             result.action = "block";
-            result.reason = `AI severity (${analysis.severity}) exceeds acceptable risk tolerance.`;
+            result.reason = `AI severity classification (${analysis.severity}) exceeds acceptable risk tolerance per org policy.`;
+            console.log(`[policy] severity=${analysis.severity} → block`);
             return result;
         }
     }
 
-    // 4. Attachment risk block
+    // ── 4. Attachment risk block ─────────────────────────────────────────────
     if (policyConfig?.scan_attachments !== false && analysis.attachment_analysis?.attachment_present) {
         if (analysis.attachment_analysis.attachment_risk_score >= threshold) {
             result.action = blockHighRisk ? "block" : "warn";
             result.reason = "Attachment risk score exceeds organization threshold.";
+            console.log(`[policy] attachmentRisk=${analysis.attachment_analysis.attachment_risk_score} → ${result.action}`);
             return result;
         }
     }
 
-    // 5. Automatic Redaction if configured
+    // ── 5. Auto-redaction if configured ─────────────────────────────────────
     if (policyConfig?.auto_redaction !== false) {
-        if (analysis.sensitive_categories?.length > 0 || analysis.redacted_prompt !== analysis.prompt_summary) {
+        if (analysis.sensitive_categories?.length > 0) {
             result.action = "redact";
-            result.reason = "Sensitive categories detected. Enforcing auto-redaction.";
+            result.reason = "Sensitive categories detected. Enforcing auto-redaction per organization policy.";
+            console.log("[policy] sensitive_categories detected → redact");
             return result;
         }
     }
 
-    // 6. Final fallback: If AI strongly suggested a block or manual review, but org didn't enforce block above
+    // ── 6. AI-suggested action — advisory only ───────────────────────────────
+    // The model's suggested_action is ADVISORY. We only act on it here if the org
+    // policy permits it (i.e., we've already passed through all policy checks above).
     if (analysis.suggested_action === "block" && blockHighRisk) {
         result.action = "block";
-        result.reason = "AI analyst explicitly suggested blocking.";
+        result.reason = "AI analysis recommends blocking based on content risk.";
+        console.log("[policy] model suggested_action=block + block_high_risk=true → block");
         return result;
     }
     if (analysis.suggested_action === "warn" || analysis.suggested_action === "manual_review") {
         result.action = "warn";
-        result.reason = "AI analyst suggested warning or review.";
+        result.reason = "AI analysis recommends review. Issuing warning per advisory.";
+        console.log(`[policy] model suggested_action=${analysis.suggested_action} → warn`);
         return result;
     }
 
+    console.log("[policy] all checks passed → allow");
     return result;
 }
 

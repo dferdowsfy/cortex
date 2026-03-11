@@ -42,6 +42,9 @@ export default function Dashboard() {
     const [aiShieldActive, setAiShieldActive] = useState(true);
     const [lastUpdated, setLastUpdated] = useState("");
     const [loading, setLoading] = useState(true);
+    // Extension health — populated via /api/auth/extension/ping GET
+    const [extensionConnected, setExtensionConnected] = useState(false);
+    const [extensionLastSeen, setExtensionLastSeen] = useState<string | null>(null);
     // ISSUE 4: 30d Exposure Flux — % change in violations vs prior 30d period
     const [exposureFlux, setExposureFlux] = useState<number | null>(null);
 
@@ -71,6 +74,12 @@ export default function Dashboard() {
                 fetch(`/api/proxy/activity?period=7d&events=50&workspaceId=${id}`)
                     .then(r => r.ok ? r.json() : null)
                     .catch(() => null)
+            );
+
+            // Also check extension health for all org workspaces
+            const extPingPromises = orgIds.map(id =>
+                fetch(`/api/auth/extension/ping?orgId=${id}`)
+                    .then(r => r.ok ? r.json() : null).catch(() => null)
             );
 
             const [agentRes, auditRes, settingsRes, ...allActivityResults] = await Promise.all([
@@ -138,6 +147,21 @@ export default function Dashboard() {
                 }
             }
 
+            // Resolve extension health from ping results
+            const extPingResults = await Promise.all(extPingPromises);
+            let extConnected = false;
+            let extLastSeen: string | null = null;
+            for (const ping of extPingResults) {
+                if (ping?.connected) {
+                    extConnected = true;
+                    if (ping.last_seen && (!extLastSeen || ping.last_seen > extLastSeen)) {
+                        extLastSeen = ping.last_seen;
+                    }
+                }
+            }
+            setExtensionConnected(extConnected);
+            setExtensionLastSeen(extLastSeen);
+
             if (agentRes.ok && uniqueExtensions === 0) {
                 const data = await agentRes.json();
                 if (data.agents?.length > 0) setBrowsersProtected(data.agents.length);
@@ -182,6 +206,8 @@ export default function Dashboard() {
                 promptsFlaggedToday={proxySummary?.total_violations || 0}
                 activePolicies={0}
                 exposureFlux={exposureFlux}
+                extensionConnected={extensionConnected}
+                extensionLastSeen={extensionLastSeen}
             />
         </div>
     );
