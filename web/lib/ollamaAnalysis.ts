@@ -319,22 +319,31 @@ function buildAnalysisPrompt(input: ComplyzeAnalysisInput): string {
 
 function normaliseSeverity(v: unknown): "low" | "medium" | "high" | "critical" {
     if (typeof v !== "string") return "low";
-    const lower = v.toLowerCase();
-    return SEVERITY_VALUES.has(lower) ? (lower as "low" | "medium" | "high" | "critical") : "low";
+    const lower = v.toLowerCase().trim();
+    if (SEVERITY_VALUES.has(lower)) return lower as "low" | "medium" | "high" | "critical";
+    if (DEV) console.warn(`[ollamaAnalysis] Dropped invalid severity: "${v}"`);
+    return "low";
+}
+
+function recomputeSeverity(score: number): "low" | "medium" | "high" | "critical" {
+    if (score <= 20) return "low";
+    if (score <= 45) return "medium";
+    if (score <= 75) return "high";
+    return "critical";
 }
 
 function normaliseAction(v: unknown): "allow" | "allow_with_redaction" | "warn" | "block" | "manual_review" {
     if (typeof v !== "string") return "manual_review";
-    const lower = v.toLowerCase().replace(/\s+/g, "_");
-    return ACTION_VALUES.has(lower)
-        ? (lower as "allow" | "allow_with_redaction" | "warn" | "block" | "manual_review")
-        : "manual_review";
+    const lower = v.toLowerCase().trim().replace(/\s+/g, "_");
+    if (ACTION_VALUES.has(lower)) return lower as "allow" | "allow_with_redaction" | "warn" | "block" | "manual_review";
+    if (DEV) console.warn(`[ollamaAnalysis] Dropped invalid action: "${v}"`);
+    return "manual_review";
 }
 
 function normaliseConfidence(v: unknown): number {
     const n = Number(v);
     if (isNaN(n)) return 0;
-    if (n > 1) return Math.min(n / 100, 1); // convert 0-100 → 0-1
+    if (n > 1 && n <= 100) return Math.min(n / 100, 1); // convert 0-100 → 0-1
     return Math.max(0, Math.min(1, n));
 }
 
@@ -343,10 +352,37 @@ function normaliseInt(v: unknown, fallback = 0): number {
     return isNaN(n) ? fallback : Math.round(n);
 }
 
-function filterEnum<T extends string>(arr: unknown, allowed: Set<T>): T[] {
+function filterEnum<T extends string>(arr: unknown, allowed: Set<T>, fieldName: string = "enum"): T[] {
     if (!Array.isArray(arr)) return [];
-    return arr.filter((x): x is T => typeof x === "string" && allowed.has(x.toLowerCase() as T))
-        .map((x) => x.toLowerCase() as T);
+    const valid: T[] = [];
+    for (const x of arr) {
+        if (typeof x === "string") {
+            const lower = x.toLowerCase().trim() as T;
+            if (allowed.has(lower)) {
+                valid.push(lower);
+            } else if (DEV) {
+                console.warn(`[ollamaAnalysis] Dropped invalid enum value in ${fieldName}: "${x}"`);
+            }
+        }
+    }
+    return valid;
+}
+
+function generateRedactedPrompt(prompt: string): string {
+    if (!prompt || !prompt.trim()) return prompt || "";
+    let redacted = prompt;
+    // Basic redaction of obvious patterns
+    // AWS keys
+    redacted = redacted.replace(/(AKIA|ASIA)[0-9A-Z]{16}/g, "[REDACTED_AWS_KEY]");
+    // SSN
+    redacted = redacted.replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[REDACTED_SSN]");
+    // Bearer tags
+    redacted = redacted.replace(/Bearer\s+[A-Za-z0-9\-\._~+\/]+=*/gi, "Bearer [REDACTED_TOKEN]");
+    // API keys
+    redacted = redacted.replace(/api[_-]?key[^\w]{1,5}[A-Za-z0-9_-]{16,}/gi, "api_key=[REDACTED]");
+    // Passwords in assignments
+    redacted = redacted.replace(/password[^\w]{1,5}[A-Za-z0-9_!@#$%^&\*\-]{6,}/gi, "password=[REDACTED]");
+    return redacted;
 }
 
 function normaliseFindings(raw: unknown): ComplyzeAnalysisResult["findings"] {
@@ -377,7 +413,7 @@ function validateRequired(obj: Record<string, unknown>): void {
 // Normalise + validate the raw parsed object
 // ─────────────────────────────────────────────────────────────────────────────
 
-function normaliseAndValidate(raw: unknown): ComplyzeAnalysisResult {
+export function normaliseAndValidate(raw: unknown, originalPromptText: string): ComplyzeAnalysisResult {
     if (typeof raw !== "object" || raw === null) {
         throw new Error("Parsed response is not an object");
     }
@@ -405,18 +441,30 @@ function normaliseAndValidate(raw: unknown): ComplyzeAnalysisResult {
         ? (gd.breakdown as Record<string, unknown>)
         : {};
 
-    const severity = normaliseSeverity(obj.severity);
-    const riskScore = normaliseInt(obj.overall_risk_score, 0);
+    // Recompute severity from score
+    let riskScore = normaliseInt(obj.overall_risk_score, -1);
+    if (riskScore === -1) {
+        if (DEV) console.warn("[ollamaAnalysis] overall_risk_score missing, falling back to 0");
+        riskScore = 0;
+    }
+    const computedSeverity = recomputeSeverity(riskScore);
+
+    // Redacted prompt fallback
+    let redacted = typeof obj.redacted_prompt === "string" ? obj.redacted_prompt.trim() : "";
+    if (!redacted) {
+        redacted = generateRedactedPrompt(originalPromptText);
+        if (DEV) console.log("[ollamaAnalysis] Computed fallback redacted_prompt due to missing/empty value.");
+    }
 
     const result: ComplyzeAnalysisResult = {
         analysis_version: typeof obj.analysis_version === "string" ? obj.analysis_version : "1.0",
         prompt_summary: typeof obj.prompt_summary === "string" ? obj.prompt_summary : "",
-        redacted_prompt: typeof obj.redacted_prompt === "string" ? obj.redacted_prompt : "",
+        redacted_prompt: redacted,
         overall_risk_score: riskScore,
-        severity,
+        severity: computedSeverity,
         confidence: normaliseConfidence(obj.confidence),
-        sensitive_categories: filterEnum(obj.sensitive_categories, SENSITIVE_CATEGORY_VALUES as Set<string>) as string[],
-        contextual_risks: filterEnum(obj.contextual_risks, CONTEXTUAL_RISK_VALUES as Set<string>) as string[],
+        sensitive_categories: filterEnum(obj.sensitive_categories, SENSITIVE_CATEGORY_VALUES as Set<string>, "sensitive_categories") as string[],
+        contextual_risks: filterEnum(obj.contextual_risks, CONTEXTUAL_RISK_VALUES as Set<string>, "contextual_risks") as string[],
         findings: normaliseFindings(obj.findings),
         attachment_analysis: {
             attachment_present: Boolean(aa.attachment_present),
@@ -436,7 +484,7 @@ function normaliseAndValidate(raw: unknown): ComplyzeAnalysisResult {
         },
         graph_data: {
             risk_score: normaliseInt(gd.risk_score ?? riskScore),
-            severity_band: normaliseSeverity(gd.severity_band ?? severity),
+            severity_band: computedSeverity,
             breakdown: {
                 sensitive_content: normaliseInt(breakdown.sensitive_content),
                 contextual_risk: normaliseInt(breakdown.contextual_risk),
@@ -568,7 +616,7 @@ export async function analysePrompt(
         // ── Normalise & validate ───────────────────────────────────────────────
         let validated: ComplyzeAnalysisResult;
         try {
-            validated = normaliseAndValidate(parsed);
+            validated = normaliseAndValidate(parsed, input.promptText);
         } catch (validationError) {
             const msg =
                 validationError instanceof Error ? validationError.message : "Unknown validation error";
@@ -582,10 +630,11 @@ export async function analysePrompt(
         }
 
         if (DEV) {
-            console.log("[ollamaAnalysis] Validated output:", {
+            console.log("[ollamaAnalysis] Validated and normalized output:", {
                 overall_risk_score: validated.overall_risk_score,
                 severity: validated.severity,
                 recommended_action: validated.recommended_action,
+                confidence: validated.confidence,
                 findingsCount: validated.findings.length,
             });
         }

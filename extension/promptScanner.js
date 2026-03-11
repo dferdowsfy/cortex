@@ -398,6 +398,7 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
                     aiTool: AI_TOOL, promptLength: text.length, riskScore: 95,
                     action: 'block', blocked: true,
                     findings: dlpResult.findings.map(f => f.label),
+                    promptText: text,
                     timestamp: new Date().toISOString(),
                 }
             }, 2000);
@@ -446,6 +447,7 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
                 riskScore: riskScore !== undefined ? riskScore : 0,
                 action: finalAction, blocked: finalAction === 'block',
                 findings: backendResult.details || dlpResult.findings.map(f => f.label),
+                promptText: text,
                 timestamp: new Date().toISOString(),
             }
         }, 2000);
