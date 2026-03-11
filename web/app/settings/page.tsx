@@ -279,15 +279,15 @@ export default function SettingsPage() {
 
             {/* Notification Banners */}
             {saved && (
-                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-black font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                    <svg className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                     Settings updated successfully.
                 </div>
             )}
             {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-black font-semibold">
                     {error}
                 </div>
             )}
