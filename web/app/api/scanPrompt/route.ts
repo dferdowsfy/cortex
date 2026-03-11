@@ -18,7 +18,7 @@ export const maxDuration = 120;
  * POST /api/scanPrompt
  *
  * Evaluates a submitted prompt against active group/org policies via the
- * local `complyze-qwen` Ollama model.
+ * remote `complyze-qwen` Ollama model hosted on the Complyze VPS.
  *
  * Accepts:
  *   promptText | prompt  — the raw prompt to evaluate
@@ -192,7 +192,14 @@ export async function POST(req: NextRequest) {
             analysis_score: analysisResult.overall_risk_score,
             contextual_risks: analysisResult.contextual_risks,
             prompt_preview: analysisResult.prompt_summary,
-            provider: aiTool
+            provider: aiTool,
+
+            // Identity fields — needed for dashboard ↔ extension sync.
+            // organization_id + user_id ensure the dashboard shows the event
+            // for the correct user/org without relying solely on workspace path.
+            organization_id: orgId || resolvedWorkspaceId,
+            user_id: userEmail || body.user_id || "anonymous",
+            final_action: policyDecision.action,
         };
 
         try {
@@ -361,6 +368,12 @@ function mapToLegacyResponse(
                     ? "medium"
                     : "low";
 
+    // Resolve Ollama host/model from env at response time (never hardcoded).
+    // These are included in every response so callers can verify which remote
+    // instance was used — critical for debugging prod vs. local divergence.
+    const ollamaHostUsed = (process.env.OLLAMA_BASE_URL || "").trim().replace(/\/$/, "") || null;
+    const ollamaModelUsed = (process.env.OLLAMA_MODEL || "").trim() || null;
+
     return {
         // Legacy fields mapping for proxy compatibility
         riskScore: result.overall_risk_score,
@@ -396,6 +409,10 @@ function mapToLegacyResponse(
         model_used: decision.model_used,
         policy_used: decision.policy_used,
         blocked_locally: false,
+
+        // Ollama host/model actually used — for production verification
+        ollama_host_used: ollamaHostUsed,
+        ollama_model_used: ollamaModelUsed,
 
         // Surface errors if any
         ...(result._error ? { analysisError: result._error } : {}),

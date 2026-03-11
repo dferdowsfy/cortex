@@ -9,7 +9,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
-    const workspaceId = searchParams.get("workspaceId") || "default";
+    // Prefer explicit ?workspaceId= param, then fall back to X-Organization-ID header
+    // (set automatically by background.js buildHeaders()). This ensures the dashboard
+    // always queries the correct workspace even when the param is omitted.
+    const workspaceId =
+        searchParams.get("workspaceId") ||
+        req.headers.get("X-Organization-ID") ||
+        "default";
     const period = (searchParams.get("period") as "7d" | "30d") || "7d";
     const eventsLimit = parseInt(searchParams.get("events") || "50", 10);
 

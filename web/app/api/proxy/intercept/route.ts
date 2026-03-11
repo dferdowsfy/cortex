@@ -122,6 +122,16 @@ export async function POST(req: NextRequest) {
             risk_category: classification.risk_category,
             timestamp: new Date().toISOString(),
             attachment_inspection_enabled: settings.inspect_attachments,
+
+            // Decision attribution — proxy/intercept uses regex classification only,
+            // not the Ollama model. Ollama is used only in /api/scanPrompt.
+            decision_source: "backend_policy",
+            model_used: false,      // regex classifier, not Ollama
+            policy_used: true,      // enforcement_mode from settings was applied
+            blocked_locally: false, // all decisions come from backend settings
+            analysis_score: classification.sensitivity_score,
+            contextual_risks: [],
+            provider: tool,
         };
 
         // Store full prompt only in Full Audit Mode
