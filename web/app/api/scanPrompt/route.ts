@@ -18,7 +18,8 @@ export const maxDuration = 120;
  * POST /api/scanPrompt
  *
  * Evaluates a submitted prompt against active group/org policies via the
- * remote `complyze-qwen` Ollama model hosted on the Complyze VPS.
+ * locally-hosted Ollama model (http://localhost:11434 by default).
+ * ALL risk decisions originate from the LLM — regex is never the decision source.
  *
  * Accepts:
  *   promptText | prompt  — the raw prompt to evaluate
@@ -105,17 +106,13 @@ export async function POST(req: NextRequest) {
         // ── Build context string ───────────────────────────────────────────────────
         const contextStr = Array.isArray(context) ? context.join("\n---\n") : context;
 
-        // ── Server-side DLP safety net (runs before LLM, not after) ───────────────
-        const criticalPatterns = [
-            /\b(AKIA|AGPA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{12,20}\b/,
-            /\bsk-(?:proj-)?[A-Za-z0-9]{20,}\b/,
-            /\b(?!000|666|9\d{2})\d{3}-\d{2}-\d{4}\b/,
-        ];
-        const hasCritical = criticalPatterns.some((p) => p.test(promptText));
-        if (hasCritical) console.log("[scanPrompt] Critical DLP pattern matched locally.");
+        // ── Dispatch to local Ollama for analysis ─────────────────────────────────
+        // Regex-based DLP patterns are NOT used for enforcement decisions.
+        // All risk scoring and action decisions must originate from the LLM.
+        // hasCritical is always false — the policy engine must not block based on regex.
+        const hasCritical = false;
 
-        // ── Call Ollama analysis ───────────────────────────────────────────────────
-        console.log(`[scanPrompt] Dispatching to Ollama: ${aiTool} (prompt size: ${promptText.length})`);
+        console.log(`[scanPrompt] Dispatching to local Ollama: ${aiTool} (prompt size: ${promptText.length})`);
         let analysisResult: ComplyzeAnalysisResult;
         let analysisError: OllamaAnalysisError | null = null;
 
@@ -233,17 +230,15 @@ export async function POST(req: NextRequest) {
  * computePolicyDecision
  *
  * The logged-in user's org/admin policy config is the SOLE source of truth.
- * Local DLP regex results (hasCriticalDlpMatch) are treated as SIGNALS only —
- * they inform the policy engine but never make the final enforcement decision.
+ * hasCriticalDlpMatch is always passed as false — regex MUST NOT drive decisions.
+ * All risk signals come exclusively from the Ollama LLM analysis result.
  *
  * Decision path:
- *   1. Audit mode  → always allow (observation only)
- *   2. Critical DLP signal → block ONLY if org policy has block_high_risk=true
- *                         → warn otherwise (policy says don't block)
- *   3. AI risk score / severity → block if score ≥ threshold AND block_high_risk=true
- *   4. Attachment risk → block/warn per policy
- *   5. Auto-redaction → redact if sensitive categories detected AND policy enables it
- *   6. AI suggested action → advisory fallback (never overrides policy off switch)
+ *   1. Audit mode   → always allow (observation only)
+ *   2. AI risk score / severity → block if score ≥ threshold AND block_high_risk=true
+ *   3. Attachment risk → block/warn per policy
+ *   4. Auto-redaction → redact if sensitive categories detected AND policy enables it
+ *   5. AI suggested action → advisory fallback (never overrides policy off switch)
  *
  * @param ollamaWasCalled - Whether Ollama was successfully invoked for this request
  */
@@ -275,29 +270,8 @@ function computePolicyDecision(
         return result;
     }
 
-    // ── 2. Critical DLP signal — defer to org policy, NOT a hard override ───
-    // The regex is a reliable DETECTOR but the DECISION belongs to the policy engine.
-    // If an admin sets block_high_risk=false, a regex match must NOT override that.
-    if (hasCriticalDlpMatch) {
-        if (blockHighRisk) {
-            result.action = "block";
-            result.reason =
-                "Sensitive credential pattern detected (e.g. AWS key, SSN, API token). " +
-                "Blocked per organization policy (block_high_risk=true).";
-            console.log("[policy] critical DLP signal + block_high_risk=true → block (backend_policy)");
-            return result;
-        } else {
-            // Policy explicitly says don't block — issue a warning and let through.
-            result.action = "warn";
-            result.reason =
-                "Sensitive credential pattern detected. " +
-                "Your organization policy does not enforce blocking — issuing a warning instead.";
-            console.log("[policy] critical DLP signal + block_high_risk=false → warn (backend_policy)");
-            return result;
-        }
-    }
-
-    // ── 3. AI risk score / severity threshold ────────────────────────────────
+    // ── 2. AI risk score / severity threshold ────────────────────────────────
+    // NOTE: hasCriticalDlpMatch is always false — regex must not drive decisions.
     if (blockHighRisk) {
         if (analysis.overall_risk_score >= threshold) {
             result.action = "block";
@@ -313,7 +287,7 @@ function computePolicyDecision(
         }
     }
 
-    // ── 4. Attachment risk block ─────────────────────────────────────────────
+    // ── 3. Attachment risk block ─────────────────────────────────────────────
     if (policyConfig?.scan_attachments !== false && analysis.attachment_analysis?.attachment_present) {
         if (analysis.attachment_analysis.attachment_risk_score >= threshold) {
             result.action = blockHighRisk ? "block" : "warn";
@@ -323,7 +297,7 @@ function computePolicyDecision(
         }
     }
 
-    // ── 5. Auto-redaction if configured ─────────────────────────────────────
+    // ── 4. Auto-redaction if configured ─────────────────────────────────────
     if (policyConfig?.auto_redaction !== false) {
         if (analysis.sensitive_categories?.length > 0) {
             result.action = "redact";
@@ -333,7 +307,7 @@ function computePolicyDecision(
         }
     }
 
-    // ── 6. AI-suggested action — advisory only ───────────────────────────────
+    // ── 5. AI-suggested action — advisory only ───────────────────────────────
     // The model's suggested_action is ADVISORY. We only act on it here if the org
     // policy permits it (i.e., we've already passed through all policy checks above).
     if (analysis.suggested_action === "block" && blockHighRisk) {

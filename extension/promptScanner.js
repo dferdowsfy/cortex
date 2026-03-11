@@ -1,25 +1,25 @@
 /**
- * promptScanner.js — Complyze Zero-Trust Shield v1.3.0
+ * promptScanner.js — Complyze Zero-Trust Shield v1.4.0
  *
  * Content script injected into AI platform pages.
  * Intercepts prompts BEFORE they reach the AI provider.
  *
  * Enforcement pipeline:
- *  1. Client-side DLP preflight (regex) — generates SIGNAL only, not a final decision
- *  2. Backend scan — extension → backend → Ollama (complyze-qwen) → policy engine
- *  3. Backend returns authoritative action (allow / redact / warn / block)
- *  4. Extension enforces that backend decision in-page
- *  5. Overlay feedback shown; lastScanResult written to storage for popup display
+ *  1. Client-side DLP preflight (regex) — generates SIGNAL only, NEVER a blocking decision
+ *  2. Local Ollama analysis — extension calls http://localhost:11434 directly for LLM evaluation
+ *  3. If local Ollama unavailable, fall back to backend scan (which also calls Ollama)
+ *  4. Policy decision is derived exclusively from LLM output — never from regex
+ *  5. Extension enforces that decision in-page
+ *  6. Overlay feedback shown; lastScanResult written to storage for popup display
  *
- * Local DLP regex is NEVER the final arbiter for configurable policy cases.
- * An emergency local fail-safe only activates when the backend is unreachable
- * AND a critical pattern is detected — and even then it logs to backend.
+ * IMPORTANT: Regex patterns are SIGNALS only. They are forwarded as context to Ollama.
+ * No blocking, redaction, or enforcement decision may originate from regex alone.
  *
- * Debug fields in every backend response:
- *   model_used      — was Ollama consulted?
+ * Debug fields in every response:
+ *   model_used      — was Ollama consulted? (always true in normal flow)
  *   policy_used     — was org policy applied?
- *   blocked_locally — was this an offline emergency block?
- *   decision_source — "backend_policy" | "local_emergency_block"
+ *   blocked_locally — was this a local Ollama decision?
+ *   decision_source — "local_ollama" | "backend_policy"
  */
 
 'use strict';
@@ -99,6 +99,159 @@ const DLP_PATTERNS = [
         action: 'redact', replacement: 'password=[REDACTED]', severity: 'high',
     },
 ];
+
+// ── Local Ollama Client ───────────────────────────────────────────────────────
+// All prompt risk decisions MUST originate from the local Ollama model.
+// Regex DLP findings above are forwarded as context only — never used to block.
+
+const OLLAMA_LOCAL_URL = 'http://localhost:11434/api/generate';
+const OLLAMA_LOCAL_MODEL = 'complyze-qwen';
+const OLLAMA_TIMEOUT_MS = 10000; // 10 s — local inference should be fast
+
+/**
+ * Expected LLM output schema:
+ * {
+ *   "risk_score": 0-100,
+ *   "risk_type": ["PII","Secrets","Credentials","Safe"],
+ *   "confidence": 0-1,
+ *   "recommended_action": "allow | redact | audit | block"
+ * }
+ */
+const OLLAMA_RESPONSE_SCHEMA = {
+    type: 'object',
+    properties: {
+        risk_score: { type: 'integer', minimum: 0, maximum: 100 },
+        risk_type: { type: 'array', items: { type: 'string' } },
+        confidence: { type: 'number', minimum: 0, maximum: 1 },
+        recommended_action: { type: 'string' },
+    },
+    required: ['risk_score', 'risk_type', 'confidence', 'recommended_action'],
+};
+
+/**
+ * callLocalOllama — sends the prompt to the local Ollama instance and returns
+ * a structured risk decision.  Returns null if Ollama is unreachable or times out.
+ *
+ * @param {string} promptText      The raw user prompt
+ * @param {Array}  dlpFindings     Advisory DLP signals to include as context
+ * @returns {Promise<{risk_score, risk_type, confidence, recommended_action}|null>}
+ */
+async function callLocalOllama(promptText, dlpFindings) {
+    const systemInstruction = [
+        'You are a security model that detects sensitive information in prompts.',
+        'Evaluate the prompt below and return ONLY a JSON object with these fields:',
+        '  risk_score (integer 0-100): overall risk level',
+        '  risk_type (array of strings): detected categories, e.g. ["PII","Secrets","Credentials","Safe"]',
+        '  confidence (number 0-1): confidence in the assessment',
+        '  recommended_action (string): one of "allow", "redact", "audit", "block"',
+        '',
+        'Rules:',
+        '  0-20   → low risk    → recommended_action: "allow"',
+        '  21-45  → medium risk → recommended_action: "audit"',
+        '  46-75  → high risk   → recommended_action: "redact"',
+        '  76-100 → critical    → recommended_action: "block"',
+        '',
+        'Additional DLP signals detected by the client (treat as advisory context, not facts):',
+        JSON.stringify(dlpFindings || []),
+        '',
+        'Return ONLY the JSON object — no commentary, no markdown fences.',
+    ].join('\n');
+
+    const body = JSON.stringify({
+        model: OLLAMA_LOCAL_MODEL,
+        prompt: promptText,
+        system: systemInstruction,
+        stream: false,
+        format: OLLAMA_RESPONSE_SCHEMA,
+    });
+
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+
+        let res;
+        try {
+            res = await fetch(OLLAMA_LOCAL_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body,
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timer);
+        }
+
+        if (!res.ok) {
+            console.warn(`[Complyze] Local Ollama HTTP error: ${res.status}`);
+            return null;
+        }
+
+        const raw = await res.text();
+        let envelope;
+        try { envelope = JSON.parse(raw); } catch {
+            console.warn('[Complyze] Local Ollama: outer JSON parse failed');
+            return null;
+        }
+
+        // Ollama wraps the model output in a `response` string field
+        const inner = typeof envelope.response === 'string' ? envelope.response : raw;
+        let parsed;
+        try { parsed = JSON.parse(inner); } catch {
+            // Some models return the JSON directly without an envelope
+            try { parsed = typeof inner === 'object' ? inner : JSON.parse(raw); } catch {
+                console.warn('[Complyze] Local Ollama: inner JSON parse failed');
+                return null;
+            }
+        }
+
+        // Normalise and validate required fields
+        const risk_score = typeof parsed.risk_score === 'number'
+            ? Math.max(0, Math.min(100, Math.round(parsed.risk_score))) : 0;
+        const risk_type = Array.isArray(parsed.risk_type) ? parsed.risk_type : ['Safe'];
+        const confidence = typeof parsed.confidence === 'number'
+            ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5;
+        const validActions = new Set(['allow', 'redact', 'audit', 'block']);
+        const recommended_action = validActions.has(parsed.recommended_action)
+            ? parsed.recommended_action : 'audit';
+
+        console.log('[Complyze] Local Ollama decision:', { risk_score, risk_type, confidence, recommended_action });
+        return { risk_score, risk_type, confidence, recommended_action };
+    } catch (err) {
+        if (err && err.name === 'AbortError') {
+            console.warn('[Complyze] Local Ollama timed out — falling back to backend');
+        } else {
+            console.warn('[Complyze] Local Ollama unreachable:', err && err.message);
+        }
+        return null;
+    }
+}
+
+/**
+ * mapOllamaDecision — converts a local Ollama response into the same shape
+ * that the backend /api/scanPrompt returns, so the rest of the enforcement
+ * code (enforceBlock / enforceRedaction / showOverlay) stays unchanged.
+ */
+function mapOllamaDecision(ollamaResult) {
+    const { risk_score, risk_type, confidence, recommended_action } = ollamaResult;
+    const actionMap = { allow: 'allow', audit: 'warn', redact: 'redact', block: 'block' };
+    const action = actionMap[recommended_action] || 'warn';
+
+    return {
+        riskScore: risk_score,
+        action,
+        message: `Local Ollama analysis: ${risk_type.join(', ')} (score ${risk_score})`,
+        policy_decision: {
+            action,
+            reason: `Ollama detected: ${risk_type.join(', ')} with confidence ${confidence.toFixed(2)}`,
+            source: 'local_ollama',
+        },
+        analysis_result: { findings: [], sensitive_categories: risk_type },
+        decision_source: 'local_ollama',
+        model_used: true,
+        policy_used: false,
+        blocked_locally: true,
+    };
+}
 
 // ── AI Platform Allowlist ─────────────────────────────────────────────────────
 const AI_DOMAINS = [
@@ -432,55 +585,119 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
             hasCritical: dlpResult.hasCritical,
         });
 
+        // ── STEP 2a: Local Ollama — primary decision source ─────────────────
+        // ALL enforcement decisions must originate from the LLM, never from regex.
+        // Try the locally-hosted Ollama instance first (http://localhost:11434).
+        console.log('[Complyze] Calling local Ollama for risk analysis...', {
+            promptLength: text.length,
+            dlpSignals: dlpResult.findings.length,
+        });
+
+        const ollamaResult = await callLocalOllama(text, dlpResult.findings);
+
+        if (ollamaResult) {
+            // Local Ollama responded — use its decision directly
+            const backendResult = mapOllamaDecision(ollamaResult);
+            const policy = backendResult.policy_decision;
+            const finalAction = policy.action || 'allow';
+
+            console.log('[Complyze] Local Ollama enforcement:', {
+                action: finalAction,
+                decision_source: 'local_ollama',
+                model_used: true,
+                riskScore: ollamaResult.risk_score,
+                risk_type: ollamaResult.risk_type,
+            });
+
+            notifyLastScan({
+                action: finalAction,
+                findings: dlpResult.findings,
+                message: policy.reason || '',
+                source: 'local_ollama',
+            }, snippet);
+
+            safeSendMessage({
+                type: 'LOG_ACTIVITY', payload: {
+                    aiTool: AI_TOOL, promptLength: text.length,
+                    riskScore: ollamaResult.risk_score,
+                    action: finalAction,
+                    blocked: finalAction === 'block',
+                    findings: ollamaResult.risk_type,
+                    promptText: text,
+                    decision_source: 'local_ollama',
+                    model_used: true,
+                    blocked_locally: finalAction === 'block',
+                    timestamp: new Date().toISOString(),
+                }
+            }, 2000);
+
+            if (finalAction === 'block') {
+                enforceBlock(inputEl, policy.reason || 'Blocked by local Ollama security model.', dlpResult.findings);
+            } else if (finalAction === 'redact') {
+                await enforceRedaction(inputEl, dlpResult.redactedText || text);
+                showOverlay({
+                    type: 'redact', title: '✂️ Complyze — Redacted',
+                    body: `Detected: <strong style="color:#fbbf24">${ollamaResult.risk_type.join(', ')}</strong>`,
+                    autoDismissMs: 5000,
+                });
+                bypassAndSubmit(originalEvent, triggerEl);
+            } else if (finalAction === 'warn') {
+                showOverlay({
+                    type: 'warn', title: '⚠️ Complyze — Security Notice',
+                    body: `Ollama flagged: <strong style="color:#fbbf24">${ollamaResult.risk_type.join(', ')}</strong><br>Risk score: ${ollamaResult.risk_score}/100`,
+                    autoDismissMs: 4000,
+                });
+                bypassAndSubmit(originalEvent, triggerEl);
+            } else {
+                showOverlay({ type: 'safe', title: 'Complyze — Prompt Safe ✓', autoDismissMs: 2000 });
+                bypassAndSubmit(originalEvent, triggerEl);
+            }
+            return;
+        }
+
+        // ── STEP 2b: Backend fallback (backend also routes through Ollama) ───
+        // Local Ollama was unreachable — try backend which calls its own Ollama instance.
+        console.log('[Complyze] Local Ollama unavailable — falling back to backend scan...', {
+            promptLength: text.length,
+            dlpFindingsCount: dlpResult.findings.length,
+        });
+
         const backendResult = await safeSendMessage({
             type: 'SCAN_PROMPT',
             payload: {
                 prompt: text,
                 aiTool: AI_TOOL,
                 context: '',
-                dlpFindings: dlpResult.findings,   // DLP findings are advisory context
-                hasCritical: dlpResult.hasCritical  // Backend policy engine decides what to do with this
+                dlpFindings: dlpResult.findings,   // DLP findings are advisory context only
+                hasCritical: false,                 // Never pass hasCritical=true — regex must not drive decisions
             }
         }, 8000);
 
         if (!backendResult) {
-            // Backend unreachable — Emergency local fail-safe 
-            if (dlpResult.hasCritical) {
-                const labels = dlpResult.findings.map(f => f.label).join(', ');
-                console.log('[Complyze] EMERGENCY LOCAL BLOCK (Backend offline):', labels);
+            // Both local Ollama and backend unreachable.
+            // Allow with warning — do NOT block based on regex alone.
+            console.warn('[Complyze] Both local Ollama and backend unreachable — allowing with warning');
 
-                enforceBlock(inputEl, 'Offline Safety Net: Critical data blocked because the security service is unreachable.', dlpResult.findings);
+            notifyLastScan({ action: 'warn', findings: dlpResult.findings, source: 'offline' }, snippet);
+            showOverlay({
+                type: 'warn', title: '⚠️ Complyze — Analysis Unavailable',
+                body: 'Security analysis is temporarily offline. Proceeding with caution — review your prompt for sensitive data.',
+                autoDismissMs: 6000,
+            });
 
-                // Still try to log the event (it will be queued if background allows)
-                safeSendMessage({
-                    type: 'LOG_ACTIVITY', payload: {
-                        aiTool: AI_TOOL, promptLength: text.length, riskScore: 90,
-                        action: 'block', blocked: true,
-                        findings: dlpResult.findings.map(f => f.label),
-                        promptText: text,
-                        decision_source: 'local_emergency_block',
-                        blocked_locally: true,
-                        timestamp: new Date().toISOString(),
-                    }
-                }, 2000);
+            safeSendMessage({
+                type: 'LOG_ACTIVITY', payload: {
+                    aiTool: AI_TOOL, promptLength: text.length, riskScore: 0,
+                    action: 'warn', blocked: false,
+                    findings: dlpResult.findings.map(f => f.label),
+                    promptText: text,
+                    decision_source: 'offline_fallback',
+                    model_used: false,
+                    blocked_locally: false,
+                    timestamp: new Date().toISOString(),
+                }
+            }, 2000);
 
-                notifyLastScan({ action: 'block', findings: dlpResult.findings, source: 'offline_emergency' }, snippet);
-                return;
-            }
-
-            if (dlpResult.findings.length > 0) {
-                await enforceRedaction(inputEl, dlpResult.redactedText);
-                const labels = dlpResult.findings.map(f => f.label).join(', ');
-                showOverlay({
-                    type: 'redact', title: 'Complyze — Auto Redacted',
-                    body: `Removed: <strong style="color:#fbbf24">${labels}</strong>`,
-                    autoDismissMs: 6000,
-                });
-                notifyLastScan({ action: 'redact', findings: dlpResult.findings, source: 'offline' }, snippet);
-            } else {
-                notifyLastScan({ action: 'allow', findings: [], source: 'offline' }, snippet);
-                showOverlay({ type: 'safe', title: 'Complyze — Safe ✓', autoDismissMs: 2000 });
-            }
             bypassAndSubmit(originalEvent, triggerEl);
             return;
         }
@@ -600,11 +817,8 @@ async function handleFileUpload(file, inputEl) {
                 dlp = runDLPPreflight(content);
             }
 
-            if (dlp.action === 'block') {
-                enforceFileBlock(inputEl, file.name, 'Sensitive data found: ' + dlp.findings.map(f => f.label).join(', '));
-                resolve();
-                return;
-            }
+            // DLP regex findings are signals only — do NOT block based on regex alone.
+            // Forward the findings to backend as advisory context for Ollama evaluation.
 
             // 2. Backend Scan for "Deep Inspection"
             const result = await safeSendMessage({
