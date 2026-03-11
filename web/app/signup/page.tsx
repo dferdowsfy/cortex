@@ -1,22 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     createUserWithEmailAndPassword,
     updateProfile
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { Shield, ArrowRight, CheckCircle, Lock, Mail, User } from "lucide-react";
+import { PRICING } from "@/lib/pricing";
 
-export default function SignUpPage() {
+function SignUpContent() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [name, setName] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Get plan from URL ?plan=shield, fallback to STARTER
+    const initialPlanQuery = searchParams.get("plan");
+    const selectedPlan = initialPlanQuery ? initialPlanQuery.toUpperCase() : "STARTER";
 
     async function handleSignUp(e: React.FormEvent) {
         e.preventDefault();
@@ -37,7 +43,6 @@ export default function SignUpPage() {
             await updateProfile(user, { displayName: name });
 
             // 3. Provision Org & Feature Flags via Backend
-            const idToken = await user.getIdToken();
             const provisionRes = await fetch("/api/auth/provision", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -53,8 +58,30 @@ export default function SignUpPage() {
                 throw new Error(data.error || "Failed to provision account");
             }
 
-            // 4. Onboard to dashboard
-            router.push("/dashboard");
+            const provisionData = await provisionRes.json();
+            const { orgId } = provisionData;
+
+            // 4. Auto-Initiate Stripe Checkout
+            const config = selectedPlan === "SHIELD" ? PRICING.SHIELD : PRICING.STARTER;
+            const checkoutRes = await fetch("/api/stripe/checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    planId: selectedPlan,
+                    quantity: config.minSeats,
+                    email: user.email,
+                    userId: user.uid,
+                    organizationId: orgId
+                })
+            });
+
+            const checkoutData = await checkoutRes.json();
+            if (checkoutData.url) {
+                window.location.href = checkoutData.url;
+            } else {
+                // Fallback to dashboard if checkout creation failed
+                router.push("/dashboard");
+            }
         } catch (err: any) {
             console.error(err);
             let msg = err.message || "Signup failed";
@@ -62,7 +89,6 @@ export default function SignUpPage() {
             if (err.code === "auth/weak-password") msg = "Password should be at least 6 characters.";
             if (err.code === "auth/invalid-email") msg = "Invalid email format.";
             setError(msg);
-        } finally {
             setLoading(false);
         }
     }
@@ -112,7 +138,7 @@ export default function SignUpPage() {
                     <div className="space-y-2">
                         <h2 className="text-3xl font-black tracking-tight">Create your account</h2>
                         <p className="text-white/40 font-medium">
-                            Start securing your team&apos;s AI usage in minutes.
+                            {selectedPlan === "SHIELD" ? "Set up your workspace to enable Shield controls." : "Start securing your team's AI usage in minutes."}
                         </p>
                     </div>
 
@@ -173,7 +199,7 @@ export default function SignUpPage() {
                             disabled={loading}
                             className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
                         >
-                            {loading ? "Creating Account..." : "Get Started Now"}
+                            {loading ? "Preparing Workspace..." : `Continue to Checkout (${selectedPlan})`}
                             {!loading && <ArrowRight className="w-4 h-4" />}
                         </button>
                     </form>
@@ -195,5 +221,13 @@ export default function SignUpPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function SignUpPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-[#020617]" />}>
+            <SignUpContent />
+        </Suspense>
     );
 }

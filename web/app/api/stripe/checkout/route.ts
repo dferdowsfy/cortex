@@ -9,7 +9,7 @@ const stripe = new Stripe(stripeSecret, {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { planId, quantity, email } = body;
+        const { planId, quantity, email, userId, organizationId } = body;
 
         let priceId;
         if (planId === "STARTER") {
@@ -32,14 +32,17 @@ export async function POST(req: NextRequest) {
             line_items: [
                 {
                     price: priceId,
-                    quantity: quantity || 100, // Default minimum 100 seats
+                    quantity: quantity || 25, // Fallback to 25
                 },
             ],
             mode: "subscription",
             success_url: `${appUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}&success=true`,
-            cancel_url: `${appUrl}/pricing`,
+            cancel_url: `${appUrl}/dashboard?checkout_canceled=true`,
+            client_reference_id: organizationId || undefined,
             metadata: {
-                planId: planId,
+                plan: planId,
+                userId: userId || "",
+                organizationId: organizationId || "",
             },
         });
 

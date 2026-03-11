@@ -37,58 +37,32 @@ export async function POST(req: NextRequest) {
 
             // Fetch the line items to get seats
             const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-            const quantity = lineItems.data[0]?.quantity || 100;
-            const customerEmail = session.customer_details?.email;
+            const quantity = lineItems.data[0]?.quantity || 25;
 
-            // Map plan
-            const planId = session.metadata?.planId || "STARTER"; // from metadata
+            // Read metadata passed from the checkout API
+            const { organizationId, plan, userId } = session.metadata || {};
+            const stripeCustomerId = session.customer as string;
 
-            if (!customerEmail) {
-                console.error("No customer email present in session");
-                return NextResponse.json({ error: "Missing email" }, { status: 400 });
+            if (!organizationId) {
+                console.error("No organizationId in session metadata");
+                return NextResponse.json({ error: "Missing metadata" }, { status: 400 });
             }
 
-            // Create or update the organization in Firebase
-            // 1. Check if user already exists
-            const emailKey = customerEmail.replace(/\./g, ",");
-            const membersSnap = await adminDb.ref("organizations").orderByChild(`members/${emailKey}/role`).equalTo("owner").get();
+            console.log(`Updating org ${organizationId} to ${plan} with ${quantity} seats`);
 
-            let orgId = "";
+            // Direct update of the organization provided in metadata
+            await adminDb.ref(`organizations/${organizationId}`).update({
+                plan: plan || "STARTER",
+                seatsPurchased: quantity,
+                stripeCustomerId: stripeCustomerId || null,
+                updatedAt: new Date().toISOString()
+            });
 
-            if (membersSnap.exists()) {
-                // User is an owner of an organization -- update it
-                const orgs = membersSnap.val();
-                orgId = Object.keys(orgs)[0];
-                console.log(`Updating existing org ${orgId} to ${planId}`);
-
-                await adminDb.ref(`organizations/${orgId}`).update({
-                    plan: planId,
-                    seatsPurchased: quantity,
-                    updatedAt: new Date().toISOString()
+            // Try to update user profile plan as well if we have the userId
+            if (userId) {
+                await adminDb.ref(`extension_users/${userId}`).update({
+                    plan: plan || "STARTER"
                 });
-            } else {
-                // Creating a new organization
-                orgId = crypto.randomUUID();
-                console.log(`Creating new org ${orgId} for ${customerEmail} at ${planId}`);
-
-                const newOrg = {
-                    id: orgId,
-                    name: `${customerEmail.split('@')[0]}'s Organization`,
-                    plan: planId,
-                    seatsPurchased: quantity,
-                    seatsUsed: 1, // Currently creating for the owner
-                    ownerUserId: customerEmail, // Using email as temp mapping
-                    createdAt: new Date().toISOString(),
-                    members: {
-                        [emailKey]: {
-                            role: "owner",
-                            email: customerEmail,
-                            joinedAt: new Date().toISOString()
-                        }
-                    }
-                };
-
-                await adminDb.ref(`organizations/${orgId}`).set(newOrg);
             }
         }
 

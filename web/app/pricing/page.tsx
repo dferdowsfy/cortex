@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import MarketingNav from "@/components/MarketingNav";
 import MarketingFooter from "@/components/MarketingFooter";
 import { PRICING } from "@/lib/pricing";
@@ -8,44 +8,12 @@ import { PRICING } from "@/lib/pricing";
 export const dynamic = "force-dynamic";
 
 export default function PricingPage() {
-    const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-
-    const handleCheckout = async (plan: string, defaultHref: string) => {
-        if (plan === "ENTERPRISE") {
-            window.location.href = defaultHref;
-            return;
-        }
-
-        setLoadingPlan(plan);
-        try {
-            const config = plan === "SHIELD" ? PRICING.SHIELD : PRICING.STARTER;
-            const res = await fetch("/api/stripe/checkout", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    planId: plan,
-                    quantity: config.minSeats
-                }),
-            });
-            const data = await res.json();
-            if (data.url) {
-                window.location.href = data.url;
-            } else {
-                alert("Checkout failed: " + (data.error || "Unknown"));
-            }
-        } catch (err: any) {
-            alert("Error initiating checkout: " + err.message);
-        } finally {
-            setLoadingPlan(null);
-        }
-    };
-
     const tiers = [
         {
             name: "STARTER",
             tagline: "Essential Visibility",
-            displayPrice: `$${PRICING.STARTER.totalMonthly.toLocaleString()}`,
-            priceDetails: `$${PRICING.STARTER.pricePerSeat} per seat · Minimum ${PRICING.STARTER.minSeats} seats · Billed annually`,
+            displayPrice: `$${PRICING.STARTER.pricePerSeat}`,
+            priceDetails: `per user / month`,
             description: "Understand your team's AI usage and uncover hidden risks.",
             features: [
                 "AI app detection (desktop + browser)",
@@ -57,14 +25,14 @@ export default function PricingPage() {
                 "Monthly risk summary report",
             ],
             cta: "Start Monitoring",
-            href: "/signup",
+            href: "/signup?plan=starter",
             buttonStyle: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-600/20"
         },
         {
             name: "SHIELD",
             tagline: "Total AI Protection",
-            displayPrice: `$${PRICING.SHIELD.totalMonthly.toLocaleString()}`,
-            priceDetails: `$${PRICING.SHIELD.pricePerSeat} per seat · Minimum ${PRICING.SHIELD.minSeats} seats · Billed annually`,
+            displayPrice: `$${PRICING.SHIELD.pricePerSeat}`,
+            priceDetails: `per user / month`,
             description: "Real-time enforcement and deep attachment scanning.",
             features: [
                 "All Visibility features included",
@@ -77,7 +45,7 @@ export default function PricingPage() {
                 "Role-based admin controls",
             ],
             cta: "Enable Control",
-            href: "/signup",
+            href: "/signup?plan=shield",
             featured: true,
             buttonStyle: "bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-600/20"
         },
@@ -180,13 +148,12 @@ export default function PricingPage() {
                                     ))}
                                 </ul>
 
-                                <button
-                                    onClick={() => handleCheckout(tier.name, tier.href)}
-                                    disabled={loadingPlan === tier.name}
-                                    className={`w-full py-4 px-6 rounded-xl text-center font-black uppercase tracking-widest text-xs transition-all active:scale-[0.98] disabled:opacity-50 ${tier.buttonStyle}`}
+                                <Link
+                                    href={tier.href}
+                                    className={`block w-full py-4 px-6 rounded-xl text-center font-black uppercase tracking-widest text-xs transition-all active:scale-[0.98] ${tier.buttonStyle}`}
                                 >
-                                    {loadingPlan === tier.name ? "Redirecting..." : tier.cta}
-                                </button>
+                                    {tier.cta}
+                                </Link>
                             </div>
                         ))}
                     </div>
