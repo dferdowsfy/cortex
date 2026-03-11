@@ -1,23 +1,26 @@
 /**
  * Complyze Ollama Analysis Service
  *
- * Routes all prompt-risk analysis through the remotely-hosted `complyze-qwen`
- * model running on the Complyze VPS.
+ * Routes ALL prompt-risk analysis through a locally-hosted Ollama model.
+ * No external LLM providers. No regex-based blocking. All decisions originate
+ * from the local LLM inference result.
  *
  * Connectivity notes:
- *  - The Ollama server is NOT local — it runs on a remote VPS.
- *  - Port 11434 is the native Ollama service port, not an indicator of
- *    local-only access. It is fully reachable over the public internet.
- *  - If you later place a reverse proxy (nginx, Caddy, Cloudflare Tunnel)
- *    in front of Ollama, update OLLAMA_BASE_URL to the proxy URL and the
- *    port can be hidden behind 443/80.
+ *  - The Ollama server MUST run locally at http://localhost:11434 (default).
+ *  - Install Ollama: https://ollama.com/  then `ollama pull complyze-qwen`
+ *  - Override OLLAMA_BASE_URL only to point at a different local or private host.
+ *    NEVER point it at a public/external endpoint — all analysis must be local.
  *
  * Configuration (all env-driven, no hardcoding):
- *  OLLAMA_BASE_URL   — remote base URL, e.g. http://72.62.83.236:11434
- *  OLLAMA_MODEL      — model name served by Ollama, e.g. complyze-qwen
- *  OLLAMA_TIMEOUT_MS — request timeout in ms (default 60000)
+ *  OLLAMA_BASE_URL   — local Ollama base URL (default: http://localhost:11434)
+ *  OLLAMA_MODEL      — model name, e.g. complyze-qwen or llama3
+ *  OLLAMA_TIMEOUT_MS — request timeout in ms (default 30000)
  *
  * Architecture:
+ *  Browser Extension → http://localhost:11434/api/generate → LLM risk evaluation
+ *  Backend  (fallback) → OLLAMA_BASE_URL/api/generate     → LLM risk evaluation
+ *  Policy engine uses LLM output — regex is never the decision source.
+ *
  *  1. Build prompt payload (user prompt + attachment context + metadata)
  *  2. POST ${OLLAMA_BASE_URL}/api/generate with the full Complyze JSON schema
  *  3. Parse the outer Ollama envelope, then parse `response` as JSON
@@ -26,20 +29,22 @@
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Remote Ollama configuration — resolved entirely from environment variables.
-// These MUST be set in .env (dev) and in the Vercel / hosting dashboard (prod).
+// Local Ollama configuration — resolved from environment variables with
+// sensible localhost defaults so the service works out-of-the-box.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getOllamaConfig() {
-    const baseUrl = (process.env.OLLAMA_BASE_URL || "").trim();
-    const model = (process.env.OLLAMA_MODEL || "").trim();
-    const timeout = parseInt(process.env.OLLAMA_TIMEOUT_MS || "60000", 10);
+    // Default to localhost — all analysis must be performed locally.
+    const baseUrl = (process.env.OLLAMA_BASE_URL || "http://localhost:11434").trim();
+    const model = (process.env.OLLAMA_MODEL || "complyze-qwen").trim();
+    // Tighter default timeout for local inference (30 s instead of 60 s).
+    const timeout = parseInt(process.env.OLLAMA_TIMEOUT_MS || "30000", 10);
 
     if (!baseUrl) {
         throw new Error(
-            "[ollamaAnalysis] OLLAMA_BASE_URL is not set. " +
-            "Add it to .env (dev) or your hosting environment variables (prod). " +
-            "Example: OLLAMA_BASE_URL=http://72.62.83.236:11434"
+            "[ollamaAnalysis] OLLAMA_BASE_URL resolved to an empty string. " +
+            "Ensure Ollama is running locally: https://ollama.com/ " +
+            "Default: OLLAMA_BASE_URL=http://localhost:11434"
         );
     }
     if (!model) {
@@ -52,7 +57,7 @@ function getOllamaConfig() {
     return {
         baseUrl: baseUrl.replace(/\/$/, ""), // strip trailing slash
         model,
-        timeoutMs: isNaN(timeout) ? 60_000 : timeout,
+        timeoutMs: isNaN(timeout) ? 30_000 : timeout,
     };
 }
 
@@ -504,12 +509,10 @@ export function normaliseAndValidate(raw: unknown, originalPromptText: string): 
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Analyses a prompt via the remotely-hosted Ollama model on the Complyze VPS.
+ * Analyses a prompt via the locally-hosted Ollama model.
  * Configuration is read from OLLAMA_BASE_URL / OLLAMA_MODEL / OLLAMA_TIMEOUT_MS.
+ * Defaults to http://localhost:11434 — all analysis must occur locally.
  * Throws an OllamaAnalysisError (with `.code`) on any failure.
- *
- * Note: port 11434 is Ollama's native service port on the VPS. It is not
- * localhost — the request travels over the network to the remote host.
  */
 export async function analysePrompt(
     input: ComplyzeAnalysisInput,
@@ -658,13 +661,14 @@ export async function analysePrompt(
             throw Object.assign(new Error(err.message), err);
         }
 
-        // Handle fetch / network errors (DNS failure, connection refused, etc.)
+        // Handle fetch / network errors (connection refused means Ollama isn't running)
         if (error instanceof TypeError) {
             const { baseUrl: b } = getOllamaConfig();
             const err: OllamaAnalysisError = {
                 code: "UNREACHABLE",
-                message: `Cannot reach remote Ollama host at ${b}: ${error.message}. ` +
-                    "Verify OLLAMA_BASE_URL is reachable from this environment.",
+                message: `Cannot reach local Ollama at ${b}: ${error.message}. ` +
+                    "Ensure Ollama is installed and running: https://ollama.com/ " +
+                    "Then pull the model: ollama pull complyze-qwen",
             };
             throw Object.assign(new Error(err.message), err);
         }
@@ -725,8 +729,7 @@ export function buildFallbackResult(errorMessage: string): ComplyzeAnalysisResul
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic Ollama text completion (for non-analysis routes: extract, assess, report)
-// Replaces the previous OpenRouter callLLM.
-// Sends requests to the remote VPS via OLLAMA_BASE_URL.
+// Sends requests to the local Ollama instance via OLLAMA_BASE_URL (localhost:11434).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface OllamaTextOptions {
