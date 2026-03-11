@@ -7,7 +7,7 @@
 
 /* ── Enforcement Modes ── */
 
-export type EnforcementMode = "monitor" | "warn" | "redact" | "block";
+export type EnforcementMode = "monitor" | "warn" | "redact" | "block" | "audit";
 
 /* ── Proxy Settings ── */
 

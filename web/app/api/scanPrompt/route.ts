@@ -90,15 +90,24 @@ export async function POST(req: NextRequest) {
                 try {
                     const users = await userStore.listUsers(orgId, workspaceId);
                     const foundUser = users.find((u) => u.email === userEmail);
-                    if (foundUser?.group_id) {
-                        const groupPolicy = await groupStore.getPolicyByGroup(foundUser.group_id, workspaceId);
-                        const groupRules = groupPolicy?.rules || [];
-                        if (groupRules.length > 0) {
-                            rules = groupPolicy?.inherit_org_default ? [...rules, ...groupRules] : groupRules;
+                    if (foundUser) {
+                        if (foundUser.group_id) {
+                            const groupPolicy = await groupStore.getPolicyByGroup(foundUser.group_id, workspaceId);
+                            const groupRules = groupPolicy?.rules || [];
+                            if (groupRules.length > 0) {
+                                rules = groupPolicy?.inherit_org_default ? [...rules, ...groupRules] : groupRules;
+                            }
+                        }
+
+                        // Apply user-level override policy if it exists
+                        const userPolicy = await groupStore.getPolicyByGroup(foundUser.user_id, workspaceId);
+                        const userRules = userPolicy?.rules || [];
+                        if (userRules.length > 0) {
+                            rules = userPolicy?.inherit_org_default ? [...rules, ...userRules] : userRules;
                         }
                     }
                 } catch (e) {
-                    console.error("[scanPrompt] Could not fetch user group", e);
+                    console.error("[scanPrompt] Could not fetch user group/policy", e);
                 }
             }
         }
@@ -247,13 +256,13 @@ function computePolicyDecision(
     policyConfig: any,
     hasCriticalDlpMatch: boolean,
     ollamaWasCalled: boolean = true
-): { action: "allow" | "redact" | "warn" | "block"; reason: string; source: "backend_policy"; model_used: boolean; policy_used: boolean } {
+): { action: "allow" | "redact" | "warn" | "block" | "audit"; reason: string; source: "backend_policy"; model_used: boolean; policy_used: boolean } {
     const threshold = policyConfig?.risk_threshold ?? 60;
     const blockHighRisk = policyConfig?.block_high_risk ?? true;
     const auditMode = policyConfig?.audit_mode === true;
 
     const result = {
-        action: "allow" as "allow" | "redact" | "warn" | "block",
+        action: "allow" as "allow" | "redact" | "warn" | "block" | "audit",
         reason: "Prompt complies with organization policies.",
         source: "backend_policy" as const,
         // model_used reflects whether Ollama was consulted — always true here since
@@ -262,11 +271,11 @@ function computePolicyDecision(
         policy_used: true,
     };
 
-    // ── 1. Audit mode overrides all enforcement to allow ────────────────────
+    // ── 1. Audit mode overrides all enforcement to allow (audit) ────────────
     if (auditMode) {
-        result.action = "allow";
+        result.action = "audit";
         result.reason = "Audit mode is enabled. Prompts are logged for observation only — no enforcement applied.";
-        console.log("[policy] audit_mode=true → allow (observation only)");
+        console.log("[policy] audit_mode=true → audit (observation only)");
         return result;
     }
 
@@ -329,7 +338,7 @@ function computePolicyDecision(
 
 function mapToLegacyResponse(
     result: ComplyzeAnalysisResult & { _error?: string },
-    decision: { action: "allow" | "redact" | "warn" | "block"; reason: string; source: string; model_used: boolean; policy_used: boolean },
+    decision: { action: "allow" | "redact" | "warn" | "block" | "audit"; reason: string; source: string; model_used: boolean; policy_used: boolean },
     aiTool: string,
     extras: { analysisError?: OllamaAnalysisError | null },
 ) {

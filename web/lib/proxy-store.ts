@@ -32,25 +32,12 @@ const DEFAULT_SETTINGS: ProxySettings = {
     updated_at: new Date().toISOString(),
 };
 
-// ── RTDB helpers (lazy-loaded) ───────────────────────────────
+// ── RTDB helpers ───────────────────────────────
 import type { database } from "firebase-admin";
-let rtdbInstance: database.Database | null = null;
-let rtdbInitAttempted = false;
+import { adminDb } from "./firebase/admin";
 
 function getDb(): database.Database | null {
-    if (rtdbInstance) return rtdbInstance;
-    if (rtdbInitAttempted) return null;
-    rtdbInitAttempted = true;
-
-    try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { adminDb } = require("./firebase/admin");
-        rtdbInstance = adminDb;
-        return rtdbInstance;
-    } catch (err) {
-        console.warn("[proxy-store] RTDB not available, using in-memory fallback:", err);
-        return null;
-    }
+    return adminDb;
 }
 
 // ── Fallback helpers ─────────────────────────────────────────
