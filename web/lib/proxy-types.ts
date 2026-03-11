@@ -90,6 +90,13 @@ export interface ActivityEvent {
     contextual_risks?: string[];
     prompt_preview?: string;
     provider?: string;
+
+    // Identity & final enforcement — required for accurate dashboard/extension sync.
+    // These ensure every event is attributable to the correct user + org and that
+    // the dashboard reflects the same final action the extension showed the user.
+    organization_id?: string;  // org that owns this event (= workspaceId for org-scoped users)
+    user_id?: string;          // authenticated user's UID or email
+    final_action?: string;     // the action actually enforced: allow | redact | warn | block
 }
 
 /* ── Activity Summary (Dashboard) ── */

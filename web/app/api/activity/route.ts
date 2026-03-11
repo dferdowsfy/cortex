@@ -44,15 +44,24 @@ export async function POST(req: NextRequest) {
             findings: body.findings || (body.message ? [body.message] : []),
             full_prompt: body.promptText || body.prompt,
 
-            // Map rich metadata if provided by extension (e.g. local emergency block)
-            decision_source: body.decision_source || (isBlocked ? "backend_policy" : "manual_bypass"),
-            model_used: body.model_used ?? !body.blocked_locally,
-            policy_used: body.policy_used ?? true,
-            blocked_locally: body.blocked_locally ?? false,
+            // Map rich metadata if provided by extension (e.g. local emergency block).
+            // For emergency local blocks: decision_source='local_emergency_block', blocked_locally=true.
+            // For normal activity logs: fall back to 'manual_bypass' (not 'backend_policy') since
+            // the backend policy engine was NOT consulted if /api/activity is called directly.
+            decision_source: body.decision_source || (isBlocked ? "local_emergency_block" : "manual_bypass"),
+            model_used: body.model_used ?? false,  // /api/activity is called for offline/local events only
+            policy_used: body.policy_used ?? false,
+            blocked_locally: body.blocked_locally ?? isBlocked,
             analysis_score: score,
             contextual_risks: body.contextual_risks || [],
             prompt_preview: body.prompt_preview || body.message || "",
-            provider: aiTool
+            provider: aiTool,
+
+            // Identity fields — ensure dashboard correctly attributes this event
+            // to the right user/org regardless of workspace path used.
+            organization_id: resolvedWorkspaceId !== orgId ? orgId : resolvedWorkspaceId,
+            user_id: userEmail || body.uid || installationId || "anonymous",
+            final_action: isBlocked ? "block" : (action || "allow"),
         };
 
         await store.addEvent(event, resolvedWorkspaceId);
