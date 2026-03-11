@@ -332,7 +332,7 @@ function ScheduleModal({
                     key={f}
                     onClick={() => setFrequency(f)}
                     className={`flex-1 py-3 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all border ${frequency === f
-                      ? "bg-white text-black border-white shadow-xl"
+                      ? "bg-white text-[#111121] border-white shadow-xl"
                       : "bg-white/5 text-white/40 border-transparent hover:border-white/10"}`}
                   >
                     {f}

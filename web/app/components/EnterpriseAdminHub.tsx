@@ -570,40 +570,9 @@ export default function EnterpriseAdminHub() {
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
                     <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Users</h2>
-                    <div className="flex gap-2">
-                        <button onClick={() => setShowUserForm(v => !v)}
-                            className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-color)] text-white rounded-lg text-[10px] uppercase font-black tracking-widest shadow-lg hover:opacity-90 transition-all">
-                            <Plus className="w-3.5 h-3.5" /> Invite User
-                        </button>
-                    </div>
                 </div>
 
-                {/* Invite User Form */}
-                {showUserForm && (
-                    <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 space-y-5 animate-in fade-in duration-200">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[9px] font-black text-white/50 uppercase tracking-widest">Full Name</label>
-                                <input autoFocus value={newUserName} onChange={e => setNewUserName(e.target.value)}
-                                    placeholder="Jane Smith"
-                                    className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none" />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[9px] font-black text-white/50 uppercase tracking-widest">Work Email</label>
-                                <input value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} type="email"
-                                    placeholder="jane@company.com"
-                                    className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none" />
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button onClick={handleCreateUser} disabled={creating.user || !newUserEmail.trim()}
-                                className="px-8 py-2.5 bg-[var(--brand-color)] text-white rounded-lg text-[10px] font-black uppercase shadow-lg">
-                                {creating.user ? "Adding…" : "Add User"}
-                            </button>
-                            <button onClick={() => setShowUserForm(false)} className="text-white/40 hover:text-white text-xs px-4">Cancel</button>
-                        </div>
-                    </div>
-                )}
+
 
                 {/* Users Table */}
                 <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
@@ -628,8 +597,8 @@ export default function EnterpriseAdminHub() {
                                         <td className="px-5 py-4">
                                             <select value={u.group_id || ""} onChange={e => handleAssignUserGroup(u.user_id, e.target.value || null)}
                                                 className="bg-transparent text-xs text-blue-400 font-bold focus:outline-none cursor-pointer">
-                                                <option value="" className="text-black bg-white">No Group</option>
-                                                {groups.map(g => <option key={g.group_id} value={g.group_id} className="text-black bg-white">{g.name}</option>)}
+                                                <option value="" className="text-[#111121] bg-white">No Group</option>
+                                                {groups.map(g => <option key={g.group_id} value={g.group_id} className="text-[#111121] bg-white">{g.name}</option>)}
                                             </select>
                                         </td>
                                         <td className="px-5 py-4">
@@ -681,7 +650,7 @@ export default function EnterpriseAdminHub() {
                 <div className="flex items-center justify-between">
                     <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Policy Editor</h2>
                     <button onClick={handleSavePolicy} disabled={savingPolicy}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-white text-black rounded-lg text-[10px] font-black uppercase shadow-lg hover:bg-zinc-200 disabled:opacity-50 transition-all">
+                        className="flex items-center gap-2 px-6 py-2.5 bg-white text-[#111121] rounded-lg text-[10px] font-black uppercase shadow-lg hover:bg-zinc-200 disabled:opacity-50 transition-all">
                         {savingPolicy ? "Saving…" : "Save Policy"}
                     </button>
                 </div>
@@ -691,7 +660,7 @@ export default function EnterpriseAdminHub() {
                         <div className="flex gap-1 bg-white/5 rounded-lg p-1">
                             {(["org", "group", "user"] as const).map(t => (
                                 <button key={t} onClick={() => setPolicyTarget(t)}
-                                    className={`px-5 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${policyTarget === t ? "bg-white text-black" : "text-white/40 hover:text-white"}`}>
+                                    className={`px-5 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${policyTarget === t ? "bg-white text-[#111121]" : "text-white/40 hover:text-white"}`}>
                                     {t}
                                 </button>
                             ))}
@@ -754,7 +723,7 @@ export default function EnterpriseAdminHub() {
                                         const key = policyKey();
                                         setPolicyMap(prev => ({ ...prev, [key]: [...(prev[key] || []), rule] }));
                                     }}
-                                        className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${newRule.action === act ? "bg-white text-black" : "bg-white/5 text-white/40 hover:text-white border border-white/5"}`}>
+                                        className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${newRule.action === act ? "bg-white text-[#111121]" : "bg-white/5 text-white/40 hover:text-white border border-white/5"}`}>
                                         {act.replace("_only", "")}
                                     </button>
                                 ))}
