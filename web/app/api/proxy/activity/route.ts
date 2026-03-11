@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
     const period = (searchParams.get("period") as "7d" | "30d") || "7d";
     const eventsLimit = parseInt(searchParams.get("events") || "50", 10);
 
+    console.log("[/api/proxy/activity] fetch", { workspaceId, period, eventsLimit });
+
     const summary = await store.getSummary(workspaceId, period);
     const events = await store.getEvents(workspaceId, eventsLimit);
     const toolRisks = await store.getToolRisks(workspaceId);

@@ -48,6 +48,10 @@ export default function Dashboard() {
     // ISSUE 4: 30d Exposure Flux — % change in violations vs prior 30d period
     const [exposureFlux, setExposureFlux] = useState<number | null>(null);
 
+    const fetchNoCache = useCallback((url: string) => {
+        return fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
+    }, []);
+
     const fetchData = useCallback(async () => {
         if (authLoading) return;
 
@@ -55,7 +59,7 @@ export default function Dashboard() {
             const wsId = user?.uid || "default";
 
             // Fetch user's organizations so we can query activity stored under org IDs too
-            const orgRes = await fetch(`/api/admin/organizations?workspaceId=${wsId}`);
+            const orgRes = await fetchNoCache(`/api/admin/organizations?workspaceId=${wsId}`);
             let orgIds: string[] = [];
             if (orgRes.ok) {
                 const orgData = await orgRes.json();
@@ -66,26 +70,26 @@ export default function Dashboard() {
             const workspaceIds = [wsId, ...orgIds.filter(id => id !== wsId)];
             // Fetch both 30d and 7d for flux calculation
             const activityPromises30d = workspaceIds.map(id =>
-                fetch(`/api/proxy/activity?period=30d&events=50&workspaceId=${id}`)
+                fetchNoCache(`/api/proxy/activity?period=30d&events=50&workspaceId=${id}`)
                     .then(r => r.ok ? r.json() : null)
                     .catch(() => null)
             );
             const activityPromises7d = workspaceIds.map(id =>
-                fetch(`/api/proxy/activity?period=7d&events=50&workspaceId=${id}`)
+                fetchNoCache(`/api/proxy/activity?period=7d&events=50&workspaceId=${id}`)
                     .then(r => r.ok ? r.json() : null)
                     .catch(() => null)
             );
 
             // Also check extension health for all org workspaces
             const extPingPromises = orgIds.map(id =>
-                fetch(`/api/auth/extension/ping?orgId=${id}`)
+                fetchNoCache(`/api/auth/extension/ping?orgId=${id}`)
                     .then(r => r.ok ? r.json() : null).catch(() => null)
             );
 
             const [agentRes, auditRes, settingsRes, ...allActivityResults] = await Promise.all([
-                fetch(`/api/agent/heartbeat?workspaceId=${wsId}`),
-                fetch(`/api/admin/audit/history`),
-                fetch(`/api/proxy/settings?workspaceId=${wsId}`),
+                fetchNoCache(`/api/agent/heartbeat?workspaceId=${wsId}`),
+                fetchNoCache(`/api/admin/audit/history`),
+                fetchNoCache(`/api/proxy/settings?workspaceId=${wsId}`),
                 ...activityPromises30d,
                 ...activityPromises7d,
             ]);
@@ -179,15 +183,17 @@ export default function Dashboard() {
             }
 
             setLastUpdated(new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }));
-        } catch { } finally {
+        } catch (err) {
+            console.error("[dashboard] fetchData failed", err);
+        } finally {
             setLoading(false);
         }
-    }, [user?.uid, authLoading]);
+    }, [user?.uid, authLoading, fetchNoCache]);
 
     useEffect(() => {
         if (!authLoading) {
             fetchData();
-            const iv = setInterval(fetchData, 15000);
+            const iv = setInterval(fetchData, 5000);
             return () => clearInterval(iv);
         }
     }, [fetchData, authLoading]);
