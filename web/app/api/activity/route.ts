@@ -43,6 +43,16 @@ export async function POST(req: NextRequest) {
             blocked: isBlocked,
             findings: body.findings || (body.message ? [body.message] : []),
             full_prompt: body.promptText || body.prompt,
+
+            // Map rich metadata if provided by extension (e.g. local emergency block)
+            decision_source: body.decision_source || (isBlocked ? "backend_policy" : "manual_bypass"),
+            model_used: body.model_used ?? !body.blocked_locally,
+            policy_used: body.policy_used ?? true,
+            blocked_locally: body.blocked_locally ?? false,
+            analysis_score: score,
+            contextual_risks: body.contextual_risks || [],
+            prompt_preview: body.prompt_preview || body.message || "",
+            provider: aiTool
         };
 
         await store.addEvent(event, resolvedWorkspaceId);

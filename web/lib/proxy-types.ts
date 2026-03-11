@@ -80,6 +80,16 @@ export interface ActivityEvent {
     full_prompt?: string;
     findings?: string[];
     attachment_inspection_enabled?: boolean;
+
+    // Tracking & Decision Attribution
+    decision_source?: "backend_policy" | "local_emergency_block" | "cache" | "manual_bypass";
+    model_used?: boolean;
+    policy_used?: boolean;
+    blocked_locally?: boolean;
+    analysis_score?: number;
+    contextual_risks?: string[];
+    prompt_preview?: string;
+    provider?: string;
 }
 
 /* ── Activity Summary (Dashboard) ── */

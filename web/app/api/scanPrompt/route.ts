@@ -8,6 +8,8 @@ import {
     type ComplyzeAnalysisResult,
     type OllamaAnalysisError,
 } from "@/lib/ollamaAnalysis";
+import store from "@/lib/proxy-store";
+import type { ActivityEvent } from "@/lib/proxy-types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -110,8 +112,10 @@ export async function POST(req: NextRequest) {
             /\b(?!000|666|9\d{2})\d{3}-\d{2}-\d{4}\b/,
         ];
         const hasCritical = criticalPatterns.some((p) => p.test(promptText));
+        if (hasCritical) console.log("[scanPrompt] Critical DLP pattern matched locally.");
 
         // ── Call Ollama analysis ───────────────────────────────────────────────────
+        console.log(`[scanPrompt] Dispatching to Ollama: ${aiTool} (prompt size: ${promptText.length})`);
         let analysisResult: ComplyzeAnalysisResult;
         let analysisError: OllamaAnalysisError | null = null;
 
@@ -138,7 +142,13 @@ export async function POST(req: NextRequest) {
             console.error(`[scanPrompt] Ollama analysis failed (${analysisError.code}):`, analysisError.message);
             // Return a graceful fallback so the dashboard still renders
             const fallback = buildFallbackResult(analysisError.message);
-            const fallbackDecision = { action: "warn" as const, reason: "Analysis engine failed. Allowed with warning." };
+            const fallbackDecision = {
+                action: "warn" as const,
+                reason: "Analysis engine failed. Allowed with warning.",
+                source: "backend_policy" as const,
+                model_used: false,
+                policy_used: true
+            };
             return NextResponse.json(
                 mapToLegacyResponse(fallback, fallbackDecision, aiTool, { analysisError }),
                 { status: 200 },
@@ -147,6 +157,45 @@ export async function POST(req: NextRequest) {
 
         // ── Policy decision engine (dashboard config is the sole authority) ───────
         const policyDecision = computePolicyDecision(analysisResult, orgPolicyConfig, hasCritical);
+
+        // ── Persistent Activity Logging (Ensures Dashboard/Extension Sync) ────────
+        const eventId = `scan_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        const activityEvent: ActivityEvent = {
+            id: eventId,
+            tool: aiTool,
+            tool_domain: aiTool.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com",
+            user_hash: userEmail || "anonymous",
+            prompt_hash: "analyzed",
+            prompt_length: promptText.length,
+            token_count_estimate: Math.round(promptText.length / 4),
+            api_endpoint: "browser_extension",
+            sensitivity_score: analysisResult.overall_risk_score,
+            sensitivity_categories: (analysisResult.sensitive_categories || []) as any,
+            policy_violation_flag: policyDecision.action === "block",
+            risk_category: analysisResult.severity,
+            timestamp: new Date().toISOString(),
+            enforcement_action: policyDecision.action === "allow" ? "monitor" : policyDecision.action,
+            blocked: policyDecision.action === "block",
+            findings: analysisResult.findings.map(f => f.reason),
+            full_prompt: promptText,
+
+            // New metadata fields
+            decision_source: policyDecision.source,
+            model_used: policyDecision.model_used,
+            policy_used: policyDecision.policy_used,
+            blocked_locally: false,
+            analysis_score: analysisResult.overall_risk_score,
+            contextual_risks: analysisResult.contextual_risks,
+            prompt_preview: analysisResult.prompt_summary,
+            provider: aiTool
+        };
+
+        try {
+            await store.addEvent(activityEvent, workspaceId || orgId || "default");
+            console.log(`[scanPrompt] Activity logged: ${eventId}`);
+        } catch (e) {
+            console.error("[scanPrompt] Failed to log activity to store", e);
+        }
 
         console.log(
             `[scanPrompt] Final: action=${policyDecision.action} | ` +
@@ -172,59 +221,84 @@ function computePolicyDecision(
     analysis: ComplyzeAnalysisResult,
     policyConfig: any,
     hasCriticalDlpMatch: boolean
-): { action: "allow" | "redact" | "warn" | "block"; reason: string } {
+): { action: "allow" | "redact" | "warn" | "block"; reason: string; source: "backend_policy"; model_used: boolean; policy_used: boolean } {
     const threshold = policyConfig?.risk_threshold ?? 60;
     const blockHighRisk = policyConfig?.block_high_risk ?? true;
     const auditMode = policyConfig?.audit_mode === true;
 
+    const result = {
+        action: "allow" as "allow" | "redact" | "warn" | "block",
+        reason: "Prompt complies with organization policies.",
+        source: "backend_policy" as const,
+        model_used: true,
+        policy_used: true
+    };
+
     // 1. Audit mode overrides everything to allow
     if (auditMode) {
-        return { action: "allow", reason: "Audit mode is enabled. Allowing prompt." };
+        result.action = "allow";
+        result.reason = "Audit mode is enabled. Allowing prompt.";
+        return result;
     }
 
-    // 2. Hard deterministic DLP override
+    // 2. Hard deterministic DLP override (Injected from patterns or server check)
     if (hasCriticalDlpMatch) {
-        return { action: "block", reason: "Critical regex match (API Key, SSN). Automatic block." };
+        result.action = "block";
+        result.reason = "Critical regex match (API Key, SSN). Automatic block.";
+        result.model_used = false; // Decided by regex before/alongside model
+        return result;
     }
 
     // 3. Block high risk score if enabled
     if (blockHighRisk) {
         if (analysis.overall_risk_score >= threshold) {
-            return { action: "block", reason: `Risk score (${analysis.overall_risk_score}) exceeds organization threshold (${threshold}).` };
+            result.action = "block";
+            result.reason = `Risk score (${analysis.overall_risk_score}) exceeds organization threshold (${threshold}).`;
+            return result;
         }
         if (analysis.severity === "critical" || analysis.severity === "high") {
-            return { action: "block", reason: `AI severity (${analysis.severity}) exceeds acceptable risk tolerance.` };
+            result.action = "block";
+            result.reason = `AI severity (${analysis.severity}) exceeds acceptable risk tolerance.`;
+            return result;
         }
     }
 
     // 4. Attachment risk block
     if (policyConfig?.scan_attachments !== false && analysis.attachment_analysis?.attachment_present) {
         if (analysis.attachment_analysis.attachment_risk_score >= threshold) {
-            return { action: blockHighRisk ? "block" : "warn", reason: "Attachment risk score exceeds organization threshold." };
+            result.action = blockHighRisk ? "block" : "warn";
+            result.reason = "Attachment risk score exceeds organization threshold.";
+            return result;
         }
     }
 
     // 5. Automatic Redaction if configured
     if (policyConfig?.auto_redaction !== false) {
         if (analysis.sensitive_categories?.length > 0 || analysis.redacted_prompt !== analysis.prompt_summary) {
-            return { action: "redact", reason: "Sensitive categories detected. Enforcing auto-redaction." };
+            result.action = "redact";
+            result.reason = "Sensitive categories detected. Enforcing auto-redaction.";
+            return result;
         }
     }
 
     // 6. Final fallback: If AI strongly suggested a block or manual review, but org didn't enforce block above
     if (analysis.suggested_action === "block" && blockHighRisk) {
-        return { action: "block", reason: "AI analyst explicitly suggested blocking." };
+        result.action = "block";
+        result.reason = "AI analyst explicitly suggested blocking.";
+        return result;
     }
     if (analysis.suggested_action === "warn" || analysis.suggested_action === "manual_review") {
-        return { action: "warn", reason: "AI analyst suggested warning or review." };
+        result.action = "warn";
+        result.reason = "AI analyst suggested warning or review.";
+        return result;
     }
 
-    return { action: "allow", reason: "Prompt complies with organization policies." };
+    return result;
 }
 
 function mapToLegacyResponse(
     result: ComplyzeAnalysisResult & { _error?: string },
-    decision: { action: "allow" | "redact" | "warn" | "block"; reason: string },
+    decision: { action: "allow" | "redact" | "warn" | "block"; reason: string; source: string; model_used: boolean; policy_used: boolean },
     aiTool: string,
     extras: { analysisError?: OllamaAnalysisError | null },
 ) {
@@ -266,6 +340,12 @@ function mapToLegacyResponse(
             dashboard_metrics: result.dashboard_metrics,
             graph_data: result.graph_data,
         },
+
+        // Debug & Path Tracking
+        decision_source: decision.source,
+        model_used: decision.model_used,
+        policy_used: decision.policy_used,
+        blocked_locally: false,
 
         // Surface errors if any
         ...(result._error ? { analysisError: result._error } : {}),
