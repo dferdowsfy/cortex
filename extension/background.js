@@ -26,8 +26,11 @@ var FIREBASE_REFRESH_URL = (typeof process !== 'undefined' && process.env.FIREBA
 // They are ONLY valid after ensureInitialized() resolves.
 var installationId = '';
 var currentUser = null;   // { uid, email, displayName, idToken, refreshToken, orgId, orgName, shieldActive, ssoToken }
-var cachedPolicies = [];
+var effectivePolicy = null;
 var inspectAttachments = false; // New state for file inspection
+var eventQueue = [];
+var lastPolicySyncStatus = 'never';
+var lastEventSyncStatus = 'never';
 
 
 // ── FIX BUG-1: Initialization promise lock ────────────────────────────────────
@@ -53,11 +56,11 @@ function genInstallId() {
     return 'inst_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36).slice(-4);
 }
 
-// ── FIX BUG-5: Restore cachedPolicies from storage on cold-start ──────────────
+// ── FIX BUG-5: Restore effective policy from storage on cold-start ──────────────
 async function loadLocalStorage() {
     return new Promise((resolve) => {
-        // Added 'policies' to the key list so cachedPolicies survives SW restarts
-        chrome.storage.local.get(['installationId', 'currentUser', 'apiEndpoint', 'policies'], (data) => {
+        // Added effectivePolicy/eventQueue to survive SW restarts
+        chrome.storage.local.get(['installationId', 'currentUser', 'apiEndpoint', 'effectivePolicy', 'eventQueue'], (data) => {
             if (chrome.runtime.lastError) {
                 console.error('[Complyze] storage.local.get error:', chrome.runtime.lastError.message);
                 resolve();
@@ -72,7 +75,8 @@ async function loadLocalStorage() {
             }
             if (data.currentUser) { currentUser = data.currentUser; }
             if (data.apiEndpoint) { API_ENDPOINT = data.apiEndpoint; }
-            if (data.policies) { cachedPolicies = data.policies; }
+            if (data.effectivePolicy) { effectivePolicy = data.effectivePolicy; }
+            if (Array.isArray(data.eventQueue)) { eventQueue = data.eventQueue; }
             if (data.inspectAttachments !== undefined) { inspectAttachments = data.inspectAttachments; }
             resolve();
         });
@@ -87,7 +91,7 @@ async function saveUser(user) {
 async function clearUser() {
     currentUser = null;
     _initPromise = null;  // Force re-init on next message so state is fresh
-    await chrome.storage.local.remove(['currentUser']);
+    await chrome.storage.local.remove(['currentUser', 'effectivePolicy', 'eventQueue', 'lastPolicySyncStatus', 'lastEventSyncStatus']);
 }
 
 // ── Build request headers ─────────────────────────────────────────────────────
@@ -245,7 +249,7 @@ async function completeSignIn(firebaseData) {
     };
 
     await saveUser(user);
-    fetchAndCachePolicies().catch(() => { });
+    fetchAndCachePolicies('startup').catch(() => { });
     // Immediately ping so dashboard shows ONLINE after login
     sendExtensionPing().catch(() => { });
     var stats = await fetchStats();
@@ -293,13 +297,7 @@ async function loginWithLicense(licenseKey) {
             }
         };
         await saveUser(user);
-        // Pre-cache policies from the response if available
-        if (data.policies) {
-            cachedPolicies = data.policies;
-            await chrome.storage.local.set({ policies: data.policies });
-        } else {
-            fetchAndCachePolicies().catch(() => { });
-        }
+        fetchAndCachePolicies('license_login').catch(() => { });
         var stats = await fetchStats().catch(() => ({ scannedToday: 0, blockedToday: 0 }));
         return { user, stats };
     } catch (e) {
@@ -343,55 +341,99 @@ async function signInWithGoogle() {
     });
 }
 
-// ── Policy caching ────────────────────────────────────────────────────────────
-async function fetchAndCachePolicies() {
+// ── Policy caching + effective policy sync ─────────────────────────────────────
+async function fetchAndCachePolicies(trigger) {
     try {
         await ensureFreshToken();
-
-        // Guard: /api/policies requires X-Organization-ID header.
-        // If the user is not part of an org yet, skip silently — calling it
-        // without the header causes HTTP 400, which appears in the DevTools
-        // Extensions error panel as a noisy "API error (/api/policies): HTTP 400".
         if (!currentUser || !currentUser.orgId) {
-            console.log('[Complyze] Policy fetch skipped — no orgId.');
+            lastPolicySyncStatus = 'skipped:no_org';
+            await chrome.storage.local.set({ lastPolicySyncStatus });
             return;
         }
 
-        // 1. Send extension heartbeat so dashboard shows ONLINE status
         sendExtensionPing().catch(() => { });
 
-        // 2. Fetch policy rules
-        var policies = await apiRequest('/api/policies', 'GET');
-        if (Array.isArray(policies)) {
-            cachedPolicies = policies;
-            await chrome.storage.local.set({ policies });
-            console.log('[Complyze] Policies refreshed:', cachedPolicies.length, 'rules.');
+        var version = await apiRequest('/api/policy/version', 'GET');
+        var currentVersion = effectivePolicy?.policyVersion || 0;
+        if (!effectivePolicy || version.policyVersion !== currentVersion) {
+            var fetched = await apiRequest('/api/policy/effective', 'GET');
+            effectivePolicy = Object.assign({ fetchedAt: new Date().toISOString() }, fetched);
+            await chrome.storage.local.set({ effectivePolicy });
+            await submitSyncEvent('POLICY_FETCHED', {
+                policyVersion: effectivePolicy.policyVersion,
+                summary: 'Effective policy fetched',
+                metadata: { trigger: trigger || 'manual' }
+            });
+            await submitSyncEvent('POLICY_APPLIED', {
+                policyVersion: effectivePolicy.policyVersion,
+                summary: 'Effective policy applied locally'
+            });
         }
 
-        // 3. Fetch proxy settings (inspect_attachments) — non-fatal, local-only endpoint
+        lastPolicySyncStatus = 'ok:' + (effectivePolicy?.policyVersion || 'none');
+        await chrome.storage.local.set({ lastPolicySyncStatus });
+
         try {
             var settings = await apiRequest('/api/proxy/settings', 'GET');
             if (settings) {
                 inspectAttachments = !!settings.inspect_attachments;
                 await chrome.storage.local.set({ inspectAttachments });
-                console.log('[Complyze] inspect_attachments:', inspectAttachments);
             }
-        } catch (_) {
-            // /api/proxy/settings is a local-only endpoint — ignore when unavailable
-        }
+        } catch (_) {}
     } catch (e) {
-        console.warn('[Complyze] Policy fetch failed:', e.message);
+        lastPolicySyncStatus = 'error:' + e.message;
+        await chrome.storage.local.set({ lastPolicySyncStatus });
+        await submitSyncEvent('POLICY_FETCH_FAILED', {
+            summary: 'Failed to fetch effective policy',
+            metadata: { error: e.message }
+        });
     }
 }
 
+async function submitSyncEvent(eventType, data) {
+    var event = Object.assign({
+        eventId: crypto.randomUUID(),
+        eventType,
+        timestamp: new Date().toISOString(),
+        extensionVersion: '1.2.0',
+        browser: 'chrome',
+        platform: navigator.platform || 'unknown',
+        policyVersion: effectivePolicy?.policyVersion || 0,
+    }, data || {});
+
+    try {
+        await apiRequest('/api/events/ingest', 'POST', event);
+        lastEventSyncStatus = 'ok:' + eventType;
+        await chrome.storage.local.set({ lastEventSyncStatus });
+    } catch (e) {
+        eventQueue.push(event);
+        await chrome.storage.local.set({ eventQueue });
+        lastEventSyncStatus = 'queued:' + eventType;
+        await chrome.storage.local.set({ lastEventSyncStatus });
+    }
+}
+
+async function flushEventQueue() {
+    if (!eventQueue.length) return;
+    var pending = [...eventQueue];
+    eventQueue = [];
+    for (var i = 0; i < pending.length; i++) {
+        try {
+            await apiRequest('/api/events/ingest', 'POST', pending[i]);
+        } catch (e) {
+            eventQueue.push(pending[i]);
+        }
+    }
+    await chrome.storage.local.set({ eventQueue });
+}
 
 // ── Prompt scanning ────────────────────────────────────────────────────────────
 async function scanPrompt(payload) {
     await ensureFreshToken();
-    // Inject locally cached policies so the backend doesn't need a second round-trip.
     var enrichedPayload = Object.assign({}, payload);
-    if (cachedPolicies && cachedPolicies.length > 0) {
-        enrichedPayload.cachedPolicies = cachedPolicies;
+    if (effectivePolicy?.resolvedPolicy?.rules?.length > 0) {
+        enrichedPayload.cachedPolicies = effectivePolicy.resolvedPolicy.rules;
+        enrichedPayload.policyVersion = effectivePolicy.policyVersion;
     }
     // Always send user/org identity so backend policy engine uses the correct user's rules.
     if (currentUser) {
@@ -424,10 +466,29 @@ async function logActivity(payload) {
     var enrichedPayload = Object.assign({
         userEmail: currentUser?.email || 'unknown',
         uid: currentUser?.uid || '',
-        // CRITICAL: workspaceId must match what the dashboard queries
         workspaceId: currentUser?.orgId || currentUser?.uid || 'default',
+        policyVersion: effectivePolicy?.policyVersion || 0,
     }, payload);
-    console.log('[Complyze] Logging activity:', enrichedPayload.action, '| ws:', enrichedPayload.workspaceId);
+
+    var action = (enrichedPayload.action || '').toLowerCase();
+    var eventType = 'PROMPT_SCANNED';
+    if (action.includes('block')) eventType = 'PROMPT_BLOCKED';
+    else if (action.includes('redact')) eventType = 'PROMPT_REDACTED';
+    else if (action.includes('audit')) eventType = 'AUDIT_ONLY_FLAGGED';
+    else if (action.includes('allow')) eventType = 'PROMPT_ALLOWED';
+
+    await submitSyncEvent(eventType, {
+        decision: enrichedPayload.action,
+        riskScore: enrichedPayload.riskScore,
+        modelScore: enrichedPayload.analysis_score,
+        redactionApplied: eventType === 'PROMPT_REDACTED',
+        summary: enrichedPayload.message || eventType,
+        metadata: {
+            tool: enrichedPayload.aiTool,
+            findings: enrichedPayload.findings,
+        }
+    });
+
     return apiRequest('/api/activity', 'POST', enrichedPayload);
 }
 
@@ -440,6 +501,10 @@ async function ensureAlarmExists() {
         chrome.alarms.create('policy_refresh', { periodInMinutes: 5 });
         console.log('[Complyze] Created policy_refresh alarm.');
     }
+    const queueAlarm = await chrome.alarms.get('event_sync');
+    if (!queueAlarm) {
+        chrome.alarms.create('event_sync', { periodInMinutes: 1 });
+    }
 }
 
 // ── Lifecycle entry points ────────────────────────────────────────────────────
@@ -448,14 +513,14 @@ async function ensureAlarmExists() {
 if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalled) {
     chrome.runtime.onInstalled.addListener(() => {
         ensureInitialized().then(() => {
-            fetchAndCachePolicies().catch(() => { });
+            fetchAndCachePolicies('login').catch(() => { });
             ensureAlarmExists();                                    // ← BUG-3 fix
         });
     });
 
     chrome.runtime.onStartup.addListener(() => {
         ensureInitialized().then(() => {
-            fetchAndCachePolicies().catch(() => { });
+            fetchAndCachePolicies('login').catch(() => { });
             ensureAlarmExists();                                    // ← BUG-3 fix (recreate if cleared)
         });
     });
@@ -463,11 +528,26 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalle
     // FIX BUG-2: Alarm handler now calls ensureInitialized() before fetching policies
     // so auth headers are populated even when the SW cold-starts from an alarm wake.
     chrome.alarms.onAlarm.addListener(async (alarm) => {
-        if (alarm.name !== 'policy_refresh') return;
-        await ensureInitialized();                                  // ← BUG-2 fix
-        await fetchAndCachePolicies().catch(() => { });
-        console.log('[Complyze] Alarm: policies refreshed at', new Date().toISOString());
+        await ensureInitialized();
+        if (alarm.name === 'policy_refresh') {
+            await fetchAndCachePolicies('alarm').catch(() => { });
+            console.log('[Complyze] Alarm: policies refreshed at', new Date().toISOString());
+            return;
+        }
+        if (alarm.name === 'event_sync') {
+            await flushEventQueue().catch(() => { });
+            return;
+        }
     });
+
+
+    if (chrome.tabs && chrome.tabs.onActivated) {
+        chrome.tabs.onActivated.addListener(async () => {
+            await ensureInitialized();
+            await fetchAndCachePolicies('tab_activated').catch(() => { });
+            await flushEventQueue().catch(() => { });
+        });
+    }
 
     // ── Sidebar toggle via native sidePanel ───────────────────────────────────────
     // We configure the side panel to open when the user clicks the extension's action.
@@ -501,7 +581,23 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalle
                 stats.scannedToday = (stats.scannedToday || 0) + (localStats.sessionScanned || 0);
                 stats.blockedToday = (stats.blockedToday || 0) + (localStats.sessionBlocked || 0);
 
-                sendResponse({ user: currentUser, stats, apiEndpoint: API_ENDPOINT });
+                sendResponse({ user: currentUser, stats, apiEndpoint: API_ENDPOINT, effectivePolicy, lastPolicySyncStatus, lastEventSyncStatus, queuedEvents: eventQueue.length });
+                return;
+            }
+
+
+            if (type === 'GET_DEBUG_STATE') {
+                sendResponse({
+                    user: currentUser,
+                    organizationId: currentUser?.orgId || null,
+                    groupIds: effectivePolicy?.groupIds || [],
+                    policyVersion: effectivePolicy?.policyVersion || 0,
+                    fetchedAt: effectivePolicy?.fetchedAt || null,
+                    lastPolicySyncStatus,
+                    lastEventSyncStatus,
+                    queuedEvents: eventQueue.length,
+                    backendHealth: API_ENDPOINT,
+                });
                 return;
             }
 
@@ -535,7 +631,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalle
 
             if (type === 'SIGN_OUT') {
                 await clearUser();
-                cachedPolicies = [];
+                effectivePolicy = null;
+                eventQueue = [];
                 await chrome.storage.local.set({ sessionScanned: 0, sessionBlocked: 0 });
                 console.log('[Complyze] User signed out (stats reset).');
                 sendResponse({ ok: true });

@@ -4,6 +4,8 @@ import { getAuth } from "firebase-admin/auth";
 import { enrollmentStore } from "@/lib/enrollment-store";
 import { getFeaturesForPlan } from "@/lib/plans";
 import crypto from "crypto";
+import { resolveEffectivePolicy } from "@/lib/policy-resolver";
+import { userStore } from "@/lib/user-store";
 
 export const dynamic = "force-dynamic";
 
@@ -178,6 +180,23 @@ export async function POST(req: NextRequest) {
             await adminDb.ref(`sso_tokens/${ssoToken}`).set(ssoPayload);
         }
 
+        let bootstrap: any = { groupIds: [], policyVersion: 0 };
+        if (orgId) {
+            try {
+                const users = await userStore.listUsers(orgId, "default");
+                const managed = users.find((u) => u.email.toLowerCase() === verifiedEmail.toLowerCase());
+                const effective = await resolveEffectivePolicy({
+                    organizationId: orgId,
+                    userId: managed?.user_id || verifiedUid,
+                    email: verifiedEmail,
+                    workspaceId: "default",
+                });
+                bootstrap = { groupIds: effective.groupIds, policyVersion: effective.policyVersion };
+            } catch (e) {
+                console.warn('[auth/extension] bootstrap effective policy failed', e);
+            }
+        }
+
         return NextResponse.json({
             ok: true,
             uid: verifiedUid,
@@ -190,7 +209,9 @@ export async function POST(req: NextRequest) {
             dashboardUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3737",
             plan,
             role,
-            features
+            features,
+            groups: bootstrap.groupIds,
+            effectivePolicyVersion: bootstrap.policyVersion
         });
 
     } catch (err: any) {

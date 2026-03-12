@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import store from "@/lib/proxy-store";
+import { extensionSyncStore } from "@/lib/extension-sync-store";
 
 export const dynamic = "force-dynamic";
 
@@ -25,11 +26,22 @@ export async function GET(req: NextRequest) {
     const alerts = await store.getAlerts(workspaceId, 20);
     const unacknowledgedAlerts = await store.getUnacknowledgedCount(workspaceId);
 
+    const extensionEvents = await extensionSyncStore.feed(workspaceId, undefined, 10);
+    const latestPolicyVersion = extensionEvents.find((e) => e.policyVersion)?.policyVersion || null;
+    const lastExtensionHeartbeat = extensionEvents.find((e) => e.eventType === 'POLICY_FETCHED')?.timestamp || null;
+    const lastEventReceived = extensionEvents[0]?.timestamp || null;
+
     return NextResponse.json({
         summary,
         events,
         tool_risks: toolRisks,
         alerts,
         unacknowledged_alerts: unacknowledgedAlerts,
+        debug: {
+            latestPolicyVersion,
+            lastExtensionHeartbeat,
+            lastEventReceived,
+            last10ExtensionEvents: extensionEvents,
+        }
     });
 }
