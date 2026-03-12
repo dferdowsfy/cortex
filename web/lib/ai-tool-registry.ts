@@ -21,7 +21,9 @@ export type ToolId =
     | "github_copilot"
     | "cursor"
     | "codeium"
-    | "tabnine";
+    | "tabnine"
+    | "google_ai_studio"
+    | "openrouter";
 
 export type ToolCategory =
     | "generative_ai"
@@ -190,6 +192,26 @@ export const AI_TOOL_REGISTRY: Record<ToolId, RegistryTool> = {
         risk_tier: "moderate",
         description: "AI code completion with local model option.",
     },
+    google_ai_studio: {
+        id: "google_ai_studio",
+        display_name: "Google AI Studio",
+        vendor: "Google",
+        category: "generative_ai",
+        domains: ["aistudio.google.com"],
+        api_endpoints: ["/v1beta/", "/v1/"],
+        risk_tier: "high",
+        description: "Google AI Studio — direct API access and prompt testing for Gemini models.",
+    },
+    openrouter: {
+        id: "openrouter",
+        display_name: "OpenRouter",
+        vendor: "OpenRouter AI",
+        category: "public_llm_apis",
+        domains: ["openrouter.ai"],
+        api_endpoints: ["/api/v1/"],
+        risk_tier: "high",
+        description: "OpenRouter — unified API and chat UI for 200+ LLM models.",
+    },
 };
 
 export type CategoryId = ToolCategory;
@@ -206,7 +228,7 @@ export const AI_CATEGORY_REGISTRY: Record<CategoryId, RegistryCategory> = {
         id: "generative_ai",
         display_name: "Generative AI",
         description: "Chat interfaces and general-purpose LLMs.",
-        tools: ["chatgpt", "claude", "gemini", "perplexity", "copilot", "grok"],
+        tools: ["chatgpt", "claude", "gemini", "google_ai_studio", "perplexity", "copilot", "grok"],
     },
     code_assistants: {
         id: "code_assistants",
@@ -218,7 +240,7 @@ export const AI_CATEGORY_REGISTRY: Record<CategoryId, RegistryCategory> = {
         id: "public_llm_apis",
         display_name: "Public LLM APIs",
         description: "Developer-facing API endpoints for AI models.",
-        tools: ["mistral", "cohere"],
+        tools: ["mistral", "cohere", "openrouter"],
     },
     ai_image_tools: {
         id: "ai_image_tools",
