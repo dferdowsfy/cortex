@@ -41,7 +41,11 @@ const INPUT_SELECTORS = [
     // Google AI Studio / Gemini
     'textarea[aria-label*="prompt" i]',
     'textarea[aria-label*="Type something" i]',
+    'textarea[placeholder*="prompt" i]',
+    'textarea[placeholder*="Start typing" i]',
     '.ql-editor[contenteditable="true"]',
+    'ms-autosize-textarea textarea',
+    'ms-text-input textarea',
     // OpenRouter
     'textarea[placeholder*="Send a message" i]',
     // Generic contenteditable
@@ -113,6 +117,18 @@ function findActiveInput() {
         const el = document.querySelector(s);
         if (el) return el;
     }
+    // Fallback: if the currently focused element is a textarea or contenteditable, use it.
+    // This covers AI platforms (e.g. Google AI Studio) whose inputs don't match
+    // the explicit selectors above.
+    const active = document.activeElement;
+    if (active && (active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+        return active;
+    }
+    // Shadow DOM fallback: walk into the shadow root of the active element
+    if (active && active.shadowRoot) {
+        const inner = active.shadowRoot.querySelector('textarea, [contenteditable="true"]');
+        if (inner) return inner;
+    }
     return null;
 }
 
@@ -126,6 +142,11 @@ function resolveInput(target) {
         for (const s of INPUT_SELECTORS) {
             try { if (el.matches && el.matches(s)) return el; } catch (e) { }
         }
+    }
+    // Fallback: if the target itself is a textarea or contenteditable, accept it
+    // even when no explicit selector matched (covers AI Studio & new platforms).
+    if (target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return target;
     }
     return null;
 }
@@ -141,7 +162,7 @@ function isSendButton(target) {
 
     const attrs = [btn.getAttribute('aria-label'), testId, btn.getAttribute('title')]
         .map(a => (a || '').toLowerCase());
-    if (attrs.some(a => a.includes('send') || a.includes('submit') || a.includes('ask') || a.includes('message'))) return btn;
+    if (attrs.some(a => a.includes('send') || a.includes('submit') || a.includes('ask') || a.includes('message') || a.includes('run'))) return btn;
 
     // SVG-only buttons (icon buttons adjacent to input)
     if (btn.querySelector('svg')) {
@@ -436,14 +457,17 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
 async function handleKeydown(event) {
     if (!isAIPage()) return;
     if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
-    if (event.target && event.target.dataset && event.target.dataset.complyzeScanned === 'true') return;
-    const inputEl = resolveInput(event.target) || findActiveInput();
+    // Use composedPath to see through shadow DOM boundaries
+    const realTarget = (event.composedPath && event.composedPath().length) ? event.composedPath()[0] : event.target;
+    if (realTarget && realTarget.dataset && realTarget.dataset.complyzeScanned === 'true') return;
+    const inputEl = resolveInput(realTarget) || findActiveInput();
     if (inputEl) await interceptAndScan(event, inputEl, null);
 }
 
 async function handleClick(event) {
     if (!isAIPage()) return;
-    const sendBtn = isSendButton(event.target);
+    const realTarget = (event.composedPath && event.composedPath().length) ? event.composedPath()[0] : event.target;
+    const sendBtn = isSendButton(realTarget);
     if (!sendBtn) return;
     if (sendBtn.dataset.complyzeScanned === 'true') return;
     const inputEl = findActiveInput();
