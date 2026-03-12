@@ -332,7 +332,7 @@ function ScheduleModal({
                     key={f}
                     onClick={() => setFrequency(f)}
                     className={`flex-1 py-3 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all border ${frequency === f
-                      ? "bg-white text-[#111121] border-white shadow-xl"
+                      ? "bg-[var(--brand-color)] text-white shadow-xl border-transparent"
                       : "bg-white/5 text-white/40 border-transparent hover:border-white/10"}`}
                   >
                     {f}
@@ -711,19 +711,22 @@ function ReportCard({
       <div className="flex flex-wrap items-center gap-2 sm:shrink-0 text-left">
         <button
           onClick={onView}
-          className="flex-1 sm:flex-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-[13px] font-semibold text-white/80 hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
+          style={{ color: '#000000' }}
+          className="flex-1 sm:flex-none rounded-lg border border-transparent bg-white px-5 py-2 text-[13px] font-bold hover:bg-gray-200 transition-all shadow-sm"
         >
           View
         </button>
         <button
           onClick={onExport}
-          className="flex-1 sm:flex-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-[13px] font-semibold text-white/80 hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
+          style={{ color: '#000000' }}
+          className="flex-1 sm:flex-none rounded-lg border border-transparent bg-white px-5 py-2 text-[13px] font-bold hover:bg-gray-200 transition-all shadow-sm"
         >
           Export
         </button>
         <button
           onClick={onSchedule}
-          className="flex-1 sm:flex-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-[13px] font-semibold text-white/80 hover:bg-white/10 hover:border-white/20 transition-all shadow-sm"
+          style={{ color: '#000000' }}
+          className="flex-1 sm:flex-none rounded-lg border border-transparent bg-white px-5 py-2 text-[13px] font-bold hover:bg-gray-200 transition-all shadow-sm"
         >
           Schedule
         </button>

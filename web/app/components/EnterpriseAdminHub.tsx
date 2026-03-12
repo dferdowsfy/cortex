@@ -650,7 +650,7 @@ export default function EnterpriseAdminHub() {
                 <div className="flex items-center justify-between">
                     <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Policy Editor</h2>
                     <button onClick={handleSavePolicy} disabled={savingPolicy}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-white text-[#111121] rounded-lg text-[10px] font-black uppercase shadow-lg hover:bg-zinc-200 disabled:opacity-50 transition-all">
+                        className="flex items-center gap-2 px-6 py-2.5 bg-[var(--brand-color)] text-white rounded-lg text-[10px] font-black uppercase shadow-lg hover:opacity-90 disabled:opacity-50 transition-all">
                         {savingPolicy ? "Saving…" : "Save Policy"}
                     </button>
                 </div>
@@ -660,7 +660,7 @@ export default function EnterpriseAdminHub() {
                         <div className="flex gap-1 bg-white/5 rounded-lg p-1">
                             {(["org", "group", "user"] as const).map(t => (
                                 <button key={t} onClick={() => setPolicyTarget(t)}
-                                    className={`px-5 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${policyTarget === t ? "bg-white text-[#111121]" : "text-white/40 hover:text-white"}`}>
+                                    className={`px-5 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${policyTarget === t ? "bg-[var(--brand-color)] text-white" : "text-white/40 hover:text-white"}`}>
                                     {t}
                                 </button>
                             ))}
@@ -723,7 +723,7 @@ export default function EnterpriseAdminHub() {
                                         const key = policyKey();
                                         setPolicyMap(prev => ({ ...prev, [key]: [...(prev[key] || []), rule] }));
                                     }}
-                                        className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${newRule.action === act ? "bg-white text-[#111121]" : "bg-white/5 text-white/40 hover:text-white border border-white/5"}`}>
+                                        className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${newRule.action === act ? "bg-[var(--brand-color)] text-white" : "bg-white/5 text-white/40 hover:text-white border border-white/5"}`}>
                                         {act.replace("_only", "")}
                                     </button>
                                 ))}
