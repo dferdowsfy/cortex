@@ -72,20 +72,16 @@
 
 /* Force white text in each page, but not the sidebar */
 .main-content-area,
-.main-content-area *,
 .main-content-area h1,
 .main-content-area h2,
 .main-content-area h3,
 .main-content-area p,
-.main-content-area span,
-.main-content-area div,
 .main-content-area li,
 .main-content-area th,
 .main-content-area td,
 .main-content-area code,
-.main-content-area pre,
-.main-content-area button:not(.btn-primary):not(.btn-secondary) {
-  color: #ffffff !important;
+.main-content-area pre {
+  color: #ffffff;
 }
 
 /* Ensure buttons still have their intentional contrast */
