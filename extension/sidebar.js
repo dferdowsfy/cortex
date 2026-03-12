@@ -1,5 +1,5 @@
 /**
- * sidebar.js — Complyze Extension Sidebar v1.2.6
+ * sidebar.js — Complyze Extension Sidebar v1.4.0
  * Handles authentication and health status display.
  */
 
@@ -7,6 +7,12 @@ const loginPanel = document.getElementById('login-panel');
 const mainPanel = document.getElementById('main-panel');
 const userFooter = document.getElementById('user-footer');
 const hdrDot = document.getElementById('hdr-dot');
+
+// Set version from manifest
+try {
+    const verEl = document.getElementById('val-version');
+    if (verEl) verEl.textContent = 'v' + chrome.runtime.getManifest().version;
+} catch (_) {}
 
 // Login
 const emailInp = document.getElementById('email-inp');

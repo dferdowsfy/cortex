@@ -43,9 +43,15 @@ const INPUT_SELECTORS = [
     'textarea[aria-label*="Type something" i]',
     'textarea[placeholder*="prompt" i]',
     'textarea[placeholder*="Start typing" i]',
+    'textarea[placeholder*="Type here" i]',
     '.ql-editor[contenteditable="true"]',
     'ms-autosize-textarea textarea',
     'ms-text-input textarea',
+    '.chat-input textarea',
+    '.prompt-input textarea',
+    '[data-test-id="chat-input"] textarea',
+    'mat-form-field textarea',
+    '.mdc-text-field textarea',
     // OpenRouter
     'textarea[placeholder*="Send a message" i]',
     // Generic contenteditable
@@ -456,12 +462,23 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
 // ── Event Handlers ────────────────────────────────────────────────────────────
 async function handleKeydown(event) {
     if (!isAIPage()) return;
-    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+    // Accept Enter (most platforms) or Ctrl/Cmd+Enter (some platforms like AI Studio playground)
+    const isEnter = event.key === 'Enter' && !event.shiftKey && !event.isComposing;
+    const isCtrlEnter = event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.isComposing;
+    if (!isEnter && !isCtrlEnter) return;
     // Use composedPath to see through shadow DOM boundaries
     const realTarget = (event.composedPath && event.composedPath().length) ? event.composedPath()[0] : event.target;
     if (realTarget && realTarget.dataset && realTarget.dataset.complyzeScanned === 'true') return;
     const inputEl = resolveInput(realTarget) || findActiveInput();
-    if (inputEl) await interceptAndScan(event, inputEl, null);
+    if (inputEl) {
+        console.log('[Complyze][KEYDOWN] Intercepted Enter on', AI_TOOL, { tag: inputEl.tagName, id: inputEl.id });
+        await interceptAndScan(event, inputEl, null);
+    } else {
+        console.warn('[Complyze][KEYDOWN] Enter pressed but no input element found', {
+            targetTag: realTarget?.tagName, targetId: realTarget?.id,
+            activeTag: document.activeElement?.tagName,
+        });
+    }
 }
 
 async function handleClick(event) {
@@ -471,7 +488,10 @@ async function handleClick(event) {
     if (!sendBtn) return;
     if (sendBtn.dataset.complyzeScanned === 'true') return;
     const inputEl = findActiveInput();
-    if (inputEl) await interceptAndScan(event, inputEl, sendBtn);
+    if (inputEl) {
+        console.log('[Complyze][CLICK] Intercepted send button on', AI_TOOL, { tag: inputEl.tagName, btnLabel: sendBtn.getAttribute('aria-label') || sendBtn.textContent?.substring(0, 20) });
+        await interceptAndScan(event, inputEl, sendBtn);
+    }
 }
 
 // ── Attachment Interception ────────────────────────────────────────────────────
@@ -569,13 +589,146 @@ function enforceFileBlock(inputEl, fileName, message) {
 }
 
 
+// ── Submit-via-fetch interception (MAIN world) ──────────────────────────────
+// Google AI Studio and other SPAs submit prompts via fetch(), not via form
+// submissions or simple Enter/click actions that propagate standard DOM events.
+// We inject a tiny shim into the PAGE world (not the content-script isolated
+// world) that monkey-patches window.fetch so we can see every outgoing request.
+// When the shim detects an AI-API call it posts a message to the content script
+// which then scans the prompt before allowing the request to proceed.
+let _fetchInterceptorReady = false;
+
+function injectFetchInterceptor() {
+    if (_fetchInterceptorReady) return;
+    _fetchInterceptorReady = true;
+
+    const script = document.createElement('script');
+    script.dataset.complyze = 'fetch-shim';
+    script.textContent = `(function(){
+        if(window.__complyze_fetch_patched) return;
+        window.__complyze_fetch_patched = true;
+        const _origFetch = window.fetch;
+        window.fetch = function(){
+            var url = (typeof arguments[0] === 'string') ? arguments[0]
+                    : (arguments[0] && arguments[0].url) ? arguments[0].url : '';
+            var opts = arguments[1] || {};
+            var bodyStr = '';
+            try { bodyStr = typeof opts.body === 'string' ? opts.body : ''; } catch(e){}
+            // Detect generative-AI API calls (Google, OpenAI, Anthropic patterns)
+            if(bodyStr.length > 20 &&
+               (url.includes('/v1beta/') || url.includes('/v1/') ||
+                url.includes(':generateContent') || url.includes(':streamGenerateContent') ||
+                url.includes('/chat/completions') || url.includes('/generate'))) {
+                window.postMessage({type:'__COMPLYZE_FETCH__', url:url, body:bodyStr.substring(0,12000)}, '*');
+            }
+            return _origFetch.apply(this, arguments);
+        };
+    })();`;
+    // Append then remove — the code is already evaluated.
+    (document.head || document.documentElement).appendChild(script);
+    try { script.remove(); } catch (_) {}
+}
+
+function handleFetchMessage(event) {
+    if (event.source !== window || !event.data || event.data.type !== '__COMPLYZE_FETCH__') return;
+    if (isScanning) return;
+    try {
+        const parsed = JSON.parse(event.data.body);
+        // Extract prompt text from various API formats
+        let promptText = '';
+        if (parsed.contents) {
+            // Google Gemini / AI Studio format
+            const parts = parsed.contents.flatMap(c => (c.parts || []).map(p => p.text || ''));
+            promptText = parts.join('\n');
+        } else if (parsed.messages) {
+            // OpenAI-compatible format
+            promptText = parsed.messages.map(m => m.content || '').join('\n');
+        } else if (parsed.prompt) {
+            promptText = typeof parsed.prompt === 'string' ? parsed.prompt : JSON.stringify(parsed.prompt);
+        }
+        if (!promptText || promptText.trim().length === 0) return;
+
+        console.log('[Complyze][FETCH-INTERCEPT] Detected AI API call:', {
+            url: event.data.url.substring(0, 120),
+            promptLength: promptText.length,
+        });
+
+        // We can't block the fetch (it already fired) but we CAN scan and log.
+        // If the policy says block, show a warning and log the violation.
+        isScanning = true;
+        safeSendMessage({
+            type: 'SCAN_PROMPT',
+            payload: { prompt: promptText, aiTool: AI_TOOL, context: 'fetch_intercept' }
+        }, 15000).then(backendResult => {
+            if (!backendResult) return;
+            const policy = backendResult.policy_decision || { action: 'allow' };
+            const snippet = promptText.substring(0, 80);
+            notifyLastScan({ action: policy.action, findings: backendResult.analysis_result?.findings || [], message: policy.reason || '', source: policy.source || 'backend' }, snippet);
+
+            if (policy.action === 'block') {
+                showOverlay({ type: 'block', title: '\uD83D\uDEAB Prompt Blocked by Complyze',
+                    body: `<strong style="color:#fca5a5">${backendResult.message || 'Blocked by policy'}</strong><br><em style="color:#94a3b8">The prompt was sent before interception. This event has been logged.</em>` });
+            } else if (policy.action === 'warn') {
+                showOverlay({ type: 'warn', title: '\u26A0\uFE0F Complyze — Security Notice',
+                    body: backendResult.message || 'Potential sensitive data detected.', autoDismissMs: 5000 });
+            } else if (policy.action === 'redact') {
+                showOverlay({ type: 'redact', title: '\u2702\uFE0F Complyze — Sensitive Data Detected',
+                    body: 'Auto-redaction could not be applied (prompt already sent). Event logged.', autoDismissMs: 5000 });
+            }
+            // Log activity
+            safeSendMessage({ type: 'LOG_ACTIVITY', payload: {
+                aiTool: AI_TOOL, promptLength: promptText.length,
+                riskScore: backendResult.riskScore || 0,
+                action: policy.action, blocked: policy.action === 'block',
+                findings: backendResult.analysis_result?.findings || [],
+                promptText, decision_source: backendResult.decision_source || 'backend_policy',
+                model_used: backendResult.model_used, blocked_locally: false,
+                timestamp: new Date().toISOString(),
+            }}, 3000);
+        }).finally(() => { isScanning = false; });
+    } catch (e) {
+        console.warn('[Complyze][FETCH-INTERCEPT] Parse error:', e.message);
+    }
+}
+
+// ── MutationObserver: watch for dynamically loaded inputs ─────────────────────
+// Some SPAs (AI Studio, etc.) dynamically load chat UI after the initial page
+// render. We periodically check for inputs to ensure interception is possible.
+let _lastKnownInput = null;
+
+function watchForInputs() {
+    const check = () => {
+        const el = findActiveInput();
+        if (el && el !== _lastKnownInput) {
+            _lastKnownInput = el;
+            console.log('[Complyze][WATCH] New input element found:', {
+                tag: el.tagName, id: el.id, class: el.className?.substring?.(0, 60),
+                placeholder: el.placeholder?.substring?.(0, 40) || '',
+            });
+        }
+    };
+    // Run immediately, then every 2 seconds
+    check();
+    setInterval(check, 2000);
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 if (isAIPage()) {
     window.addEventListener('keydown', handleKeydown, true);
     window.addEventListener('click', handleClick, true);
     initFileInterceptor();
-    console.log(`[Complyze] Shield ACTIVE on ${AI_TOOL} (${window.location.hostname})`);
+
+    // MAIN world fetch interception — catches AI API calls that bypass DOM events
+    injectFetchInterceptor();
+    window.addEventListener('message', handleFetchMessage);
+
+    // Periodically check for dynamically loaded input elements
+    watchForInputs();
+
+    console.log('[Complyze] Shield ACTIVE on', AI_TOOL, '(' + window.location.hostname + ')', {
+        selectors: INPUT_SELECTORS.length,
+        inputFound: !!findActiveInput(),
+    });
 } else {
-    // We still log for debugging why it might not open
     console.log(`[Complyze] Sidebar available on ${window.location.hostname}`);
 }
