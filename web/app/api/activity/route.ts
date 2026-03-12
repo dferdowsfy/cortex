@@ -1,5 +1,8 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import store from "@/lib/proxy-store";
+import { resolveSessionContext } from "@/lib/session-context";
+import { extensionSyncStore } from "@/lib/extension-sync-store";
 import type { ActivityEvent } from "@/lib/proxy-types";
 
 export const dynamic = "force-dynamic";
@@ -13,20 +16,22 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { aiTool, promptLength, riskScore, action, userEmail, workspaceId, installationId } = body;
+        const session = await resolveSessionContext(req);
+        const requestId = session?.requestId || crypto.randomUUID();
 
         if (!aiTool) {
             return NextResponse.json({ error: "aiTool is required" }, { status: 400 });
         }
 
-        const orgId = req.headers.get("X-Organization-ID") || "default";
-        const resolvedWorkspaceId = workspaceId || orgId;
+        const orgId = session?.organizationId || req.headers.get("X-Organization-ID") || "default";
+        const resolvedWorkspaceId = orgId || workspaceId || "default";
 
         // Map extension payload to ActivityEvent schema
         const isBlocked = action === "blocked" || action === "block" || body.blocked === true;
         const score = parseInt(riskScore) || 0;
 
         const event: ActivityEvent = {
-            id: `ext_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            id: body.eventId || `ext_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
             tool: aiTool,
             tool_domain: aiTool.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com", // Best effort mapping
             user_hash: userEmail && userEmail !== "unknown@domain.com" ? userEmail : (installationId || "anonymous"),
@@ -59,14 +64,37 @@ export async function POST(req: NextRequest) {
 
             // Identity fields — ensure dashboard correctly attributes this event
             // to the right user/org regardless of workspace path used.
-            organization_id: resolvedWorkspaceId !== orgId ? orgId : resolvedWorkspaceId,
-            user_id: userEmail || body.uid || installationId || "anonymous",
+            organization_id: orgId,
+            user_id: session?.userId || userEmail || body.uid || installationId || "anonymous",
             final_action: isBlocked ? "block" : (action || "allow"),
         };
 
         await store.addEvent(event, resolvedWorkspaceId);
+        const normalizedAction = String(action || "").toLowerCase();
+        const mappedEventType = normalizedAction.includes("audit")
+            ? "AUDIT_ONLY_FLAGGED"
+            : normalizedAction.includes("redact")
+                ? "PROMPT_REDACTED"
+                : event.blocked
+                    ? "PROMPT_BLOCKED"
+                    : "PROMPT_ALLOWED";
 
-        return NextResponse.json({ status: "logged", event_id: event.id });
+        await extensionSyncStore.ingest({
+            eventId: event.id,
+            eventType: mappedEventType,
+            timestamp: event.timestamp,
+            userId: event.user_id || session?.userId || "anonymous",
+            organizationId: orgId,
+            groupIds: session?.groupIds || [],
+            decision: event.final_action,
+            riskScore: score,
+            summary: event.findings?.[0] || event.final_action,
+            policyVersion: Number(body.policyVersion || 0),
+            metadata: { requestId }
+        }, resolvedWorkspaceId);
+
+        console.log(JSON.stringify({ msg: "activity_logged", requestId, userId: event.user_id || session?.userId || "anonymous", organizationId: orgId, eventId: event.id, action: event.final_action }));
+        return NextResponse.json({ status: "logged", event_id: event.id, requestId });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }

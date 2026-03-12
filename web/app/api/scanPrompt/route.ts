@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { groupStore } from "@/lib/group-store";
 import { enrollmentStore } from "@/lib/enrollment-store";
-import { userStore } from "@/lib/user-store";
+import { resolveSessionContext } from "@/lib/session-context";
+import { resolveEffectivePolicy } from "@/lib/policy-resolver";
 import {
     analysePrompt,
     buildFallbackResult,
@@ -40,12 +40,13 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const promptText: string = body.promptText || body.prompt || "";
         const aiTool: string = body.aiTool || "Unknown Tool";
-        const workspaceId: string = body.workspaceId || "default";
         const context: string | string[] = body.context || "";
 
-        const orgId: string | null = req.headers.get("X-Organization-ID") || body.orgId || null;
         const authHeader: string | null = req.headers.get("Authorization");
-        const userEmail: string | null = req.headers.get("X-User-Email") || body.userEmail || null;
+        const session = await resolveSessionContext(req);
+        const orgId: string | null = session?.organizationId || req.headers.get("X-Organization-ID") || body.orgId || null;
+        const userEmail: string | null = session?.email || req.headers.get("X-User-Email") || body.userEmail || null;
+        const workspaceId: string = orgId || body.workspaceId || "default";
 
         if (!promptText) {
             return NextResponse.json({ error: "promptText is required" }, { status: 400 });
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // ── Policy rule resolution ─────────────────────────────────────────────────
+                // ── Policy rule resolution ─────────────────────────────────────────────────
         let rules: unknown[] = [];
         let orgPolicyConfig: any = null;
 
@@ -78,41 +79,18 @@ export async function POST(req: NextRequest) {
             rules = body.cachedPolicies;
             console.log(`[scanPrompt] Using ${rules.length} extension-cached policy rules.`);
         } else if (orgId) {
-            const org = await enrollmentStore.getOrganization(orgId, workspaceId);
-            if (org?.policy_config) {
-                orgPolicyConfig = org.policy_config;
-                if (org.policy_config.rules) {
-                    rules = org.policy_config.rules;
-                }
-            }
-
-            if (userEmail && userEmail !== "unknown@domain.com") {
-                try {
-                    const users = await userStore.listUsers(orgId, workspaceId);
-                    const foundUser = users.find((u) => u.email === userEmail);
-                    if (foundUser) {
-                        if (foundUser.group_id) {
-                            const groupPolicy = await groupStore.getPolicyByGroup(foundUser.group_id, workspaceId);
-                            const groupRules = groupPolicy?.rules || [];
-                            if (groupRules.length > 0) {
-                                rules = groupPolicy?.inherit_org_default ? [...rules, ...groupRules] : groupRules;
-                            }
-                        }
-
-                        // Apply user-level override policy if it exists
-                        const userPolicy = await groupStore.getPolicyByGroup(foundUser.user_id, workspaceId);
-                        const userRules = userPolicy?.rules || [];
-                        if (userRules.length > 0) {
-                            rules = userPolicy?.inherit_org_default ? [...rules, ...userRules] : userRules;
-                        }
-                    }
-                } catch (e) {
-                    console.error("[scanPrompt] Could not fetch user group/policy", e);
-                }
-            }
+            const effective = await resolveEffectivePolicy({
+                organizationId: orgId,
+                userId: session?.userId || body.user_id,
+                email: userEmail || undefined,
+                workspaceId: "default",
+            });
+            orgPolicyConfig = effective.resolvedPolicy;
+            rules = effective.resolvedPolicy.rules || [];
+            console.log(`[scanPrompt] Resolved effective policy version=${effective.policyVersion} rules=${rules.length}`);
         }
 
-        // ── Build context string ───────────────────────────────────────────────────
+// ── Build context string ───────────────────────────────────────────────────
         const contextStr = Array.isArray(context) ? context.join("\n---\n") : context;
 
         // ── Dispatch to local Ollama for analysis ─────────────────────────────────

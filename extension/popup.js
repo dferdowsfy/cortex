@@ -39,6 +39,15 @@ const scanTime = document.getElementById('scan-time');
 const scanBody = document.getElementById('scan-body');
 const scanSnippet = document.getElementById('scan-snippet');
 const scanFindings = document.getElementById('scan-findings');
+const dbgUser = document.getElementById('dbg-user');
+const dbgOrg = document.getElementById('dbg-org');
+const dbgGroups = document.getElementById('dbg-groups');
+const dbgPolicyVersion = document.getElementById('dbg-policy-version');
+const dbgFetchedAt = document.getElementById('dbg-fetched-at');
+const dbgPolicySync = document.getElementById('dbg-policy-sync');
+const dbgEventSync = document.getElementById('dbg-event-sync');
+const dbgQueued = document.getElementById('dbg-queued');
+const dbgBackend = document.getElementById('dbg-backend');
 
 // ── Messaging ─────────────────────────────────────────────────────────────────
 function msg(type, payload) {
@@ -142,6 +151,21 @@ function renderLogout() {
     hdrDot.className = 'dot';
 }
 
+
+async function renderDebugPanel() {
+    const d = await msg('GET_DEBUG_STATE');
+    if (!d) return;
+    dbgUser.textContent = d.user?.email || '—';
+    dbgOrg.textContent = d.organizationId || '—';
+    dbgGroups.textContent = (d.groupIds || []).join(', ') || '—';
+    dbgPolicyVersion.textContent = String(d.policyVersion || 0);
+    dbgFetchedAt.textContent = d.fetchedAt || '—';
+    dbgPolicySync.textContent = d.lastPolicySyncStatus || '—';
+    dbgEventSync.textContent = d.lastEventSyncStatus || '—';
+    dbgQueued.textContent = String(d.queuedEvents || 0);
+    dbgBackend.textContent = d.backendHealth || '—';
+}
+
 // ── Load state ────────────────────────────────────────────────────────────────
 async function loadState() {
     const state = await msg('GET_AUTH_STATE');
@@ -151,6 +175,7 @@ async function loadState() {
 
     if (state && state.user) {
         renderMain(state.user, state.stats, storageData.lastScanResult);
+        await renderDebugPanel();
     } else {
         renderLogout();
     }
@@ -247,6 +272,7 @@ setInterval(async () => {
     if (mainPanel.style.display === 'none') return;
     const s = await new Promise(r => chrome.storage.local.get(['lastScanResult'], r));
     if (s.lastScanResult) renderScanCard(s.lastScanResult);
+    await renderDebugPanel();
 }, 3000);
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
