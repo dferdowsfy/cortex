@@ -1,9 +1,10 @@
 /**
  * Complyze Prompt 4: Recommendation Engine
- * Service layer for generating remediation plans
+ * Service layer for generating remediation plans.
+ * All LLM calls route through the Ollama model on the VPS.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { createOllamaCaller, type OllamaCallerConfig } from "./ollamaCaller.js";
 import {
   RecommendationRequestSchema,
   RecommendationResponseSchema,
@@ -124,41 +125,24 @@ export async function generateRecommendations(
 }
 
 /**
- * Create Anthropic LLM caller with Claude Sonnet
- * Temperature 0.2 per spec (slightly higher for natural language recommendations)
+ * Create Ollama LLM caller for recommendation generation.
+ * Routes through the Ollama model hosted on the VPS.
  */
-export function createAnthropicCaller(apiKey: string): LLMCaller {
-  const client = new Anthropic({ apiKey });
-
-  return async (systemPrompt: string, userPrompt: string): Promise<string> => {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 5000,
-      temperature: 0.2,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    });
-
-    const firstBlock = response.content[0];
-    if (firstBlock.type !== "text") {
-      throw new Error("Expected text response from Claude");
-    }
-
-    return firstBlock.text;
-  };
+export function createRecommendationCaller(config?: OllamaCallerConfig): LLMCaller {
+  return createOllamaCaller(config);
 }
 
 /**
- * Convenience function: generate recommendations using Anthropic API
+ * Convenience function: generate recommendations using Ollama API
  */
 export async function analyzeToolRecommendations(
   request: RecommendationRequest,
-  anthropicApiKey: string,
+  _config?: OllamaCallerConfig,
   maxRetries = 3
 ): Promise<
   | { ok: true; data: RecommendationResponse }
   | { ok: false; error: string; validationErrors?: string[] }
 > {
-  const caller = createAnthropicCaller(anthropicApiKey);
+  const caller = createRecommendationCaller(_config);
   return generateRecommendations(request, caller, maxRetries);
 }

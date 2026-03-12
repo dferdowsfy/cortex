@@ -3,8 +3,9 @@
  *
  * Orchestrates the LLM call, JSON parsing, validation, and retry logic
  * for producing a Tool Intelligence Profile.
+ * All LLM calls route through the Ollama model on the VPS.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import { createOllamaCaller, type OllamaCallerConfig } from "./ollamaCaller.js";
 import type { ExtractionRequest, ToolIntelligenceProfile } from "./schema.js";
 import { SYSTEM_PROMPT, buildUserPrompt } from "./prompts.js";
 import {
@@ -18,22 +19,17 @@ import {
 // ---------------------------------------------------------------------------
 
 export interface ExtractionConfig {
-  /** Anthropic API key. Falls back to ANTHROPIC_API_KEY env var. */
-  apiKey?: string;
-  /** Model to use. Default: claude-sonnet-4-5-20250929 */
+  /** Override OLLAMA_BASE_URL */
+  baseUrl?: string;
+  /** Override OLLAMA_MODEL */
   model?: string;
-  /** Temperature. Default: 0.1 (low for consistency). */
-  temperature?: number;
-  /** Max tokens. Default: 4096 */
-  maxTokens?: number;
+  /** Timeout in ms. Default: 60000 */
+  timeoutMs?: number;
   /** Number of retry attempts on validation failure. Default: 1 */
   maxRetries?: number;
 }
 
-const DEFAULT_CONFIG: Required<Omit<ExtractionConfig, "apiKey">> = {
-  model: "claude-sonnet-4-5-20250929",
-  temperature: 0.1,
-  maxTokens: 4096,
+const DEFAULT_CONFIG = {
   maxRetries: 1,
 };
 
@@ -65,7 +61,7 @@ export type ExtractionResult = ExtractionSuccess | ExtractionError;
 /**
  * A callable that takes system + user prompts and returns the raw
  * LLM text response. Used to decouple extraction logic from the
- * Anthropic SDK so we can test without network calls.
+ * LLM backend so we can test without network calls.
  */
 export type LLMCaller = (
   systemPrompt: string,
@@ -73,39 +69,14 @@ export type LLMCaller = (
 ) => Promise<string>;
 
 /**
- * Create an LLMCaller backed by the Anthropic SDK.
+ * Create an LLMCaller backed by the Ollama VPS.
  */
-export function createAnthropicCaller(cfg: ExtractionConfig): LLMCaller {
-  const apiKey = cfg.apiKey ?? process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "Anthropic API key is required. Set ANTHROPIC_API_KEY env var or pass apiKey in config.",
-    );
-  }
-
-  const client = new Anthropic({ apiKey });
-  const model = cfg.model ?? DEFAULT_CONFIG.model;
-  const temperature = cfg.temperature ?? DEFAULT_CONFIG.temperature;
-  const maxTokens = cfg.maxTokens ?? DEFAULT_CONFIG.maxTokens;
-
-  return async (systemPrompt: string, userPrompt: string) => {
-    const response = await client.messages.create({
-      model,
-      max_tokens: maxTokens,
-      temperature,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    });
-
-    // Extract text from response content blocks
-    const textBlocks = response.content.filter(
-      (block) => block.type === "text",
-    );
-    if (textBlocks.length === 0) {
-      throw new Error("LLM returned no text content blocks");
-    }
-    return textBlocks.map((b) => b.text).join("");
-  };
+export function createOllamaExtractCaller(cfg?: ExtractionConfig): LLMCaller {
+  return createOllamaCaller({
+    baseUrl: cfg?.baseUrl,
+    model: cfg?.model,
+    timeoutMs: cfg?.timeoutMs,
+  });
 }
 
 /**
@@ -179,12 +150,12 @@ export async function extractToolIntelligence(
 // ---------------------------------------------------------------------------
 
 /**
- * One-call convenience: creates the Anthropic caller and runs extraction.
+ * One-call convenience: creates the Ollama caller and runs extraction.
  */
 export async function analyzeAITool(
   request: ExtractionRequest,
   config?: ExtractionConfig,
 ): Promise<ExtractionResult> {
-  const caller = createAnthropicCaller(config ?? {});
+  const caller = createOllamaExtractCaller(config);
   return extractToolIntelligence(request, caller, config);
 }

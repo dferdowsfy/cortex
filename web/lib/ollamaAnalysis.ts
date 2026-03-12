@@ -1,24 +1,22 @@
 /**
  * Complyze Ollama Analysis Service
  *
- * Routes ALL prompt-risk analysis through a locally-hosted Ollama model.
- * No external LLM providers. No regex-based blocking. All decisions originate
- * from the local LLM inference result.
+ * Routes ALL prompt-risk analysis through a remotely-hosted Ollama model on a VPS.
+ * No external LLM providers (no OpenAI, Anthropic, OpenRouter).
+ * No regex-based blocking. All decisions originate from the Ollama LLM result.
  *
  * Connectivity notes:
- *  - The Ollama server MUST run locally at http://localhost:11434 (default).
- *  - Install Ollama: https://ollama.com/  then `ollama pull complyze-qwen`
- *  - Override OLLAMA_BASE_URL only to point at a different local or private host.
- *    NEVER point it at a public/external endpoint — all analysis must be local.
+ *  - The Ollama server is hosted on a remote VPS.
+ *  - OLLAMA_BASE_URL points to the VPS (e.g. http://72.62.83.236:11434).
+ *  - Port 11434 is Ollama's native default port.
  *
  * Configuration (all env-driven, no hardcoding):
- *  OLLAMA_BASE_URL   — local Ollama base URL (default: http://localhost:11434)
- *  OLLAMA_MODEL      — model name, e.g. complyze-qwen or llama3
- *  OLLAMA_TIMEOUT_MS — request timeout in ms (default 30000)
+ *  OLLAMA_BASE_URL   — Ollama VPS base URL (e.g. http://72.62.83.236:11434)
+ *  OLLAMA_MODEL      — model name (e.g. complyze-qwen)
+ *  OLLAMA_TIMEOUT_MS — request timeout in ms (default 60000)
  *
  * Architecture:
- *  Browser Extension → http://localhost:11434/api/generate → LLM risk evaluation
- *  Backend  (fallback) → OLLAMA_BASE_URL/api/generate     → LLM risk evaluation
+ *  Browser Extension → Backend /api/scanPrompt → OLLAMA_BASE_URL/api/generate → LLM risk evaluation
  *  Policy engine uses LLM output — regex is never the decision source.
  *
  *  1. Build prompt payload (user prompt + attachment context + metadata)
@@ -34,17 +32,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getOllamaConfig() {
-    // Default to localhost — all analysis must be performed locally.
-    const baseUrl = (process.env.OLLAMA_BASE_URL || "http://localhost:11434").trim();
-    const model = (process.env.OLLAMA_MODEL || "complyze-qwen").trim();
-    // Tighter default timeout for local inference (30 s instead of 60 s).
-    const timeout = parseInt(process.env.OLLAMA_TIMEOUT_MS || "30000", 10);
+    // OLLAMA_BASE_URL must point to the remote VPS running Ollama.
+    const baseUrl = (process.env.OLLAMA_BASE_URL || "").trim();
+    const model = (process.env.OLLAMA_MODEL || "").trim();
+    const timeout = parseInt(process.env.OLLAMA_TIMEOUT_MS || "60000", 10);
 
     if (!baseUrl) {
         throw new Error(
-            "[ollamaAnalysis] OLLAMA_BASE_URL resolved to an empty string. " +
-            "Ensure Ollama is running locally: https://ollama.com/ " +
-            "Default: OLLAMA_BASE_URL=http://localhost:11434"
+            "[ollamaAnalysis] OLLAMA_BASE_URL is not set. " +
+            "Set it to the VPS address running Ollama. " +
+            "Example: OLLAMA_BASE_URL=http://72.62.83.236:11434"
         );
     }
     if (!model) {
@@ -57,7 +54,7 @@ function getOllamaConfig() {
     return {
         baseUrl: baseUrl.replace(/\/$/, ""), // strip trailing slash
         model,
-        timeoutMs: isNaN(timeout) ? 30_000 : timeout,
+        timeoutMs: isNaN(timeout) ? 60_000 : timeout,
     };
 }
 
@@ -376,20 +373,10 @@ function filterEnum<T extends string>(arr: unknown, allowed: Set<T>, fieldName: 
 }
 
 function generateRedactedPrompt(prompt: string): string {
-    if (!prompt || !prompt.trim()) return prompt || "";
-    let redacted = prompt;
-    // Basic redaction of obvious patterns
-    // AWS keys
-    redacted = redacted.replace(/(AKIA|ASIA)[0-9A-Z]{16}/g, "[REDACTED_AWS_KEY]");
-    // SSN
-    redacted = redacted.replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[REDACTED_SSN]");
-    // Bearer tags
-    redacted = redacted.replace(/Bearer\s+[A-Za-z0-9\-\._~+\/]+=*/gi, "Bearer [REDACTED_TOKEN]");
-    // API keys
-    redacted = redacted.replace(/api[_-]?key[^\w]{1,5}[A-Za-z0-9_-]{16,}/gi, "api_key=[REDACTED]");
-    // Passwords in assignments
-    redacted = redacted.replace(/password[^\w]{1,5}[A-Za-z0-9_!@#$%^&\*\-]{6,}/gi, "password=[REDACTED]");
-    return redacted;
+    // Redaction is handled entirely by the Ollama model.
+    // No regex-based redaction. The model's redacted_prompt field is authoritative.
+    // This fallback simply returns the original prompt when the model doesn't provide one.
+    return prompt || "";
 }
 
 function normaliseFindings(raw: unknown): ComplyzeAnalysisResult["findings"] {
@@ -509,15 +496,23 @@ export function normaliseAndValidate(raw: unknown, originalPromptText: string): 
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Analyses a prompt via the locally-hosted Ollama model.
+ * Analyses a prompt via the Ollama model hosted on the VPS.
  * Configuration is read from OLLAMA_BASE_URL / OLLAMA_MODEL / OLLAMA_TIMEOUT_MS.
- * Defaults to http://localhost:11434 — all analysis must occur locally.
  * Throws an OllamaAnalysisError (with `.code`) on any failure.
  */
 export async function analysePrompt(
     input: ComplyzeAnalysisInput,
 ): Promise<ComplyzeAnalysisResult> {
     const prompt = buildAnalysisPrompt(input);
+
+    // Resolve config on every call so env changes are picked up without restart
+    const { baseUrl, model, timeoutMs } = getOllamaConfig();
+
+    console.log("[Complyze] Prompt intercepted");
+    console.log("[Complyze] Sending prompt to Ollama");
+    console.log(`[Complyze] Ollama endpoint: ${baseUrl}`);
+    console.log(`[Complyze] Model used: ${model}`);
+    console.log("[Complyze] Timeout:", timeoutMs, "ms");
 
     if (DEV) {
         console.log("[ollamaAnalysis] Outbound payload summary:", {
@@ -528,14 +523,6 @@ export async function analysePrompt(
             policyRulesCount: input.policyRules?.length ?? 0,
             metadata: input.metadata ?? {},
         });
-    }
-
-    // Resolve remote config on every call so env changes are picked up
-    // without restarting the server (useful when rotating hosts).
-    const { baseUrl, model, timeoutMs } = getOllamaConfig();
-
-    if (DEV) {
-        console.log(`[ollamaAnalysis] Remote target: ${baseUrl} | model: ${model}`);
     }
 
     const body = JSON.stringify({
@@ -644,6 +631,9 @@ export async function analysePrompt(
             });
         }
 
+        console.log("[Complyze] Ollama response received");
+        console.log("[Complyze] Policy decision applied:", validated.suggested_action);
+
         return validated;
     } catch (error) {
         // Re-throw typed errors unchanged
@@ -666,9 +656,9 @@ export async function analysePrompt(
             const { baseUrl: b } = getOllamaConfig();
             const err: OllamaAnalysisError = {
                 code: "UNREACHABLE",
-                message: `Cannot reach local Ollama at ${b}: ${error.message}. ` +
-                    "Ensure Ollama is installed and running: https://ollama.com/ " +
-                    "Then pull the model: ollama pull complyze-qwen",
+                message: `Cannot reach Ollama VPS at ${b}: ${error.message}. ` +
+                    "Ensure OLLAMA_BASE_URL is set to the correct VPS address. " +
+                    "Example: OLLAMA_BASE_URL=http://72.62.83.236:11434",
             };
             throw Object.assign(new Error(err.message), err);
         }
@@ -729,7 +719,7 @@ export function buildFallbackResult(errorMessage: string): ComplyzeAnalysisResul
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic Ollama text completion (for non-analysis routes: extract, assess, report)
-// Sends requests to the local Ollama instance via OLLAMA_BASE_URL (localhost:11434).
+// Sends requests to the Ollama VPS via OLLAMA_BASE_URL.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface OllamaTextOptions {

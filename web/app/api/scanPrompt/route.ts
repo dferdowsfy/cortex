@@ -99,7 +99,10 @@ export async function POST(req: NextRequest) {
         // hasCritical is always false — the policy engine must not block based on regex.
         const hasCritical = false;
 
-        console.log(`[scanPrompt] Dispatching to local Ollama: ${aiTool} (prompt size: ${promptText.length})`);
+        console.log(`[Complyze] Prompt intercepted: ${aiTool} (prompt size: ${promptText.length})`);
+        console.log(`[Complyze] Sending prompt to Ollama`);
+        console.log(`[Complyze] Ollama endpoint: ${process.env.OLLAMA_BASE_URL || '(not set)'}`);
+        console.log(`[Complyze] Model used: ${process.env.OLLAMA_MODEL || '(not set)'}`);
         let analysisResult: ComplyzeAnalysisResult;
         let analysisError: OllamaAnalysisError | null = null;
 
@@ -123,7 +126,7 @@ export async function POST(req: NextRequest) {
                 message: err instanceof Error ? err.message : String(err),
                 raw: typed.raw,
             };
-            console.error(`[scanPrompt] Ollama analysis failed (${analysisError.code}):`, analysisError.message);
+            console.error(`[Complyze] Ollama analysis failed (${analysisError.code}):`, analysisError.message);
             // Return a graceful fallback so the dashboard still renders
             const fallback = buildFallbackResult(analysisError.message);
             const fallbackDecision = {
@@ -133,7 +136,7 @@ export async function POST(req: NextRequest) {
                 model_used: false,   // Ollama call failed
                 policy_used: true,
             };
-            console.log(`[scanPrompt] Returning Ollama-failure fallback for ${aiTool}: ${analysisError.code}`);
+            console.log(`[Complyze] Returning Ollama-failure fallback for ${aiTool}: ${analysisError.code}`);
             return NextResponse.json(
                 mapToLegacyResponse(fallback, fallbackDecision, aiTool, { analysisError }),
                 { status: 200 },
@@ -142,6 +145,7 @@ export async function POST(req: NextRequest) {
 
         // ── Policy decision engine (dashboard config is the sole authority) ───────
         // Pass ollamaWasCalled=true so model_used is accurately tracked in the decision.
+        console.log(`[Complyze] Ollama response received: risk_score=${analysisResult.overall_risk_score}, severity=${analysisResult.severity}`);
         const policyDecision = computePolicyDecision(analysisResult, orgPolicyConfig, hasCritical, true);
 
         // ── Persistent Activity Logging (Ensures Dashboard/Extension Sync) ────────
@@ -194,7 +198,7 @@ export async function POST(req: NextRequest) {
         }
 
         console.log(
-            `[scanPrompt] Final: action=${policyDecision.action} | ` +
+            `[Complyze] Policy decision applied: action=${policyDecision.action} | ` +
             `reason=${policyDecision.reason} | riskScore=${analysisResult.overall_risk_score} | tool=${aiTool}`,
         );
 

@@ -5,7 +5,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   generateBoardSummary,
-  createAnthropicCaller,
+  createBoardSummaryCaller,
   generatePortfolioReport,
   type LLMCaller,
 } from "../boardSummary.js";
@@ -232,11 +232,11 @@ describe("generateBoardSummary", () => {
   });
 });
 
-// ── createAnthropicCaller ──────────────────────────────────────────
+// ── createBoardSummaryCaller ────────────────────────────────────────
 
-describe("createAnthropicCaller", () => {
+describe("createBoardSummaryCaller", () => {
   it("creates a callable function", () => {
-    const caller = createAnthropicCaller("test-key");
+    const caller = createBoardSummaryCaller();
     expect(typeof caller).toBe("function");
   });
 });

@@ -39,8 +39,7 @@
         "https://api.complyze.co/*",
         "https://complyze.co/*",
         "https://identitytoolkit.googleapis.com/*",
-        "https://securetoken.googleapis.com/*",
-        "http://localhost:11434/*"
+        "https://securetoken.googleapis.com/*"
     ],
     "side_panel": {
         "default_path": "sidebar.html"

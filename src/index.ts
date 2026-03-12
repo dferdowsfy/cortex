@@ -42,7 +42,7 @@ export {
   // Extraction
   analyzeAITool,
   extractToolIntelligence,
-  createAnthropicCaller,
+  createOllamaExtractCaller,
   parseJsonResponse,
   type ExtractionConfig,
   type ExtractionResult,
@@ -204,6 +204,12 @@ export {
   // Board Summary Validation
   validateBoardSummary,
 } from "./boardSummaryValidation.js";
+
+export {
+  // Ollama Caller
+  createOllamaCaller,
+  type OllamaCallerConfig,
+} from "./ollamaCaller.js";
 
 export {
   // Board Summary Service

@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   extractToolIntelligence,
   parseJsonResponse,
-  createAnthropicCaller,
+  createOllamaExtractCaller,
   type LLMCaller,
 } from "../extraction.js";
 import { validChatGPTProfile, chatGPTRequest } from "./fixtures.js";
@@ -165,17 +165,12 @@ describe("extractToolIntelligence", () => {
 });
 
 // ---------------------------------------------------------------------------
-// createAnthropicCaller
+// createOllamaExtractCaller
 // ---------------------------------------------------------------------------
 
-describe("createAnthropicCaller", () => {
-  it("throws if no API key is provided and env var is unset", () => {
-    const originalKey = process.env.ANTHROPIC_API_KEY;
-    delete process.env.ANTHROPIC_API_KEY;
-
-    expect(() => createAnthropicCaller({})).toThrow("API key is required");
-
-    // Restore env
-    if (originalKey) process.env.ANTHROPIC_API_KEY = originalKey;
+describe("createOllamaExtractCaller", () => {
+  it("creates a callable function with default config", () => {
+    const caller = createOllamaExtractCaller();
+    expect(typeof caller).toBe("function");
   });
 });

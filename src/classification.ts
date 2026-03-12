@@ -3,6 +3,7 @@
  *
  * Orchestrates the LLM call, JSON parsing, validation, and retry logic
  * for producing a Risk Classification from a tool profile + enrichment.
+ * All LLM calls route through the Ollama model on the VPS.
  */
 import type { ToolIntelligenceProfile } from "./schema.js";
 import type {
@@ -20,7 +21,7 @@ import {
 } from "./classificationValidation.js";
 import {
   type LLMCaller,
-  createAnthropicCaller,
+  createOllamaExtractCaller,
   parseJsonResponse,
   type ExtractionConfig,
 } from "./extraction.js";
@@ -30,22 +31,17 @@ import {
 // ---------------------------------------------------------------------------
 
 export interface ClassificationConfig {
-  /** Anthropic API key. Falls back to ANTHROPIC_API_KEY env var. */
-  apiKey?: string;
-  /** Model to use. Default: claude-sonnet-4-5-20250929 */
+  /** Override OLLAMA_BASE_URL */
+  baseUrl?: string;
+  /** Override OLLAMA_MODEL */
   model?: string;
-  /** Temperature. Default: 0.0 (deterministic scoring). */
-  temperature?: number;
-  /** Max tokens. Default: 3000 */
-  maxTokens?: number;
+  /** Timeout in ms. Default: 60000 */
+  timeoutMs?: number;
   /** Number of retry attempts on validation failure. Default: 1 */
   maxRetries?: number;
 }
 
-const CLASSIFICATION_DEFAULTS: Required<Omit<ClassificationConfig, "apiKey">> = {
-  model: "claude-sonnet-4-5-20250929",
-  temperature: 0.0,
-  maxTokens: 3000,
+const CLASSIFICATION_DEFAULTS = {
   maxRetries: 1,
 };
 
@@ -135,7 +131,7 @@ export async function classifyToolRisk(
 // ---------------------------------------------------------------------------
 
 /**
- * One-call convenience: creates the Anthropic caller and runs classification.
+ * One-call convenience: creates the Ollama caller and runs classification.
  */
 export async function analyzeToolRisk(
   profile: ToolIntelligenceProfile,
@@ -144,12 +140,11 @@ export async function analyzeToolRisk(
   previousClassification?: RiskClassification,
 ): Promise<ClassificationResult> {
   const callerConfig: ExtractionConfig = {
-    apiKey: config?.apiKey,
-    model: config?.model ?? CLASSIFICATION_DEFAULTS.model,
-    temperature: config?.temperature ?? CLASSIFICATION_DEFAULTS.temperature,
-    maxTokens: config?.maxTokens ?? CLASSIFICATION_DEFAULTS.maxTokens,
+    baseUrl: config?.baseUrl,
+    model: config?.model,
+    timeoutMs: config?.timeoutMs,
   };
-  const caller = createAnthropicCaller(callerConfig);
+  const caller = createOllamaExtractCaller(callerConfig);
   return classifyToolRisk(profile, request, caller, {
     maxRetries: config?.maxRetries,
     previousClassification,

@@ -1,9 +1,10 @@
 /**
  * Complyze Prompt 5: Board Summary Narrative
- * Service layer for generating executive-level portfolio risk reports
+ * Service layer for generating executive-level portfolio risk reports.
+ * All LLM calls route through the Ollama model on the VPS.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { createOllamaCaller, type OllamaCallerConfig } from "./ollamaCaller.js";
 import {
   BoardSummaryRequestSchema,
   BoardSummaryResponseSchema,
@@ -128,39 +129,21 @@ export async function generateBoardSummary(
 }
 
 /**
- * Create Anthropic LLM caller with Claude Sonnet
- * Temperature 0.3 per spec (highest in pipeline — narrative quality matters)
- * Max tokens 8000 (most text output in the pipeline)
+ * Create Ollama LLM caller for board summary generation.
+ * Routes through the Ollama model hosted on the VPS.
  */
-export function createAnthropicCaller(apiKey: string): LLMCaller {
-  const client = new Anthropic({ apiKey });
-
-  return async (systemPrompt: string, userPrompt: string): Promise<string> => {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-5-20250929",
-      max_tokens: 8000,
-      temperature: 0.3,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    });
-
-    const firstBlock = response.content[0];
-    if (firstBlock.type !== "text") {
-      throw new Error("Expected text response from Claude");
-    }
-
-    return firstBlock.text;
-  };
+export function createBoardSummaryCaller(config?: OllamaCallerConfig): LLMCaller {
+  return createOllamaCaller(config);
 }
 
 /**
- * Convenience function: generate board summary using Anthropic API
+ * Convenience function: generate board summary using Ollama API
  */
 export async function generatePortfolioReport(
   request: BoardSummaryRequest,
-  anthropicApiKey: string,
+  _config?: OllamaCallerConfig,
   maxRetries = 3
 ): Promise<BoardSummaryResult> {
-  const caller = createAnthropicCaller(anthropicApiKey);
+  const caller = createBoardSummaryCaller(_config);
   return generateBoardSummary(request, caller, maxRetries);
 }
