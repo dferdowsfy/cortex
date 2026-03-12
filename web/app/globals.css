@@ -70,32 +70,6 @@
   /* Ensure reset propagates */
 }
 
-/* Force white text in each page, but not the sidebar */
-.main-content-area,
-.main-content-area h1,
-.main-content-area h2,
-.main-content-area h3,
-.main-content-area p,
-.main-content-area li,
-.main-content-area th,
-.main-content-area td,
-.main-content-area code,
-.main-content-area pre {
-  color: #ffffff;
-}
-
-/* Ensure buttons still have their intentional contrast */
-.main-content-area .btn-primary {
-  color: #ffffff !important;
-}
-
-.main-content-area .btn-secondary {
-  color: var(--brand-color) !important;
-}
-
-.main-content-area .btn-secondary:hover {
-  color: #ffffff !important;
-}
 
 html {
   font-size: var(--font-size-base);

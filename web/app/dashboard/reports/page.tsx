@@ -711,22 +711,19 @@ function ReportCard({
       <div className="flex flex-wrap items-center gap-2 sm:shrink-0 text-left">
         <button
           onClick={onView}
-          style={{ color: '#000000' }}
-          className="flex-1 sm:flex-none rounded-lg border border-transparent bg-white px-5 py-2 text-[13px] font-bold hover:bg-gray-200 transition-all shadow-sm"
+          className="flex-1 sm:flex-none rounded-lg border border-transparent bg-[var(--brand-color)] text-white px-5 py-2 text-[13px] font-bold hover:opacity-90 transition-all shadow-sm"
         >
           View
         </button>
         <button
           onClick={onExport}
-          style={{ color: '#000000' }}
-          className="flex-1 sm:flex-none rounded-lg border border-transparent bg-white px-5 py-2 text-[13px] font-bold hover:bg-gray-200 transition-all shadow-sm"
+          className="flex-1 sm:flex-none rounded-lg border border-transparent bg-[var(--brand-color)] text-white px-5 py-2 text-[13px] font-bold hover:opacity-90 transition-all shadow-sm"
         >
           Export
         </button>
         <button
           onClick={onSchedule}
-          style={{ color: '#000000' }}
-          className="flex-1 sm:flex-none rounded-lg border border-transparent bg-white px-5 py-2 text-[13px] font-bold hover:bg-gray-200 transition-all shadow-sm"
+          className="flex-1 sm:flex-none rounded-lg border border-transparent bg-[var(--brand-color)] text-white px-5 py-2 text-[13px] font-bold hover:opacity-90 transition-all shadow-sm"
         >
           Schedule
         </button>
