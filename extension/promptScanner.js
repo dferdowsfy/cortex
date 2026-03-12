@@ -94,10 +94,35 @@ function notifyLastScan(result, promptSnippet) {
                 message: result.message || '',
                 promptSnippet: (promptSnippet || '').substring(0, 80),
                 source: result.source || 'backend',
+                aiTool: result.aiTool || AI_TOOL,
                 timestamp: Date.now(),
             }
         });
     } catch (e) { /* extension context invalidated */ }
+}
+
+function logPromptActivity(promptText, backendResult, finalAction, features, extra) {
+    try {
+        safeSendMessage({
+            type: 'LOG_ACTIVITY',
+            payload: Object.assign({
+                aiTool: AI_TOOL,
+                promptLength: (promptText || '').length,
+                riskScore: features?.riskScore ? (backendResult?.riskScore || 0) : 0,
+                action: finalAction || 'allow',
+                blocked: finalAction === 'block',
+                findings: backendResult?.analysis_result?.findings || [],
+                promptText: promptText || '',
+                message: backendResult?.message || backendResult?.policy_decision?.reason || '',
+                decision_source: backendResult?.decision_source || backendResult?.policy_decision?.source || 'backend_policy',
+                model_used: backendResult?.model_used ?? true,
+                policy_used: backendResult?.policy_used ?? true,
+                blocked_locally: false,
+                analysis_score: backendResult?.analysis_score ?? backendResult?.riskScore ?? 0,
+                timestamp: new Date().toISOString(),
+            }, extra || {}),
+        }, 3000);
+    } catch (_) {}
 }
 
 // ── Safe sendMessage (handles dead SW gracefully) ─────────────────────────────
@@ -157,24 +182,62 @@ function resolveInput(target) {
     return null;
 }
 
+function looksLikeSubmitAction(el) {
+    if (!el) return false;
+    const attrs = [
+        el.getAttribute && el.getAttribute('aria-label'),
+        el.getAttribute && el.getAttribute('title'),
+        el.getAttribute && el.getAttribute('data-testid'),
+        el.getAttribute && el.getAttribute('data-test-id'),
+    ].map(a => (a || '').toLowerCase());
+    const text = ((el.innerText || el.textContent || '') + '').trim().toLowerCase();
+    if (attrs.some(a => a.includes('send') || a.includes('submit') || a.includes('ask') || a.includes('message') || a.includes('run') || a.includes('generate'))) {
+        return true;
+    }
+    if (!text) return false;
+    return /^(run|send|submit|ask|generate|go)$/.test(text) ||
+        text.startsWith('run ') ||
+        text.startsWith('send ') ||
+        text.startsWith('generate ');
+}
+
+function isInteractiveAction(el) {
+    if (!el || !el.tagName) return false;
+    const tag = el.tagName.toLowerCase();
+    return tag === 'button' || tag === 'a' || el.getAttribute('role') === 'button' ||
+        el.hasAttribute('tabindex') || el.hasAttribute('aria-label') ||
+        el.hasAttribute('jsaction') || el.hasAttribute('data-testid');
+}
+
 function isSendButton(target) {
-    if (!target || !target.closest) return null;
-    const btn = target.closest('button, [role="button"], [aria-label*="end"], [aria-label*="ubmit"]');
-    if (!btn) return null;
+    if (!target) return null;
 
-    // ChatGPT current UI uses data-testid="send-button"
-    const testId = (btn.getAttribute('data-testid') || '').toLowerCase();
-    if (testId === 'send-button' || testId === 'fruitjuice-send-button') return btn;
+    const candidates = [];
+    if (target.closest) {
+        const direct = target.closest('button, [role="button"], [aria-label], [tabindex], [jsaction], [data-testid]');
+        if (direct) candidates.push(direct);
+    }
 
-    const attrs = [btn.getAttribute('aria-label'), testId, btn.getAttribute('title')]
-        .map(a => (a || '').toLowerCase());
-    if (attrs.some(a => a.includes('send') || a.includes('submit') || a.includes('ask') || a.includes('message') || a.includes('run'))) return btn;
+    let el = target;
+    for (let i = 0; i < 7 && el; i++, el = el.parentElement) {
+        if (candidates.indexOf(el) === -1) candidates.push(el);
+    }
 
-    // SVG-only buttons (icon buttons adjacent to input)
-    if (btn.querySelector('svg')) {
-        let p = btn.parentElement;
-        for (let i = 0; i < 5 && p; i++, p = p.parentElement) {
-            if (p.querySelector(INPUT_SELECTORS.join(','))) return btn;
+    for (const candidate of candidates) {
+        if (!candidate) continue;
+
+        // ChatGPT current UI uses data-testid="send-button"
+        const testId = (candidate.getAttribute && candidate.getAttribute('data-testid') || '').toLowerCase();
+        if (testId === 'send-button' || testId === 'fruitjuice-send-button') return candidate;
+
+        if (isInteractiveAction(candidate) && looksLikeSubmitAction(candidate)) return candidate;
+
+        // SVG-only buttons (icon buttons adjacent to input)
+        if (candidate.querySelector && candidate.querySelector('svg') && isInteractiveAction(candidate)) {
+            let p = candidate.parentElement;
+            for (let j = 0; j < 5 && p; j++, p = p.parentElement) {
+                if (p.querySelector && p.querySelector(INPUT_SELECTORS.join(','))) return candidate;
+            }
         }
     }
     return null;
@@ -418,7 +481,12 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
             findings: backendResult.analysis_result?.findings || [],
             message: policy.reason || backendResult.message || '',
             source: policy.source || 'backend',
+            aiTool: AI_TOOL,
         }, snippet);
+
+        logPromptActivity(text, backendResult, finalAction, features, {
+            policy_used: backendResult.policy_used ?? true,
+        });
 
         if (finalAction === 'block') {
             console.log('[Complyze][INTERCEPT] ENFORCING BLOCK — prompt cleared');
@@ -663,7 +731,7 @@ function handleFetchMessage(event) {
             if (!backendResult) return;
             const policy = backendResult.policy_decision || { action: 'allow' };
             const snippet = promptText.substring(0, 80);
-            notifyLastScan({ action: policy.action, findings: backendResult.analysis_result?.findings || [], message: policy.reason || '', source: policy.source || 'backend' }, snippet);
+            notifyLastScan({ action: policy.action, findings: backendResult.analysis_result?.findings || [], message: policy.reason || '', source: policy.source || 'backend', aiTool: AI_TOOL }, snippet);
 
             if (policy.action === 'block') {
                 showOverlay({ type: 'block', title: '\uD83D\uDEAB Prompt Blocked by Complyze',
@@ -676,15 +744,9 @@ function handleFetchMessage(event) {
                     body: 'Auto-redaction could not be applied (prompt already sent). Event logged.', autoDismissMs: 5000 });
             }
             // Log activity
-            safeSendMessage({ type: 'LOG_ACTIVITY', payload: {
-                aiTool: AI_TOOL, promptLength: promptText.length,
-                riskScore: backendResult.riskScore || 0,
-                action: policy.action, blocked: policy.action === 'block',
-                findings: backendResult.analysis_result?.findings || [],
-                promptText, decision_source: backendResult.decision_source || 'backend_policy',
-                model_used: backendResult.model_used, blocked_locally: false,
-                timestamp: new Date().toISOString(),
-            }}, 3000);
+            logPromptActivity(promptText, backendResult, policy.action, { riskScore: true }, {
+                blocked: policy.action === 'block',
+            });
         }).finally(() => { isScanning = false; });
     } catch (e) {
         console.warn('[Complyze][FETCH-INTERCEPT] Parse error:', e.message);

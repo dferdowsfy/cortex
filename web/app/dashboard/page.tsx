@@ -77,7 +77,8 @@ export default function Dashboard() {
             );
 
             // Also check extension health for all org workspaces
-            const extPingPromises = orgIds.map(id =>
+            const extWorkspaceIds = [wsId, ...orgIds.filter(id => id !== wsId)];
+            const extPingPromises = extWorkspaceIds.map(id =>
                 fetch(`/api/auth/extension/ping?orgId=${id}`)
                     .then(r => r.ok ? r.json() : null).catch(() => null)
             );

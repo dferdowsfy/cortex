@@ -44,13 +44,25 @@ export async function POST(req: NextRequest) {
             });
 
             // Also write a per-org extension presence record for faster dashboard lookup
+            const presenceRecord = {
+                last_seen: now,
+                uid: uid || "unknown",
+                email: email || "unknown",
+                shield_active: true,
+                connection_status: "active",
+            };
+
             if (orgId) {
-                await adminDb.ref(`extension_health/${orgId}/${installationId}`).set({
-                    last_seen: now,
-                    uid: uid || "unknown",
-                    email: email || "unknown",
-                    shield_active: true,
-                    connection_status: "active",
+                await adminDb.ref(`extension_health/${orgId}/${installationId}`).set(presenceRecord);
+            }
+
+            // Mirror heartbeat under the user's UID workspace as a fallback.
+            // This keeps the dashboard online indicator working even when the
+            // extension's orgId and the dashboard's workspace bootstrap differ.
+            if (uid && uid !== orgId) {
+                await adminDb.ref(`extension_health/${uid}/${installationId}`).set({
+                    ...presenceRecord,
+                    mirrored_from_org: orgId || null,
                 });
             }
 

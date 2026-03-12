@@ -23,8 +23,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "aiTool is required" }, { status: 400 });
         }
 
-        const orgId = session?.organizationId || req.headers.get("X-Organization-ID") || "default";
-        const resolvedWorkspaceId = orgId || workspaceId || "default";
+        const orgIdHeader = session?.organizationId || req.headers.get("X-Organization-ID") || "";
+        const resolvedWorkspaceId = orgIdHeader || workspaceId || "default";
+        const orgId = orgIdHeader || workspaceId || "default";
+        const userWorkspaceId = session?.userId || body.uid || req.headers.get("X-User-UID") || "";
 
         // Map extension payload to ActivityEvent schema
         const isBlocked = action === "blocked" || action === "block" || body.blocked === true;
@@ -70,6 +72,9 @@ export async function POST(req: NextRequest) {
         };
 
         await store.addEvent(event, resolvedWorkspaceId);
+        if (userWorkspaceId && userWorkspaceId !== resolvedWorkspaceId) {
+            await store.addEvent(event, userWorkspaceId);
+        }
         const normalizedAction = String(action || "").toLowerCase();
         const mappedEventType = normalizedAction.includes("audit")
             ? "AUDIT_ONLY_FLAGGED"
@@ -79,7 +84,7 @@ export async function POST(req: NextRequest) {
                     ? "PROMPT_BLOCKED"
                     : "PROMPT_ALLOWED";
 
-        await extensionSyncStore.ingest({
+        const syncEvent = {
             eventId: event.id,
             eventType: mappedEventType,
             timestamp: event.timestamp,
@@ -91,7 +96,12 @@ export async function POST(req: NextRequest) {
             summary: event.findings?.[0] || event.final_action,
             policyVersion: Number(body.policyVersion || 0),
             metadata: { requestId }
-        }, resolvedWorkspaceId);
+        };
+
+        await extensionSyncStore.ingest(syncEvent, resolvedWorkspaceId);
+        if (userWorkspaceId && userWorkspaceId !== resolvedWorkspaceId) {
+            await extensionSyncStore.ingest(syncEvent, userWorkspaceId);
+        }
 
         console.log(JSON.stringify({ msg: "activity_logged", requestId, userId: event.user_id || session?.userId || "anonymous", organizationId: orgId, eventId: event.id, action: event.final_action }));
         return NextResponse.json({ status: "logged", event_id: event.id, requestId });
