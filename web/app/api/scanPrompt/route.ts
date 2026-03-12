@@ -43,9 +43,10 @@ export async function POST(req: NextRequest) {
         const workspaceId: string = body.workspaceId || "default";
         const context: string | string[] = body.context || "";
 
-        const orgId: string | null = req.headers.get("X-Organization-ID") || body.orgId || null;
+        const orgId: string | null = req.headers.get("X-Organization-ID") || body.orgId || body.organization_id || null;
         const authHeader: string | null = req.headers.get("Authorization");
         const userEmail: string | null = req.headers.get("X-User-Email") || body.userEmail || null;
+        const userUid: string | null = req.headers.get("X-User-UID") || body.user_id || null;
 
         if (!promptText) {
             return NextResponse.json({ error: "promptText is required" }, { status: 400 });
@@ -69,6 +70,16 @@ export async function POST(req: NextRequest) {
                 );
             }
         }
+
+        console.log("[scanPrompt] Request received", {
+            promptLength: promptText.length,
+            aiTool,
+            workspaceId,
+            orgId,
+            userEmail: userEmail || "unknown",
+            userUid: userUid || "unknown",
+            hasAuthHeader: !!authHeader,
+        });
 
         // ── Policy rule resolution ─────────────────────────────────────────────────
         let rules: unknown[] = [];
@@ -168,14 +179,14 @@ export async function POST(req: NextRequest) {
 
         // ── Persistent Activity Logging (Ensures Dashboard/Extension Sync) ────────
         // workspaceId must match what the dashboard queries — prefer orgId over "default".
-        const resolvedWorkspaceId = workspaceId !== "default" ? workspaceId : (orgId || "default");
+        const resolvedWorkspaceId = orgId || workspaceId || "default";
 
         const eventId = `scan_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
         const activityEvent: ActivityEvent = {
             id: eventId,
             tool: aiTool,
             tool_domain: aiTool.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com",
-            user_hash: userEmail || "anonymous",
+            user_hash: userEmail || userUid || "anonymous",
             prompt_hash: "analyzed",
             prompt_length: promptText.length,
             token_count_estimate: Math.round(promptText.length / 4),
@@ -203,14 +214,14 @@ export async function POST(req: NextRequest) {
             // Identity fields — needed for dashboard ↔ extension sync.
             // organization_id + user_id ensure the dashboard shows the event
             // for the correct user/org without relying solely on workspace path.
-            organization_id: orgId || resolvedWorkspaceId,
-            user_id: userEmail || body.user_id || "anonymous",
+            organization_id: orgId || body.organization_id || resolvedWorkspaceId,
+            user_id: userUid || body.user_id || userEmail || "anonymous",
             final_action: policyDecision.action,
         };
 
         try {
             await store.addEvent(activityEvent, resolvedWorkspaceId);
-            console.log(`[scanPrompt] Activity logged: ${eventId} → workspace: ${resolvedWorkspaceId}`);
+            console.log(`[scanPrompt] Activity logged: ${eventId} → workspace: ${resolvedWorkspaceId} | user: ${activityEvent.user_id}`);
         } catch (e) {
             console.error("[scanPrompt] Failed to log activity to store", e);
         }

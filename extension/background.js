@@ -113,7 +113,13 @@ async function apiRequest(path, method, body) {
         options.body = JSON.stringify(body);
     }
     try {
+        console.log('[Complyze] API request:', method || 'GET', path, {
+            hasAuth: !!options.headers.Authorization,
+            orgId: options.headers['X-Organization-ID'] || null,
+            userUid: options.headers['X-User-UID'] || null,
+        });
         var res = await fetch(API_ENDPOINT + path, options);
+        console.log('[Complyze] API response:', path, '| status:', res.status);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return await res.json();
     } catch (e) {

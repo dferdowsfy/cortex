@@ -13,13 +13,24 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { aiTool, promptLength, riskScore, action, userEmail, workspaceId, installationId } = body;
+        const userUid = req.headers.get("X-User-UID") || body.user_id || body.uid || null;
 
         if (!aiTool) {
             return NextResponse.json({ error: "aiTool is required" }, { status: 400 });
         }
 
-        const orgId = req.headers.get("X-Organization-ID") || "default";
-        const resolvedWorkspaceId = workspaceId || orgId;
+        const orgId = req.headers.get("X-Organization-ID") || body.orgId || body.organization_id || "default";
+        const resolvedWorkspaceId = orgId || workspaceId || "default";
+
+        console.log("[/api/activity] ingest", {
+            aiTool,
+            action,
+            score: riskScore,
+            workspaceId: resolvedWorkspaceId,
+            orgId,
+            userEmail: userEmail || "unknown",
+            userUid: userUid || "unknown",
+        });
 
         // Map extension payload to ActivityEvent schema
         const isBlocked = action === "blocked" || action === "block" || body.blocked === true;
@@ -29,7 +40,7 @@ export async function POST(req: NextRequest) {
             id: `ext_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
             tool: aiTool,
             tool_domain: aiTool.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com", // Best effort mapping
-            user_hash: userEmail && userEmail !== "unknown@domain.com" ? userEmail : (installationId || "anonymous"),
+            user_hash: userEmail && userEmail !== "unknown@domain.com" ? userEmail : (userUid || installationId || "anonymous"),
             prompt_hash: "hidden_by_extension",
             prompt_length: parseInt(promptLength) || 0,
             token_count_estimate: Math.round((parseInt(promptLength) || 0) / 4),
@@ -59,12 +70,13 @@ export async function POST(req: NextRequest) {
 
             // Identity fields — ensure dashboard correctly attributes this event
             // to the right user/org regardless of workspace path used.
-            organization_id: resolvedWorkspaceId !== orgId ? orgId : resolvedWorkspaceId,
-            user_id: userEmail || body.uid || installationId || "anonymous",
+            organization_id: orgId || resolvedWorkspaceId,
+            user_id: userUid || userEmail || installationId || "anonymous",
             final_action: isBlocked ? "block" : (action || "allow"),
         };
 
         await store.addEvent(event, resolvedWorkspaceId);
+        console.log(`[/api/activity] stored event ${event.id} in workspace ${resolvedWorkspaceId} for user ${event.user_id}`);
 
         return NextResponse.json({ status: "logged", event_id: event.id });
     } catch (err: any) {

@@ -175,6 +175,7 @@ class ProxyStore {
                     workspace_id: workspaceId,
                     _created_at: new Date().toISOString(),
                 });
+                console.log(`[proxy-store] addEvent persisted: ${event.id} workspace=${workspaceId} user=${event.user_id || event.user_hash || "unknown"}`);
             } catch (err) {
                 console.warn("[proxy-store] addEvent RTDB error:", err);
             }
