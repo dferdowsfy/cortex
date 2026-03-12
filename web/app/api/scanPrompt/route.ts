@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
         // ── Policy decision engine (dashboard config is the sole authority) ───────
         // Pass ollamaWasCalled=true so model_used is accurately tracked in the decision.
         console.log(`[Complyze] Ollama response received: risk_score=${analysisResult.overall_risk_score}, severity=${analysisResult.severity}`);
-        const policyDecision = computePolicyDecision(analysisResult, orgPolicyConfig, hasCritical, true);
+        const policyDecision = computePolicyDecision(analysisResult, orgPolicyConfig, hasCritical, aiTool, rules, true);
 
         // ── Persistent Activity Logging (Ensures Dashboard/Extension Sync) ────────
         // workspaceId must match what the dashboard queries — prefer orgId over "default".
@@ -218,6 +218,49 @@ export async function POST(req: NextRequest) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Find the highest-priority enabled policy rule targeting a specific AI tool
+ */
+function findToolPolicyRule(aiTool: string, rules: any[]): any | null {
+    if (!Array.isArray(rules)) return null;
+    // Tool rules look like: { type: "ai_tool", target: "tool:google_ai_studio", action: "block", priority: 10, enabled: true }
+    // Map common display names to ToolIds for matching
+    const toolIdMap: Record<string, string> = {
+        "ChatGPT": "tool:chatgpt",
+        "Claude": "tool:claude",
+        "Gemini": "tool:gemini",
+        "Google AI Studio": "tool:google_ai_studio",
+        "Perplexity": "tool:perplexity",
+        "Copilot": "tool:copilot",
+        "Copilot (Microsoft)": "tool:copilot",
+        "Grok": "tool:grok",
+        "Mistral AI": "tool:mistral",
+        "Cohere": "tool:cohere",
+        "Midjourney": "tool:midjourney",
+        "Stable Diffusion": "tool:stablediffusion",
+        "GitHub Copilot": "tool:github_copilot",
+        "Cursor": "tool:cursor",
+        "Codeium": "tool:codeium",
+        "Tabnine": "tool:tabnine",
+        "OpenRouter": "tool:openrouter",
+    };
+    const targetId = toolIdMap[aiTool];
+    if (!targetId) {
+        console.log(`[policy] Tool '${aiTool}' not in registry — no tool-specific rules will match`);
+        return null;
+    }
+
+    const matchingRules = rules
+        .filter(r => r.enabled !== false && r.type === "ai_tool" && r.target === targetId)
+        .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+
+    if (matchingRules.length > 0) {
+        console.log(`[policy] Found ${matchingRules.length} enabled rule(s) for ${aiTool} (${targetId}) — using priority=${matchingRules[0].priority}`);
+        return matchingRules[0];
+    }
+    return null;
+}
+
+/**
  * computePolicyDecision
  *
  * The logged-in user's org/admin policy config is the SOLE source of truth.
@@ -225,18 +268,23 @@ export async function POST(req: NextRequest) {
  * All risk signals come exclusively from the Ollama LLM analysis result.
  *
  * Decision path:
+ *   0. Tool-specific rule override (if configured) — e.g., "Block all Google AI Studio"
  *   1. Audit mode   → always allow (observation only)
  *   2. AI risk score / severity → block if score ≥ threshold AND block_high_risk=true
  *   3. Attachment risk → block/warn per policy
  *   4. Auto-redaction → redact if sensitive categories detected AND policy enables it
  *   5. AI suggested action → advisory fallback (never overrides policy off switch)
  *
+ * @param aiTool - Name of the AI tool (e.g., "Google AI Studio", "OpenRouter")
+ * @param rules - Full policy rules array (includes tool-specific rules)
  * @param ollamaWasCalled - Whether Ollama was successfully invoked for this request
  */
 function computePolicyDecision(
     analysis: ComplyzeAnalysisResult,
     policyConfig: any,
     hasCriticalDlpMatch: boolean,
+    aiTool: string,
+    rules: any[],
     ollamaWasCalled: boolean = true
 ): { action: "allow" | "redact" | "warn" | "block" | "audit"; reason: string; source: "backend_policy"; model_used: boolean; policy_used: boolean } {
     const threshold = policyConfig?.risk_threshold ?? 60;
@@ -252,6 +300,17 @@ function computePolicyDecision(
         model_used: ollamaWasCalled,
         policy_used: true,
     };
+
+    // ── 0. Tool-specific policy rule override (highest priority) ─────────────
+    // If admin has set a rule targeting this specific AI tool, use it immediately.
+    // Example: "Block all Google AI Studio prompts" — overrides risk scoring.
+    const toolRule = findToolPolicyRule(aiTool, rules);
+    if (toolRule && toolRule.enabled !== false) {
+        result.action = toolRule.action || "allow";
+        result.reason = `Tool-specific policy rule applied: ${aiTool} → ${toolRule.action}`;
+        console.log(`[policy] Tool rule match: ${aiTool} → ${toolRule.action} (priority=${toolRule.priority})`);
+        return result;
+    }
 
     // ── 1. Audit mode overrides all enforcement to allow (audit) ────────────
     if (auditMode) {
