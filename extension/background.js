@@ -167,6 +167,7 @@ async function ensureFreshToken() {
 // ── Exchange token with backend: get org info + register device ───────────────
 async function exchangeWithBackend(idToken, uid, email, displayName) {
     try {
+        console.log('[Complyze][AUTH] Exchanging token with backend:', { email, uid: uid?.substring(0, 8) + '...', installationId });
         var res = await fetch(API_ENDPOINT + '/api/auth/extension', {
             method: 'POST',
             headers: {
@@ -175,10 +176,12 @@ async function exchangeWithBackend(idToken, uid, email, displayName) {
             },
             body: JSON.stringify({ idToken, uid, email, displayName, installationId, agentVersion: '1.1.1' })
         });
-        if (!res.ok) { console.warn('[Complyze] Backend exchange failed:', res.status); return null; }
-        return await res.json();
+        if (!res.ok) { console.warn('[Complyze][AUTH] Backend exchange failed:', res.status); return null; }
+        var data = await res.json();
+        console.log('[Complyze][AUTH] Exchange success:', { orgId: data.orgId, orgName: data.orgName, plan: data.plan, role: data.role, policyVersion: data.effectivePolicyVersion });
+        return data;
     } catch (e) {
-        console.warn('[Complyze] Backend exchange error:', e.message);
+        console.warn('[Complyze][AUTH] Backend exchange error:', e.message);
         return null;
     }
 }
@@ -188,7 +191,7 @@ async function exchangeWithBackend(idToken, uid, email, displayName) {
 async function fetchStats() {
     try {
         await ensureFreshToken();                              // ← BUG-6 fix
-        return await apiRequest('/api/auth/extension/stats', 'GET');
+        return await apiRequest('/api/auth/extension', 'GET');
     } catch (e) {
         return { scannedToday: 0, blockedToday: 0 };
     }
@@ -348,17 +351,22 @@ async function fetchAndCachePolicies(trigger) {
         if (!currentUser || !currentUser.orgId) {
             lastPolicySyncStatus = 'skipped:no_org';
             await chrome.storage.local.set({ lastPolicySyncStatus });
+            console.log('[Complyze][POLICY] Skipped: no org assigned');
             return;
         }
 
         sendExtensionPing().catch(() => { });
 
+        console.log('[Complyze][POLICY] Checking version (trigger=' + trigger + ')...');
         var version = await apiRequest('/api/policy/version', 'GET');
         var currentVersion = effectivePolicy?.policyVersion || 0;
+        console.log('[Complyze][POLICY] Server version=' + version.policyVersion + ' local=' + currentVersion);
         if (!effectivePolicy || version.policyVersion !== currentVersion) {
+            console.log('[Complyze][POLICY] Version changed — fetching full effective policy...');
             var fetched = await apiRequest('/api/policy/effective', 'GET');
             effectivePolicy = Object.assign({ fetchedAt: new Date().toISOString() }, fetched);
             await chrome.storage.local.set({ effectivePolicy });
+            console.log('[Complyze][POLICY] Cached effective policy:', { version: effectivePolicy.policyVersion, rulesCount: (effectivePolicy.resolvedPolicy?.rules || []).length, groupIds: effectivePolicy.groupIds });
             await submitSyncEvent('POLICY_FETCHED', {
                 policyVersion: effectivePolicy.policyVersion,
                 summary: 'Effective policy fetched',
@@ -445,17 +453,29 @@ async function scanPrompt(payload) {
         enrichedPayload.workspaceId = currentUser.orgId || currentUser.uid;
     }
 
-    console.log('[Complyze] Sending scan to backend:', {
+    console.log('[Complyze][SCAN] Sending to backend:', {
         tool: enrichedPayload.aiTool,
         promptLength: (enrichedPayload.prompt || '').length,
-        dlpFindingsCount: (enrichedPayload.dlpFindings || []).length,
-        hasCritical: enrichedPayload.hasCritical,
+        cachedPolicyRules: (enrichedPayload.cachedPolicies || []).length,
+        policyVersion: enrichedPayload.policyVersion || 'none',
         workspaceId: enrichedPayload.workspaceId,
-        model_used: 'pending',
-        policy_used: 'pending',
+        user_id: enrichedPayload.user_id,
+        organization_id: enrichedPayload.organization_id,
     });
 
-    return apiRequest('/api/scanPrompt', 'POST', enrichedPayload);
+    var result = await apiRequest('/api/scanPrompt', 'POST', enrichedPayload);
+
+    console.log('[Complyze][SCAN] Backend response:', {
+        action: result?.action,
+        riskScore: result?.riskScore,
+        decision_source: result?.decision_source,
+        model_used: result?.model_used,
+        policy_used: result?.policy_used,
+        ollama_model: result?.ollama_model_used,
+        ollama_host: result?.ollama_host_used,
+    });
+
+    return result;
 }
 
 // ── Activity logging ──────────────────────────────────────────────────────────
@@ -477,6 +497,8 @@ async function logActivity(payload) {
     else if (action.includes('audit')) eventType = 'AUDIT_ONLY_FLAGGED';
     else if (action.includes('allow')) eventType = 'PROMPT_ALLOWED';
 
+    console.log('[Complyze][EVENT] Submitting sync event:', { eventType, action: enrichedPayload.action, workspaceId: enrichedPayload.workspaceId, user: enrichedPayload.userEmail });
+
     await submitSyncEvent(eventType, {
         decision: enrichedPayload.action,
         riskScore: enrichedPayload.riskScore,
@@ -489,6 +511,7 @@ async function logActivity(payload) {
         }
     });
 
+    console.log('[Complyze][EVENT] Submitting activity to /api/activity:', { eventType, tool: enrichedPayload.aiTool });
     return apiRequest('/api/activity', 'POST', enrichedPayload);
 }
 

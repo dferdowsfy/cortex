@@ -25,6 +25,7 @@
 // ── AI Platform Allowlist ─────────────────────────────────────────────────────
 const AI_DOMAINS = [
     'chatgpt.com', 'chat.openai.com', 'claude.ai', 'gemini.google.com',
+    'aistudio.google.com', 'openrouter.ai',
     'perplexity.ai', 'www.perplexity.ai', 'copilot.microsoft.com',
     'chat.deepseek.com', 'chat.mistral.ai', 'huggingface.co', 'poe.com',
 ];
@@ -37,6 +38,12 @@ const INPUT_SELECTORS = [
     '#prompt-textarea',
     'div[contenteditable="true"][data-testid]',
     'div[contenteditable="true"][class*="ProseMirror"]',
+    // Google AI Studio / Gemini
+    'textarea[aria-label*="prompt" i]',
+    'textarea[aria-label*="Type something" i]',
+    '.ql-editor[contenteditable="true"]',
+    // OpenRouter
+    'textarea[placeholder*="Send a message" i]',
     // Generic contenteditable
     'div[contenteditable="true"]',
     // Traditional textarea fallbacks
@@ -57,7 +64,9 @@ function detectPlatform() {
     const h = window.location.hostname;
     if (h.includes('chatgpt') || h.includes('openai')) return 'ChatGPT';
     if (h.includes('claude')) return 'Claude';
+    if (h === 'aistudio.google.com') return 'Google AI Studio';
     if (h.includes('gemini')) return 'Gemini';
+    if (h.includes('openrouter')) return 'OpenRouter';
     if (h.includes('perplexity')) return 'Perplexity';
     if (h.includes('copilot')) return 'Copilot';
     if (h.includes('deepseek')) return 'DeepSeek';
@@ -312,11 +321,13 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
         // ── Send to backend for Ollama analysis + policy decision ─────────────
         // ALL risk detection is performed by the Ollama model on the VPS.
         // NO regex detection. NO local Ollama calls.
-        console.log('[Complyze] Prompt intercepted');
-        console.log('[Complyze] Sending prompt to Ollama via backend...', {
+        console.log('[Complyze][INTERCEPT] Prompt intercepted on', AI_TOOL, {
+            hostname: window.location.hostname,
             promptLength: text.length,
-            aiTool: AI_TOOL,
+            promptSnippet: text.substring(0, 60) + (text.length > 60 ? '...' : ''),
+            features: { monitoring: features.promptMonitoring, blocking: features.blocking, redaction: features.redaction, attachments: features.attachmentScanning },
         });
+        console.log('[Complyze][INTERCEPT] Sending prompt to Ollama via backend...');
 
         const backendResult = await safeSendMessage({
             type: 'SCAN_PROMPT',
@@ -329,7 +340,7 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
 
         if (!backendResult) {
             // Backend unreachable — allow with warning
-            console.warn('[Complyze] Backend unreachable — allowing with warning');
+            console.warn('[Complyze][INTERCEPT] Backend unreachable — allowing with warning');
 
             notifyLastScan({ action: 'warn', findings: [], source: 'offline' }, snippet);
             showOverlay({
@@ -362,16 +373,17 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
         const finalText = backendResult.redactedText;
         let riskScore = features.riskScore ? backendResult.riskScore || 0 : undefined;
 
-        console.log('[Complyze] Ollama response received');
-        console.log('[Complyze] Model used:', backendResult.ollama_model_used || 'complyze-qwen');
-        console.log('[Complyze] Ollama endpoint:', backendResult.ollama_host_used || 'OLLAMA_BASE_URL');
-        console.log('[Complyze] Policy decision applied:', {
+        console.log('[Complyze][INTERCEPT] Backend response received:', {
             action: finalAction,
             decision_source: backendResult.decision_source || policy.source || 'backend_policy',
             model_used: backendResult.model_used,
             policy_used: backendResult.policy_used,
+            ollama_model: backendResult.ollama_model_used || 'complyze-qwen',
+            ollama_host: backendResult.ollama_host_used || 'OLLAMA_BASE_URL',
             riskScore,
             reason: policy.reason,
+            findings: backendResult.analysis_result?.findings?.length || 0,
+            sensitive_categories: backendResult.analysis_result?.sensitive_categories || [],
         });
 
         notifyLastScan({
@@ -382,9 +394,11 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
         }, snippet);
 
         if (finalAction === 'block') {
+            console.log('[Complyze][INTERCEPT] ENFORCING BLOCK — prompt cleared');
             const findings = (backendResult.analysis_result?.findings || []).map(f => ({ label: f.reason || f.category }));
             enforceBlock(inputEl, backendResult.message || 'Blocked by your organization\'s AI policy.', findings);
         } else if (finalAction === 'redact') {
+            console.log('[Complyze][INTERCEPT] ENFORCING REDACT — replacing prompt text');
             if (finalText) {
                 await enforceRedaction(inputEl, finalText);
             }
@@ -396,6 +410,7 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
             });
             bypassAndSubmit(originalEvent, triggerEl);
         } else if (finalAction === 'warn') {
+            console.log('[Complyze][INTERCEPT] WARN — allowing with notice');
             const categories = (backendResult.analysis_result?.sensitive_categories || []).slice(0, 3).join(', ') || 'sensitive patterns';
             showOverlay({
                 type: 'warn', title: '⚠️ Complyze — Security Notice',
@@ -404,6 +419,7 @@ async function interceptAndScan(originalEvent, inputEl, actionEl) {
             });
             bypassAndSubmit(originalEvent, triggerEl);
         } else {
+            console.log('[Complyze][INTERCEPT] ALLOW — prompt safe, submitting');
             showOverlay({ type: 'safe', title: 'Complyze — Prompt Safe ✓', autoDismissMs: 2000 });
             bypassAndSubmit(originalEvent, triggerEl);
         }
