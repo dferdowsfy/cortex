@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import store from "@/lib/proxy-store";
 import { resolveSessionContext } from "@/lib/session-context";
-import { extensionSyncStore } from "@/lib/extension-sync-store";
+import { extensionSyncStore, type ExtensionEventType } from "@/lib/extension-sync-store";
 import type { ActivityEvent } from "@/lib/proxy-types";
 
 export const dynamic = "force-dynamic";
@@ -76,13 +76,13 @@ export async function POST(req: NextRequest) {
             await store.addEvent(event, userWorkspaceId);
         }
         const normalizedAction = String(action || "").toLowerCase();
-        const mappedEventType = normalizedAction.includes("audit")
+        const mappedEventType = (normalizedAction.includes("audit")
             ? "AUDIT_ONLY_FLAGGED"
             : normalizedAction.includes("redact")
                 ? "PROMPT_REDACTED"
                 : event.blocked
                     ? "PROMPT_BLOCKED"
-                    : "PROMPT_ALLOWED";
+                    : "PROMPT_ALLOWED") as ExtensionEventType;
 
         const syncEvent = {
             eventId: event.id,
