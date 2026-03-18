@@ -248,8 +248,7 @@ function extractText(el) {
     if (!el) return '';
     const tag = el.tagName.toLowerCase();
     if (tag === 'textarea' || tag === 'input') return el.value;
-    if (el.isContentEditable) return el.innerText || el.textContent || '';
-    return '';
+    return el.innerText || el.textContent || '';
 }
 
 // ── In-page Overlay UI ────────────────────────────────────────────────────────
@@ -351,6 +350,18 @@ function haltEvent(e) {
 function bypassAndSubmit(originalEvent, triggerEl) {
     triggerEl.dataset.complyzeScanned = 'true';
     console.log('[Complyze] Bypassing and submitting...')
+    
+    // React 17+ drops non-trusted synthesized keyboard events. 
+    // For ChatGPT, forcefully click the send button instead of synthesizing Enter.
+    if (AI_TOOL === 'ChatGPT' && (originalEvent.type === 'keydown' || originalEvent instanceof KeyboardEvent)) {
+        let sendBtn = document.querySelector('[data-testid="send-button"]') || document.querySelector('button[aria-label*="Send"]');
+        if (sendBtn && !sendBtn.disabled) {
+            sendBtn.dataset.complyzeScanned = 'true';
+            sendBtn.click();
+            setTimeout(() => { delete triggerEl.dataset.complyzeScanned; delete sendBtn.dataset.complyzeScanned; }, 500);
+            return;
+        }
+    }
 
     let cloned;
     if (originalEvent.type === 'keydown' || originalEvent instanceof KeyboardEvent) {

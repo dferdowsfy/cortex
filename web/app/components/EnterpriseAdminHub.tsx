@@ -1154,7 +1154,7 @@ export default function EnterpriseAdminHub() {
                                     <Globe className="w-6 h-6 text-emerald-400" />
                                     <h3 className="text-sm font-bold">Web Store Install</h3>
                                     <p className="text-xs text-white/40 leading-relaxed">Users can install the extension directly from the Chrome Web Store and enroll with a license key.</p>
-                                    <a href="https://chrome.google.com/webstore" target="_blank" className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:border-white/20 transition-all"><Plus className="w-3.5 h-3.5" /> Complyze Extension</a>
+                                    <a href="https://chromewebstore.google.com/detail/complyze-zero-trust-shiel/beifcbbcemhnggelihdijjmbhefnljkd" target="_blank" className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:border-white/20 transition-all"><Plus className="w-3.5 h-3.5" /> Complyze Extension</a>
                                 </div>
                             </div>
                         </div>

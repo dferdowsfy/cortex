@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { userStore } from "@/lib/user-store";
 import { enrollmentStore } from "@/lib/enrollment-store";
 import { adminDb } from "@/lib/firebase/admin";
+import { sendUserInviteEmail } from "@/lib/email-service";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,17 @@ export async function POST(req: NextRequest) {
         // 3. Create User
         const user = await userStore.createUser(org_id, email, role || "member", group_id || null, display_name, workspaceId);
 
-        // 4. Increment seatsUsed
+        // 4. Send Invite Email asynchronously if properly minted
+        if (user.license_key) {
+            // We do not await to avoid blocking the API response strictly
+            sendUserInviteEmail({
+                email: user.email,
+                orgName: org.name || "your organization",
+                licenseKey: user.license_key
+            }).catch(e => console.error("Async email dispatch failed:", e));
+        }
+
+        // 5. Increment seatsUsed
         if (adminDb) {
             await adminDb.ref(`organizations/${org_id}/seatsUsed`).set(used + 1);
         }
