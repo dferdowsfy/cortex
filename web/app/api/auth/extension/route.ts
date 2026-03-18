@@ -75,9 +75,12 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
-                // CASE 1: Individual Signup — Create a default Org if none exists
+                // CASE 1: Individual Signup — Use UID as Org ID to ensure deterministic sync
                 if (!orgId) {
-                    orgId = crypto.randomUUID();
+                    // Using the UID as the Org ID for individual workspaces ensures that 
+                    // the dashboard (which easily knows the UID) and the extension (which also knows it)
+                    // always agree on the workspaceId even if the membership lookup is delayed or fails.
+                    orgId = verifiedUid;
                     orgName = `${verifiedEmail.split('@')[0]}'s Workspace`;
                     plan = "STARTER";
                     role = "owner";
@@ -88,18 +91,20 @@ export async function POST(req: NextRequest) {
                         plan: "STARTER",
                         seatsPurchased: 1,
                         seatsUsed: 1,
-                        ownerUserId: verifiedEmail,
+                        ownerUserId: verifiedUid, // Use UID for owner reference
+                        ownerEmail: verifiedEmail,
                         createdAt: new Date().toISOString(),
                         members: {
                             [userEmailKey]: {
                                 email: verifiedEmail,
+                                uid: verifiedUid,
                                 role: "owner",
                                 joinedAt: new Date().toISOString()
                             }
                         }
                     };
                     await adminDb.ref(`organizations/${orgId}`).set(newOrg);
-                    console.log("[auth/extension] Created initial STARTER org for new user:", verifiedEmail);
+                    console.log(`[auth/extension] Created stable individual org for ${verifiedEmail} with ID: ${orgId}`);
                 } else {
                     // Refresh Org details if found
                     const orgSnap = await adminDb.ref(`organizations/${orgId}`).get();

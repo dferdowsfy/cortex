@@ -128,13 +128,31 @@ class EnrollmentStore {
 
     async listOrganizations(workspaceId: string = "default"): Promise<Organization[]> {
         if (adminDb && adminDb.app.options.databaseURL) {
-            const snap = await adminDb.ref(ORGS_PATH).get();
-            if (snap.exists()) return Object.values(snap.val());
+            try {
+                // To maintain security and correct scoping, we should only return orgs 
+                // where the user is a member OR the org belongs to the workspaceId.
+                const snap = await adminDb.ref(ORGS_PATH).get();
+                if (!snap.exists()) return [];
+
+                const allOrgs = Object.values(snap.val()) as any[];
+
+                // If workspaceId is a UID, we look for orgs where this UID is a member or owner.
+                // We sanitized the email keys in members map (dots -> commas).
+                return allOrgs.filter(org => {
+                    if (org.id === workspaceId || org.ownerUserId === workspaceId) return true;
+                    if (org.members) {
+                        return Object.values(org.members).some((m: any) => m.uid === workspaceId || m.email === workspaceId);
+                    }
+                    return false;
+                });
+            } catch (err) {
+                console.error("[enrollment-store] listOrganizations RTDB error:", err);
+                return [];
+            }
         } else {
             const orgs = localStorage.getWorkspaceData(workspaceId, "organizations", {}) as Record<string, Organization>;
             return Object.values(orgs);
         }
-        return [];
     }
 
     // Tokens
