@@ -6,6 +6,7 @@ export interface EffectivePolicy {
     rules: PolicyRule[];
     source: "user" | "group" | "org" | "platform";
     source_id: string;
+    degraded_analysis_behavior?: "block" | "redact" | "audit_only" | "warn";
 }
 
 const PLATFORM_DEFAULT_RULES: PolicyRule[] = [
@@ -32,7 +33,13 @@ export async function getEffectivePolicy(
     groupIds: string[] = []
 ): Promise<EffectivePolicy> {
     if (!adminDb) {
-        return { action: "allow", rules: PLATFORM_DEFAULT_RULES, source: "platform", source_id: "default" };
+        return {
+            action: "allow",
+            rules: PLATFORM_DEFAULT_RULES,
+            source: "platform",
+            source_id: "default",
+            degraded_analysis_behavior: "redact"
+        };
     }
 
     // 1. Check User Override
@@ -43,7 +50,8 @@ export async function getEffectivePolicy(
             action: data.action || "audit_only",
             rules: data.rules || [],
             source: "user",
-            source_id: uid
+            source_id: uid,
+            degraded_analysis_behavior: data.degraded_analysis_behavior || "redact"
         };
     }
 
@@ -57,7 +65,8 @@ export async function getEffectivePolicy(
                     action: data.action || "audit_only",
                     rules: data.rules || [],
                     source: "group",
-                    source_id: gid
+                    source_id: gid,
+                    degraded_analysis_behavior: data.degraded_analysis_behavior || "redact"
                 };
             }
         }
@@ -71,7 +80,8 @@ export async function getEffectivePolicy(
             action: data.action || "audit_only",
             rules: data.rules || [],
             source: "org",
-            source_id: orgId
+            source_id: orgId,
+            degraded_analysis_behavior: data.degraded_analysis_behavior || "redact"
         };
     }
 
@@ -80,6 +90,7 @@ export async function getEffectivePolicy(
         action: "audit_only",
         rules: PLATFORM_DEFAULT_RULES,
         source: "platform",
-        source_id: "default"
+        source_id: "default",
+        degraded_analysis_behavior: "redact"
     };
 }

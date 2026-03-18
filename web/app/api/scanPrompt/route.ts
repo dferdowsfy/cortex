@@ -126,17 +126,42 @@ export async function POST(req: NextRequest) {
                 message: err instanceof Error ? err.message : String(err),
                 raw: typed.raw,
             };
-            console.error(`[Complyze] Ollama analysis failed (${analysisError.code}):`, analysisError.message);
-            // Return a graceful fallback so the dashboard still renders
+            console.error(`[scanPrompt] Ollama analysis failed (${analysisError.code}):`, analysisError.message);
+
+            // ── Stage 2 Failure: Apply Configurable Fallback Policy ──────────
+            const fallbackAction = orgPolicyConfig?.fallback_policy || "warn";
+            
+            let finalAction: "block" | "redact" | "audit" | "warn" = "warn";
+            let reason = "";
+
+            if (fallbackAction === "block") {
+                finalAction = "block";
+                reason = "Analysis engine unavailable. Blocked under restrictive fallback policy.";
+            } else if (fallbackAction === "redact") {
+                finalAction = "redact";
+                reason = "Potential sensitive data detected, but local analysis was unavailable. Contextual verification did not complete. Redacted under fallback policy.";
+            } else if (fallbackAction === "audit" || fallbackAction === "audit_only") {
+                finalAction = "audit";
+                reason = "Potential sensitive data detected, but local analysis was unavailable. Prompt allowed for audit only under fallback policy.";
+            } else {
+                // Default: warn (degraded status)
+                finalAction = "warn";
+                reason = "Potential sensitive data detected, but local analysis was unavailable. Prompt allowed under degraded fallback policy. This was not based on full contextual analysis.";
+            }
+
             const fallback = buildFallbackResult(analysisError.message);
             const fallbackDecision = {
-                action: "warn" as const,
-                reason: "Analysis engine (Ollama) failed. Prompt allowed with warning — check OLLAMA_BASE_URL.",
+                action: finalAction,
+                reason,
                 source: "backend_policy" as const,
                 model_used: false,   // Ollama call failed
                 policy_used: true,
+                analysis_status: (analysisError.code === "TIMEOUT" ? "timeout" : 
+                                 analysisError.code === "UNREACHABLE" ? "unavailable" : "error") as any,
+                confidence_mode: "fallback" as const,
+                degraded_mode_triggered: true,
             };
-            console.log(`[Complyze] Returning Ollama-failure fallback for ${aiTool}: ${analysisError.code}`);
+
             return NextResponse.json(
                 mapToLegacyResponse(fallback, fallbackDecision, aiTool, { analysisError }),
                 { status: 200 },

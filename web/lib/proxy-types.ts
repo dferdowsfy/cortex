@@ -97,6 +97,13 @@ export interface ActivityEvent {
     organization_id?: string;  // org that owns this event (= workspaceId for org-scoped users)
     user_id?: string;          // authenticated user's UID or email
     final_action?: string;     // the action actually enforced: allow | redact | warn | block
+
+    // Complyze Phase 2 Audit Fields
+    analysis_status?: "success" | "timeout" | "unavailable" | "error";
+    confidence_mode?: "verified" | "fallback";
+    degraded_mode_triggered?: boolean;
+    extension_version?: string;
+    policy_source_id?: string;
 }
 
 /* ── Activity Summary (Dashboard) ── */
