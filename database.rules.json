@@ -21,6 +21,9 @@
     "proxy_alerts": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "managed_users": {
+      ".indexOn": ["org_id", "group_id", "license_key"]
     }
   }
 }
