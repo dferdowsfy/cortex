@@ -22,6 +22,7 @@
 
 'use strict';
 
+
 // ── AI Platform Allowlist ─────────────────────────────────────────────────────
 const AI_DOMAINS = [
     'chatgpt.com', 'chat.openai.com', 'claude.ai', 'gemini.google.com',

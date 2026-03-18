@@ -17,17 +17,47 @@ export async function GET(req: NextRequest) {
     }
 }
 
+import { requireOrgAdmin } from "@/lib/auth-guards";
+import { enrollmentStore } from "@/lib/enrollment-store";
+import { getPlan } from "@/lib/saas-types";
+import { adminDb } from "@/lib/firebase/admin";
+
 /** POST /api/admin/groups — create group */
 export async function POST(req: NextRequest) {
     try {
         const url = new URL(req.url);
         const workspaceId = url.searchParams.get("workspaceId") || "default";
         const { org_id, name, description } = await req.json();
+
+        // 1. Permission Check
+        await requireOrgAdmin(workspaceId, org_id);
+
         if (!org_id || !name) return NextResponse.json({ error: "org_id and name are required" }, { status: 400 });
+
+        // 2. Group Limit Enforcement
+        const org = await enrollmentStore.getOrganization(org_id, workspaceId);
+        if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+
+        const plan = getPlan(org.plan?.toLowerCase());
+        const used = org.groupsCount || 0;
+
+        if (used >= plan.max_groups) {
+            return NextResponse.json({
+                error: `Group limit reached for current plan (${plan.name}). Max ${plan.max_groups} groups allowed.`
+            }, { status: 403 });
+        }
+
+        // 3. Create Group
         const group = await groupStore.createGroup(org_id, name, description, workspaceId);
+
+        // 4. Increment groupsCount
+        if (adminDb) {
+            await adminDb.ref(`organizations/${org_id}/groupsCount`).set(used + 1);
+        }
+
         return NextResponse.json({ group }, { status: 201 });
     } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json({ error: err.message }, { status: err.message.includes("Denied") ? 403 : 500 });
     }
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { enrollmentStore } from "@/lib/enrollment-store";
+import { userStore } from "@/lib/user-store";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,20 @@ export async function GET(req: NextRequest) {
         if (orgs.length === 0) {
             const defaultOrg = await enrollmentStore.createOrganization("My Organization", workspaceId);
             orgs = [defaultOrg];
+
+            // Also ensure the current user exists in ManagedUsers for this org
+            // We use workspaceId as the user_id if it's a UID (which it is for dashboard users)
+            const user = await userStore.getUser(workspaceId, workspaceId);
+            if (!user) {
+                await userStore.createUser(
+                    defaultOrg.org_id,
+                    "admin@domain.com", // Fallback (real email should come from headers if possible)
+                    "org_admin",
+                    null,
+                    "Default Admin",
+                    workspaceId
+                );
+            }
         }
 
         const organizations = orgs.map(org => ({

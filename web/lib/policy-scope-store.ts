@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { adminDb } from "./firebase/admin";
 import { localStorage } from "./local-storage";
 
-export type EnforcementAction = "block" | "allow" | "audit_only" | "redact";
+export type EnforcementAction = "block" | "allow" | "audit_only" | "redact" | "warn";
 
 export interface PolicyRule {
   rule_id: string;
@@ -13,9 +13,9 @@ export interface PolicyRule {
   enabled: boolean;
 }
 
-interface ScopedPolicy {
+export interface ScopedPolicy {
   policy_id: string;
-  scope_type: "org" | "user";
+  scope_type: "org" | "group" | "user";
   scope_id: string;
   org_id: string;
   version: number;
@@ -26,7 +26,7 @@ interface ScopedPolicy {
 const POLICIES_PATH = "scoped_policies";
 
 class PolicyScopeStore {
-  async getPolicy(scope_type: "org" | "user", scope_id: string, workspaceId = "default"): Promise<ScopedPolicy | null> {
+  async getPolicy(scope_type: "org" | "group" | "user", scope_id: string, workspaceId = "default"): Promise<ScopedPolicy | null> {
     if (adminDb && adminDb.app.options.databaseURL) {
       const snap = await adminDb.ref(POLICIES_PATH).orderByChild("scope_id").equalTo(scope_id).get();
       if (snap.exists()) {
@@ -42,7 +42,7 @@ class PolicyScopeStore {
   }
 
   async upsertPolicy(
-    scope_type: "org" | "user",
+    scope_type: "org" | "group" | "user",
     scope_id: string,
     org_id: string,
     rules: PolicyRule[],

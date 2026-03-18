@@ -19,43 +19,46 @@ export async function GET(req: NextRequest) {
     }
 }
 
+import { requireOrgAdmin } from "@/lib/auth-guards";
+import { getPlan } from "@/lib/saas-types";
+
 /** POST /api/admin/users — create or bulk import */
 export async function POST(req: NextRequest) {
     try {
         const url = new URL(req.url);
         const workspaceId = url.searchParams.get("workspaceId") || "default";
         const body = await req.json();
-
-        // Bulk import: { org_id, emails: string[], group_id }
-        if (Array.isArray(body.emails)) {
-            const users = await userStore.bulkImport(body.org_id, body.emails, body.group_id || null, workspaceId);
-            return NextResponse.json({ users }, { status: 201 });
-        }
-
-        // Single user create
         const { org_id, email, role, group_id, display_name } = body;
+
+        // 1. Permission Check
+        await requireOrgAdmin(workspaceId, org_id);
+
         if (!org_id || !email) return NextResponse.json({ error: "org_id and email are required" }, { status: 400 });
 
-        // Seat Enforcement Logic
+        // 2. Seat Enforcement Logic
         const org = await enrollmentStore.getOrganization(org_id, workspaceId);
-        if (org) {
-            const purchased = org.seatsPurchased || 0;
-            const used = org.seatsUsed || 0;
-            if (used >= purchased && purchased > 0) {
-                return NextResponse.json({ error: `Seat limit reached (${used}/${purchased}). Please upgrade your plan or increase seats.` }, { status: 403 });
-            }
+        if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+
+        const plan = getPlan(org.plan?.toLowerCase());
+        const used = org.seatsUsed || 0;
+
+        if (used >= plan.max_users) {
+            return NextResponse.json({
+                error: `User limit reached for current plan (${plan.name}). Max ${plan.max_users} users allowed.`
+            }, { status: 403 });
         }
 
+        // 3. Create User
         const user = await userStore.createUser(org_id, email, role || "member", group_id || null, display_name, workspaceId);
 
-        // Increment seatsUsed in background
-        if (org && adminDb) {
-            await adminDb.ref(`organizations/${org_id}/seatsUsed`).set((org.seatsUsed || 0) + 1);
+        // 4. Increment seatsUsed
+        if (adminDb) {
+            await adminDb.ref(`organizations/${org_id}/seatsUsed`).set(used + 1);
         }
 
         return NextResponse.json({ user }, { status: 201 });
     } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json({ error: err.message }, { status: err.message.includes("Denied") ? 403 : 500 });
     }
 }
 

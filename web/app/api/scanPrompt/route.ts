@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-                // ── Policy rule resolution ─────────────────────────────────────────────────
+        // ── Policy rule resolution ─────────────────────────────────────────────────
         let rules: unknown[] = [];
         let orgPolicyConfig: any = null;
 
@@ -295,8 +295,6 @@ function computePolicyDecision(
         action: "allow" as "allow" | "redact" | "warn" | "block" | "audit",
         reason: "Prompt complies with organization policies.",
         source: "backend_policy" as const,
-        // model_used reflects whether Ollama was consulted — always true here since
-        // this function is only called after analysePrompt() succeeds.
         model_used: ollamaWasCalled,
         policy_used: true,
     };
@@ -315,67 +313,51 @@ function computePolicyDecision(
     // ── 1. Audit mode overrides all enforcement to allow (audit) ────────────
     if (auditMode) {
         result.action = "audit";
-        result.reason = "Audit mode is enabled. Prompts are logged for observation only — no enforcement applied.";
-        console.log("[policy] audit_mode=true → audit (observation only)");
+        result.reason = "Audit mode is enabled. Prompts are monitored only.";
         return result;
     }
 
-    // ── 2. AI risk score / severity threshold ────────────────────────────────
-    // NOTE: hasCriticalDlpMatch is always false — regex must not drive decisions.
+    // ── 2. Explicit LLM Suggested Action (Priority) ──────────────────────────
+    // If the LLM picked up on a specific Policy Rule we passed in (Tool, Category, etc.)
+    // and suggested an action, we follow it exactly.
+    if (analysis.suggested_action && analysis.suggested_action !== "allow") {
+        const action = analysis.suggested_action;
+        if (action === "block" || action === "warn" || action === "allow_with_redaction") {
+            result.action = action === "allow_with_redaction" ? "redact" : action;
+            result.reason = `Policy rule match: ${analysis.prompt_summary}`;
+            console.log(`[policy] LLM suggested ${action} based on rules → ${result.action}`);
+            return result;
+        }
+    }
+
+    // ── 3. AI Risk Score / Severity Threshold (Global/Generic Fallback) ──────
     if (blockHighRisk) {
         if (analysis.overall_risk_score >= threshold) {
             result.action = "block";
-            result.reason = `AI risk score (${analysis.overall_risk_score}) exceeds org threshold (${threshold}). Blocked per policy.`;
-            console.log(`[policy] riskScore=${analysis.overall_risk_score} ≥ threshold=${threshold} → block`);
+            result.reason = `AI risk score (${analysis.overall_risk_score}) exceeds org threshold (${threshold}).`;
             return result;
         }
         if (analysis.severity === "critical" || analysis.severity === "high") {
             result.action = "block";
-            result.reason = `AI severity classification (${analysis.severity}) exceeds acceptable risk tolerance per org policy.`;
-            console.log(`[policy] severity=${analysis.severity} → block`);
+            result.reason = `AI severity (${analysis.severity}) exceeds acceptable risk tolerance.`;
             return result;
         }
     }
 
-    // ── 3. Attachment risk block ─────────────────────────────────────────────
-    if (policyConfig?.scan_attachments !== false && analysis.attachment_analysis?.attachment_present) {
-        if (analysis.attachment_analysis.attachment_risk_score >= threshold) {
-            result.action = blockHighRisk ? "block" : "warn";
-            result.reason = "Attachment risk score exceeds organization threshold.";
-            console.log(`[policy] attachmentRisk=${analysis.attachment_analysis.attachment_risk_score} → ${result.action}`);
-            return result;
-        }
-    }
-
-    // ── 4. Auto-redaction if configured ─────────────────────────────────────
-    if (policyConfig?.auto_redaction !== false) {
-        if (analysis.sensitive_categories?.length > 0) {
-            result.action = "redact";
-            result.reason = "Sensitive categories detected. Enforcing auto-redaction per organization policy.";
-            console.log("[policy] sensitive_categories detected → redact");
-            return result;
-        }
-    }
-
-    // ── 5. AI-suggested action — advisory only ───────────────────────────────
-    // The model's suggested_action is ADVISORY. We only act on it here if the org
-    // policy permits it (i.e., we've already passed through all policy checks above).
-    if (analysis.suggested_action === "block" && blockHighRisk) {
-        result.action = "block";
-        result.reason = "AI analysis recommends blocking based on content risk.";
-        console.log("[policy] model suggested_action=block + block_high_risk=true → block");
-        return result;
-    }
-    if (analysis.suggested_action === "warn" || analysis.suggested_action === "manual_review") {
-        result.action = "warn";
-        result.reason = "AI analysis recommends review. Issuing warning per advisory.";
-        console.log(`[policy] model suggested_action=${analysis.suggested_action} → warn`);
+    // ── 5. Auto-redaction fallback ──────────────────────────────────────────
+    if (policyConfig?.auto_redaction !== false && (analysis.sensitive_categories?.length || 0) > 0) {
+        result.action = "redact";
+        result.reason = "Sensitive data detected. Enforcing auto-redaction.";
         return result;
     }
 
-    console.log("[policy] all checks passed → allow");
     return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Map the rich ComplyzeAnalysisResult to the legacy response shape expected by
+// the existing dashboard, extension, and proxy consumers.
+// ─────────────────────────────────────────────────────────────────────────────
 
 function mapToLegacyResponse(
     result: ComplyzeAnalysisResult & { _error?: string },
@@ -392,14 +374,10 @@ function mapToLegacyResponse(
                     ? "medium"
                     : "low";
 
-    // Resolve Ollama host/model from env at response time (never hardcoded).
-    // These are included in every response so callers can verify which remote
-    // instance was used — critical for debugging prod vs. local divergence.
     const ollamaHostUsed = (process.env.OLLAMA_BASE_URL || "").trim().replace(/\/$/, "") || null;
     const ollamaModelUsed = (process.env.OLLAMA_MODEL || "").trim() || null;
 
     return {
-        // Legacy fields mapping for proxy compatibility
         riskScore: result.overall_risk_score,
         action: decision.action,
         message: decision.reason,
@@ -409,8 +387,6 @@ function mapToLegacyResponse(
         policyViolation: decision.action === "block",
         details: result.findings.map((f) => `[${f.severity.toUpperCase()}] ${f.evidence || f.reason}`),
         aiTool,
-
-        // New strictly cleanly separated fields
         policy_decision: decision,
         analysis_result: {
             analysis_version: result.analysis_version,
@@ -427,18 +403,12 @@ function mapToLegacyResponse(
             dashboard_metrics: result.dashboard_metrics,
             graph_data: result.graph_data,
         },
-
-        // Debug & Path Tracking
         decision_source: decision.source,
         model_used: decision.model_used,
         policy_used: decision.policy_used,
         blocked_locally: false,
-
-        // Ollama host/model actually used — for production verification
         ollama_host_used: ollamaHostUsed,
         ollama_model_used: ollamaModelUsed,
-
-        // Surface errors if any
         ...(result._error ? { analysisError: result._error } : {}),
         ...(extras.analysisError ? { analysisErrorCode: extras.analysisError.code } : {}),
     };

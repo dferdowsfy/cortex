@@ -16,7 +16,7 @@
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 // The @complyze-build script replaces process.env values during deployment.
-var API_ENDPOINT = (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') ? 'http://localhost:3737' : 'http://localhost:3737'; // Default to local for dev, build script overrides
+var API_ENDPOINT = (typeof process !== 'undefined' && process.env.API_ENDPOINT) || 'http://localhost:3737';
 var FIREBASE_API_KEY = (typeof process !== 'undefined' && process.env.FIREBASE_API_KEY) || 'AIzaSyCXiD5MwlacKPF8f3sD8PSJPzbFgqGt04A';
 var FIREBASE_AUTH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_AUTH_URL) || 'https://identitytoolkit.googleapis.com/v1/accounts';
 var FIREBASE_REFRESH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_REFRESH_URL) || 'https://securetoken.googleapis.com/v1/token';
@@ -716,13 +716,26 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalle
                     sendResponse(scanResult);
                 } catch (e) {
                     console.error('[Complyze] Scan fallback triggered:', e.message);
-                    // Use 'warn' instead of 'allow' to avoid false sense of security when offline
-                    sendResponse({
+
+                    const fallbackResult = {
                         action: 'warn',
                         message: 'Data security analysis is offline. Proceed with caution. Error: ' + e.message,
                         riskScore: 0,
-                        decision_source: 'extension_error_fallback'
-                    });
+                        decision_source: 'extension_error_fallback',
+                        timestamp: Date.now()
+                    };
+
+                    // Log this warning to the dashboard so it shows up in real-time activity
+                    logActivity({
+                        action: 'warn',
+                        aiTool: payload.aiTool || 'Unknown',
+                        promptSnippet: payload.prompt ? payload.prompt.substring(0, 100) : '',
+                        findings: ['Engine Offline'],
+                        riskScore: 0,
+                        message: fallbackResult.message
+                    }).catch(() => { });
+
+                    sendResponse(fallbackResult);
                 }
                 return;
             }

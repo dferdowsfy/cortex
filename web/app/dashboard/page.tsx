@@ -63,7 +63,8 @@ export default function Dashboard() {
             }
 
             // Query activity from BOTH the user's UID workspace AND all org workspaces
-            const workspaceIds = [wsId, ...orgIds.filter(id => id !== wsId)];
+            const workspaceIds = Array.from(new Set([wsId, ...orgIds]))
+                .filter(id => id && id !== "undefined");
             // Fetch both 30d and 7d for flux calculation
             const activityPromises30d = workspaceIds.map(id =>
                 fetch(`/api/proxy/activity?period=30d&events=50&workspaceId=${id}`)

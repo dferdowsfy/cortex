@@ -4,12 +4,13 @@ import crypto from "crypto";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
-export type UserRole = "admin" | "member" | "viewer";
+export type UserRole = "super_admin" | "org_admin" | "group_admin" | "member";
 
 export interface ManagedUser {
     user_id: string;
     org_id: string;
-    group_id: string | null;
+    group_id: string | null; // Primary group (legacy support)
+    group_ids?: string[];     // Multi-group support
     email: string;
     display_name?: string;
     role: UserRole;
@@ -139,6 +140,11 @@ class UserStore {
         await this.updateUser(user_id, { active }, workspaceId);
     }
 
+    async findUserByEmail(email: string, orgId: string, workspaceId: string = "default"): Promise<ManagedUser | null> {
+        const users = await this.listUsers(orgId, workspaceId);
+        return users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+    }
+
     async assignGroup(user_id: string, group_id: string | null, workspaceId: string = "default"): Promise<void> {
         await this.updateUser(user_id, { group_id }, workspaceId);
     }
@@ -162,7 +168,7 @@ class UserStore {
                 group_id: null,
                 email: "reviewer-google@complyze.co",
                 display_name: "Google Reviewer",
-                role: "admin",
+                role: "org_admin",
                 active: true,
                 created_at: new Date().toISOString(),
                 enrolled_device_count: 0,

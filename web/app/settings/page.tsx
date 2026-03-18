@@ -292,127 +292,21 @@ export default function SettingsPage() {
                 </div>
             )}
 
-            {/* 1. AI Monitoring Controls (Primary Section) */}
-            <div className="card">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
+            {/* 1. Policy Management Notice */}
+            <div className="card border-blue-500/30 bg-blue-500/5">
+                <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                         </svg>
                     </div>
                     <div>
-                        <h2 className="text-base font-bold text-white">AI Monitoring Controls</h2>
-                        <p className="text-xs text-white/40">Master controls for AI governance and visibility</p>
-                    </div>
-                </div>
-
-                <div className="space-y-1">
-                    <Toggle
-                        enabled={settings.proxyEnabled}
-                        onChange={(val) => handleSave({ proxyEnabled: val })}
-                        label="Enable AI Security Shield"
-                        description="Activate the browser extension to classify and secure AI interactions."
-                        disabled={isSaving}
-                    />
-                    <Toggle
-                        enabled={settings.blockHighRisk}
-                        onChange={(val) => handleSave({ blockHighRisk: val })}
-                        label="Block High Risk Prompts"
-                        description="Automatically prevent prompts with high risk scores from being sent to AI providers."
-                        warning="This may intercept and block valid user requests if threshold is too low."
-                        disabled={isSaving}
-                    />
-                    <Toggle
-                        enabled={settings.inspectAttachments}
-                        onChange={(val) => handleSave({ inspectAttachments: val })}
-                        label="Scan Attachments"
-                        description="Deep scan file uploads and documents for sensitive data leakage."
-                        disabled={isSaving}
-                    />
-                    <Toggle
-                        enabled={settings.userAttributionEnabled}
-                        onChange={(val) => handleSave({ userAttributionEnabled: val })}
-                        label="User Attribution"
-                        description="Link intercepted events to specific user identities for audit trails."
-                        disabled={isSaving}
-                    />
-
-                    {/* Risk Posture Selector */}
-                    <div className="py-6 border-t border-white/10 mt-2">
-                        <div className="flex justify-between items-end mb-4">
-                            <div>
-                                <p className="text-sm font-bold text-white">Risk Posture</p>
-                                <p className="text-xs text-white/40 mt-0.5">Define your organization's tolerance for AI risk.</p>
-                            </div>
-                        </div>
-
-                        {/* Posture Segments */}
-                        <div className="grid grid-cols-4 gap-2 mb-4">
-                            {[
-                                { id: "minimal", label: "Minimal", val: 80 },
-                                { id: "balanced", label: "Balanced", val: 50 },
-                                { id: "strict", label: "Strict", val: 35 },
-                                { id: "maximum", label: "Maximum", val: 20 }
-                            ].map((option) => {
-                                // Determine active state based on proximity to threshold
-                                // We find the closest option to the current numeric setting
-                                const currentVal = settings.riskThreshold;
-                                const isActive =
-                                    (option.id === "minimal" && currentVal >= 65) ||
-                                    (option.id === "balanced" && currentVal >= 45 && currentVal < 65) ||
-                                    (option.id === "strict" && currentVal >= 25 && currentVal < 45) ||
-                                    (option.id === "maximum" && currentVal < 25);
-
-                                return (
-                                    <button
-                                        key={option.id}
-                                        onClick={() => handleSave({ riskThreshold: option.val })}
-                                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-all duration-150 border ${isActive
-                                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20"
-                                            : "bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/80"
-                                            }`}
-                                    >
-                                        {option.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* Dynamic Description */}
-                        <div className="bg-white/5 rounded-lg p-3 text-xs text-white/50 border border-white/10 transition-all duration-200 min-h-[60px] flex flex-col justify-center">
-                            {(() => {
-                                const val = settings.riskThreshold;
-                                let title = "";
-                                let desc = "";
-
-                                if (val >= 65) {
-                                    title = "Minimal Posture";
-                                    desc = "Only blocks clearly malicious or critical violations. Prioritizes workflow continuity.";
-                                } else if (val >= 45) {
-                                    title = "Balanced Posture (Default)";
-                                    desc = "Blocks high-risk prompts involving sensitive data while minimizing false positives.";
-                                } else if (val >= 25) {
-                                    title = "Strict Posture";
-                                    desc = "Blocks moderate and high-risk prompts to reduce accidental data exposure.";
-                                } else {
-                                    title = "Maximum Posture";
-                                    desc = "Blocks all medium-to-high risk activity. Designed for high-security environments.";
-                                }
-
-                                return (
-                                    <>
-                                        <p className="font-bold text-white mb-1">{title}</p>
-                                        <p className="text-white/40 leading-relaxed">{desc}</p>
-                                    </>
-                                );
-                            })()}
-                        </div>
-
-                        <div className="mt-3 flex items-center justify-end px-1">
-                            <p className="text-[10px] uppercase tracking-wider font-medium text-white/30">
-                                Numeric Threshold: <span className="font-mono text-white/60">{settings.riskThreshold}</span>
-                            </p>
-                        </div>
+                        <h2 className="text-base font-bold text-white">Policy-Driven Governance</h2>
+                        <p className="text-xs text-white/50 mt-1 leading-relaxed">
+                            AI monitoring, blocking, and redaction rules are now managed via the
+                            <Link href="/admin" className="text-blue-400 hover:underline mx-1 font-bold">Manage</Link>
+                            tab. This allows for fine-grained control across different user groups and AI tools.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -507,59 +401,26 @@ export default function SettingsPage() {
             {/* 4. Divider */}
             <hr className="border-gray-100" />
 
-            {/* 5. Advanced Settings */}
             <div className="card">
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-white/40">
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                         </svg>
                     </div>
                     <div>
-                        <h2 className="text-base font-bold text-white">Advanced Governance</h2>
-                        <p className="text-xs text-white/40">Fine-grained configuration and data policies</p>
+                        <h2 className="text-base font-bold text-white">Your Profile</h2>
+                        <p className="text-xs text-white/40">Manage your account and authentication methods</p>
                     </div>
                 </div>
-
-                <div className="space-y-1">
-                    <Toggle
-                        enabled={settings.redactSensitive}
-                        onChange={(val) => handleSave({ redactSensitive: val })}
-                        label="Auto-Redaction"
-                        description="Sanitize PII and credentials before they leave the browser."
-                        disabled={isSaving}
-                    />
-                    <Toggle
-                        enabled={settings.fullAuditMode}
-                        onChange={(val) => handleSave({ fullAuditMode: val })}
-                        label="Full Audit Mode"
-                        description="Store complete prompt and response bodies for regulatory compliance."
-                        warning="Significantly increases stored data volume and sensitivity."
-                        disabled={isSaving}
-                    />
-                    <Toggle
-                        enabled={settings.desktopBypass}
-                        onChange={(val) => handleSave({ desktopBypass: val })}
-                        label="Desktop App Bypass"
-                        description="Allow native desktop apps with pinned certificates to skip deep inspection."
-                        disabled={isSaving}
-                    />
-
-                    <div className="py-6 border-t border-white/10 flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-bold text-white">Retention Period</p>
-                            <p className="text-xs text-white/40 mt-0.5">Duration for storing audit logs before auto-purging.</p>
-                        </div>
-                        <select
-                            value={settings.retentionDays}
-                            onChange={(e) => handleSave({ retentionDays: parseInt(e.target.value, 10) })}
-                            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                            {[30, 90, 180, 365].map((d) => (
-                                <option key={d} value={d}>{d} Days</option>
-                            ))}
-                        </select>
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center py-2">
+                        <span className="text-sm text-white/40">Email Address</span>
+                        <span className="text-sm font-medium text-white">{user?.email || "Not signed in"}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-t border-white/5">
+                        <span className="text-sm text-white/40">Account ID</span>
+                        <span className="text-sm font-mono text-white/60 text-[10px] uppercase truncate ml-4">{user?.uid || "personal_identity"}</span>
                     </div>
                 </div>
             </div>

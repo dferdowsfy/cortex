@@ -33,6 +33,7 @@ s9a8iPX8uETpQq+ZTIS/i7JI2UNjlAn92uN96xde4NY/DjLKAeSpHPK23hvU6u8A
 
 export interface Organization {
     org_id: string;
+    id: string; // Unified workspace ID property
     name: string;
     created_at: string;
     policy_version: number;
@@ -41,6 +42,7 @@ export interface Organization {
     plan?: string;
     seatsPurchased?: number;
     seatsUsed?: number;
+    groupsCount?: number;
     ownerUserId?: string;
 }
 
@@ -78,14 +80,16 @@ class EnrollmentStore {
         const signing_secret = crypto.randomBytes(32).toString('hex');
         const org: Organization = {
             org_id,
+            id: org_id, // Add id for compatibility
             name,
             created_at: new Date().toISOString(),
             policy_version: 1,
             policy_config: {},
             signing_secret,
             plan: "STARTER",
-            seatsPurchased: 1,
+            seatsPurchased: 5,
             seatsUsed: 1,
+            groupsCount: 0,
         };
 
         if (adminDb && adminDb.app.options.databaseURL) {
@@ -139,12 +143,17 @@ class EnrollmentStore {
                 // If workspaceId is a UID, we look for orgs where this UID is a member or owner.
                 // We sanitized the email keys in members map (dots -> commas).
                 return allOrgs.filter(org => {
-                    if (org.id === workspaceId || org.ownerUserId === workspaceId) return true;
+                    const id = org.org_id || org.id;
+                    if (id === workspaceId || org.ownerUserId === workspaceId) return true;
                     if (org.members) {
                         return Object.values(org.members).some((m: any) => m.uid === workspaceId || m.email === workspaceId);
                     }
                     return false;
-                });
+                }).map(org => ({
+                    ...org,
+                    org_id: org.org_id || org.id, // Ensure org_id is present
+                    id: org.id || org.org_id     // Ensure id is present
+                }));
             } catch (err) {
                 console.error("[enrollment-store] listOrganizations RTDB error:", err);
                 return [];
