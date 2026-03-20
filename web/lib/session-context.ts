@@ -69,22 +69,21 @@ export async function resolveSessionContext(req: NextRequest): Promise<SessionCo
     }
   }
 
-  if (!organizationId) {
-    return null;
-  }
-
-  const users = await userStore.listUsers(organizationId, "default");
+  const users = organizationId ? await userStore.listUsers(organizationId, "default") : [];
   const managed = users.find((u) => u.user_id === userId || (email && u.email.toLowerCase() === email));
   if (managed?.group_id) {
     groupIds = [managed.group_id];
   }
 
+  // Fallback to userId if no organizational ID is found (allows personal activity logging)
+  const finalWorkspaceId = organizationId || userId || "default";
+
   return {
     requestId,
-    userId: userId || managed?.user_id || email,
+    userId: userId || managed?.user_id || email || "unknown",
     email: email || managed?.email || "unknown",
-    organizationId,
+    organizationId: organizationId || "",
     groupIds,
-    workspaceId: organizationId,
+    workspaceId: finalWorkspaceId,
   };
 }

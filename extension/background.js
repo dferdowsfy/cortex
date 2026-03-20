@@ -16,7 +16,7 @@
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 // The @complyze-build script replaces process.env values during deployment.
-var API_ENDPOINT = (typeof process !== 'undefined' && process.env.API_ENDPOINT) || 'http://localhost:3737';
+var API_ENDPOINT = 'https://api.complyze.co';
 var FIREBASE_API_KEY = (typeof process !== 'undefined' && process.env.FIREBASE_API_KEY) || 'AIzaSyCXiD5MwlacKPF8f3sD8PSJPzbFgqGt04A';
 var FIREBASE_AUTH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_AUTH_URL) || 'https://identitytoolkit.googleapis.com/v1/accounts';
 var FIREBASE_REFRESH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_REFRESH_URL) || 'https://securetoken.googleapis.com/v1/token';
@@ -323,7 +323,7 @@ async function signInWithGoogle() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         postBody: 'access_token=' + oauthToken + '&providerId=google.com',
-                        requestUri: 'http://localhost',
+                        requestUri: 'https://api.complyze.co',
                         returnIdpCredential: true,
                         returnSecureToken: true,
                     })
