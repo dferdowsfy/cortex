@@ -282,7 +282,7 @@ shieldToggle.addEventListener('change', async () => {
 // Open dashboard (SSO)
 btnDash.addEventListener('click', async () => {
     const state = await msg('GET_AUTH_STATE');
-    const base = state?.apiEndpoint || 'https://api.complyze.co';
+    const base = state?.apiEndpoint || 'https://web-one-beta-35.vercel.app';
     const token = state?.user?.ssoToken;
     const url = token ? `${base}/auth/extension-sso?token=${encodeURIComponent(token)}` : `${base}/dashboard`;
     chrome.tabs.create({ url });

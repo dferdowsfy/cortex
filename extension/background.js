@@ -43,7 +43,10 @@ var _initPromise = null;
 
 function ensureInitialized() {
     if (_initPromise) return _initPromise;   // Already initializing or done — reuse promise
-    _initPromise = loadLocalStorage().then(() => {
+    _initPromise = loadLocalStorage().then(async () => {
+        // Migration: explicitly clear stale apiEndpoint from storage to prevent overrides
+        await chrome.storage.local.remove('apiEndpoint');
+
         // Silently attempt token refresh if we have a logged-in user
         if (currentUser && currentUser.refreshToken) {
             ensureFreshToken().catch(() => { });
