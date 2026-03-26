@@ -27,6 +27,7 @@ const statScanned = document.getElementById('stat-scanned');
 const statBlocked = document.getElementById('stat-blocked');
 const btnDash = document.getElementById('btn-dash');
 const btnRefresh = document.getElementById('btn-refresh');
+const btnSyncNow = document.getElementById('btn-sync-now');
 const btnSignout = document.getElementById('btn-signout');
 const footerLink = document.getElementById('footer-link');
 const privacyLink = document.getElementById('privacy-link');
@@ -48,6 +49,13 @@ const dbgPolicySync = document.getElementById('dbg-policy-sync');
 const dbgEventSync = document.getElementById('dbg-event-sync');
 const dbgQueued = document.getElementById('dbg-queued');
 const dbgBackend = document.getElementById('dbg-backend');
+
+// Connection & Policy
+const connCloudStatus = document.getElementById('conn-cloud-status');
+const connPolicyVer = document.getElementById('conn-policy-ver');
+const connPolicySync = document.getElementById('conn-policy-sync');
+const connPolicyTags = document.getElementById('conn-policy-tags');
+const connEventStatus = document.getElementById('conn-event-status');
 
 // ── Messaging ─────────────────────────────────────────────────────────────────
 function msg(type, payload) {
@@ -155,15 +163,47 @@ function renderLogout() {
 async function renderDebugPanel() {
     const d = await msg('GET_DEBUG_STATE');
     if (!d) return;
-    dbgUser.textContent = d.user?.email || '—';
-    dbgOrg.textContent = d.organizationId || '—';
-    dbgGroups.textContent = (d.groupIds || []).join(', ') || '—';
-    dbgPolicyVersion.textContent = String(d.policyVersion || 0);
-    dbgFetchedAt.textContent = d.fetchedAt || '—';
-    dbgPolicySync.textContent = d.lastPolicySyncStatus || '—';
-    dbgEventSync.textContent = d.lastEventSyncStatus || '—';
-    dbgQueued.textContent = String(d.queuedEvents || 0);
-    dbgBackend.textContent = d.backendHealth || '—';
+
+    // Populate old Debug panel (hidden in details)
+    if (dbgUser) dbgUser.textContent = d.user?.email || '—';
+    if (dbgOrg) dbgOrg.textContent = d.organizationId || '—';
+    if (dbgGroups) dbgGroups.textContent = (d.groupIds || []).join(', ') || '—';
+    if (dbgPolicyVersion) dbgPolicyVersion.textContent = String(d.policyVersion || 0);
+    if (dbgFetchedAt) dbgFetchedAt.textContent = d.fetchedAt ? new Date(d.fetchedAt).toLocaleTimeString() : '—';
+    if (dbgPolicySync) dbgPolicySync.textContent = d.lastPolicySyncStatus || '—';
+    if (dbgEventSync) dbgEventSync.textContent = d.lastEventSyncStatus || '—';
+    if (dbgQueued) dbgQueued.textContent = String(d.queuedEvents || 0);
+    if (dbgBackend) dbgBackend.textContent = d.backendHealth || '—';
+
+    // Populate NEW Connection & Policy card
+    if (connCloudStatus) {
+        const isOk = d.lastPolicySyncStatus?.startsWith('ok');
+        connCloudStatus.innerHTML = isOk 
+            ? '<span class="status-pill ok">CONNECTED</span>' 
+            : '<span class="status-pill err">OFFLINE</span>';
+    }
+
+    if (connPolicyVer) connPolicyVer.textContent = 'v' + (d.policyVersion || '—');
+    if (connPolicySync) connPolicySync.textContent = d.fetchedAt ? '(' + timeSince(new Date(d.fetchedAt).getTime()) + ')' : '';
+    
+    if (connPolicyTags && d.policyRules) {
+        // Unique names only
+        const unique = [...new Set(d.policyRules)];
+        connPolicyTags.innerHTML = unique
+            .slice(0, 5) // Limit to 5 tags so UI is clean
+            .map(name => `<span class="policy-tag">${name}</span>`)
+            .join('') + (unique.length > 5 ? `<span class="policy-tag">+${unique.length - 5} more</span>` : '');
+    }
+
+    if (connEventStatus) {
+        if (d.queuedEvents > 0) {
+            connEventStatus.innerHTML = `<span style="color:var(--amber)">Pending (${d.queuedEvents})</span>`;
+        } else if (d.lastEventSyncStatus?.startsWith('ok')) {
+             connEventStatus.innerHTML = '<span style="color:var(--green)">Synchronized</span>';
+        } else {
+             connEventStatus.textContent = 'Idle';
+        }
+    }
 }
 
 // ── Load state ────────────────────────────────────────────────────────────────
@@ -256,6 +296,18 @@ btnRefresh.addEventListener('click', async () => {
     if (state && state.user) renderMain(state.user, state.stats, s.lastScanResult);
     btnRefresh.disabled = false;
 });
+
+// Sync policies
+if (btnSyncNow) {
+    btnSyncNow.addEventListener('click', async () => {
+        btnSyncNow.disabled = true;
+        btnSyncNow.textContent = '...';
+        await msg('SYNC_POLICIES');
+        await renderDebugPanel();
+        btnSyncNow.textContent = 'SYNC';
+        btnSyncNow.disabled = false;
+    });
+}
 
 // Sign out
 btnSignout.addEventListener('click', async () => {

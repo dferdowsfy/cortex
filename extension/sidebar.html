@@ -361,6 +361,32 @@
             color: var(--amber);
             border: 1px solid rgba(245, 158, 11, 0.2);
         }
+
+        /* ── Connection & Policy Info ── */
+        .policy-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .policy-tag {
+            background: rgba(59, 130, 246, 0.12);
+            color: var(--blue);
+            border: 1px solid rgba(59, 130, 246, 0.28);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .health-val.err {
+            color: var(--red);
+        }
+
+        .health-val.warn {
+            color: var(--amber);
+        }
     </style>
 </head>
 
@@ -461,6 +487,20 @@
                         <div class="health-label">Shield Logic</div>
                         <div class="health-val text-green-400" id="val-shield">Applied</div>
                     </div>
+                    
+                    <div class="health-row" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.05)">
+                        <div class="health-label" style="opacity:0.5; font-size:10px; text-transform:uppercase;">Active Policy</div>
+                        <div class="health-val" id="val-policy-ver" style="font-weight:600;">v—</div>
+                    </div>
+                    <div id="sidebar-policy-tags" class="policy-tags">
+                        <!-- Populated via JS -->
+                    </div>
+
+                    <div class="health-row" style="margin-top:8px; display:flex; justify-content:space-between;">
+                        <div class="health-label" style="opacity:0.5; font-size:10px; text-transform:uppercase;">Activity Sync</div>
+                        <div class="health-val" id="val-sync-status" style="font-size:10px;">Synchronized</div>
+                    </div>
+
                     <div class="health-row"
                         style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.05)">
                         <div class="health-label" style="opacity:0.5; font-size:10px;">Security Pulse</div>

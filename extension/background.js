@@ -20,6 +20,7 @@ var API_ENDPOINT = 'https://api.complyze.co';
 var FIREBASE_API_KEY = (typeof process !== 'undefined' && process.env.FIREBASE_API_KEY) || 'AIzaSyCXiD5MwlacKPF8f3sD8PSJPzbFgqGt04A';
 var FIREBASE_AUTH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_AUTH_URL) || 'https://identitytoolkit.googleapis.com/v1/accounts';
 var FIREBASE_REFRESH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_REFRESH_URL) || 'https://securetoken.googleapis.com/v1/token';
+var RTDB_BASE_URL = 'https://myagent-846c3.firebaseio.com';
 
 // ── Runtime state ─────────────────────────────────────────────────────────────
 // All of these reset to their initial values on every SW cold-start.
@@ -31,6 +32,8 @@ var inspectAttachments = false; // New state for file inspection
 var eventQueue = [];
 var lastPolicySyncStatus = 'never';
 var lastEventSyncStatus = 'never';
+var cachedGroupPolicies = null;  // Cached group policies from RTDB
+var lastGroupPolicyFetchAt = 0;  // Timestamp of last group policy fetch
 
 
 // ── FIX BUG-1: Initialization promise lock ────────────────────────────────────
@@ -59,8 +62,8 @@ function genInstallId() {
 // ── FIX BUG-5: Restore effective policy from storage on cold-start ──────────────
 async function loadLocalStorage() {
     return new Promise((resolve) => {
-        // Added effectivePolicy/eventQueue to survive SW restarts
-        chrome.storage.local.get(['installationId', 'currentUser', 'apiEndpoint', 'effectivePolicy', 'eventQueue'], (data) => {
+        // Added effectivePolicy/eventQueue/cachedGroupPolicies to survive SW restarts
+        chrome.storage.local.get(['installationId', 'currentUser', 'apiEndpoint', 'effectivePolicy', 'eventQueue', 'cachedGroupPolicies'], (data) => {
             if (chrome.runtime.lastError) {
                 console.error('[Complyze] storage.local.get error:', chrome.runtime.lastError.message);
                 resolve();
@@ -78,6 +81,7 @@ async function loadLocalStorage() {
             if (data.effectivePolicy) { effectivePolicy = data.effectivePolicy; }
             if (Array.isArray(data.eventQueue)) { eventQueue = data.eventQueue; }
             if (data.inspectAttachments !== undefined) { inspectAttachments = data.inspectAttachments; }
+            if (data.cachedGroupPolicies) { cachedGroupPolicies = data.cachedGroupPolicies; }
             resolve();
         });
     });
@@ -396,6 +400,151 @@ async function fetchAndCachePolicies(trigger) {
             metadata: { error: e.message }
         });
     }
+
+    // ── Group Policy Watch: Refresh group policies from RTDB ──────────────
+    await fetchGroupPoliciesFromRTDB().catch((e) => {
+        console.warn('[Complyze][POLICY] Group policy refresh failed:', e.message);
+    });
+}
+
+// ── Firebase RTDB Direct Write ────────────────────────────────────────────────
+// Writes events directly to Firebase RTDB for instant dashboard sync.
+// Path: workspaces/{orgId}/extension_events/{eventId}
+async function writeToRTDB(path, data) {
+    if (!currentUser || !currentUser.idToken) {
+        console.warn('[Complyze][RTDB] Cannot write: no auth token');
+        return;
+    }
+    try {
+        var url = RTDB_BASE_URL + '/' + path + '.json?auth=' + currentUser.idToken;
+        var res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+            console.warn('[Complyze][RTDB] Write failed:', res.status, await res.text());
+        } else {
+            console.log('[Complyze][RTDB] Written:', path);
+        }
+    } catch (e) {
+        console.warn('[Complyze][RTDB] Write error:', e.message);
+    }
+}
+
+async function readFromRTDB(path) {
+    if (!currentUser || !currentUser.idToken) return null;
+    try {
+        var url = RTDB_BASE_URL + '/' + path + '.json?auth=' + currentUser.idToken;
+        var res = await fetch(url);
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (e) {
+        console.warn('[Complyze][RTDB] Read error:', e.message);
+        return null;
+    }
+}
+
+// ── Lookup orgId from extension_users/{userId} ────────────────────────────────
+async function lookupOrgIdFromRTDB(userId) {
+    var data = await readFromRTDB('extension_users/' + userId);
+    if (data && data.orgId) {
+        return data.orgId;
+    }
+    return currentUser?.orgId || null;
+}
+
+// ── Group Policy Enforcement ──────────────────────────────────────────────────
+// Fetches and caches group policies from RTDB for local enforcement.
+// Path: group_policies/{policyId}/rules
+async function fetchGroupPoliciesFromRTDB() {
+    if (!currentUser?.orgId) return;
+    // Throttle: don't fetch more than once every 30 seconds
+    if (Date.now() - lastGroupPolicyFetchAt < 30000 && cachedGroupPolicies) return;
+
+    var data = await readFromRTDB('group_policies');
+    if (!data) {
+        cachedGroupPolicies = [];
+        return;
+    }
+
+    // Filter policies where org_id matches the user's organization
+    var orgPolicies = [];
+    for (var policyId in data) {
+        var policy = data[policyId];
+        if (policy.org_id === currentUser.orgId) {
+            orgPolicies.push(Object.assign({ policyId: policyId }, policy));
+        }
+    }
+    cachedGroupPolicies = orgPolicies;
+    lastGroupPolicyFetchAt = Date.now();
+    await chrome.storage.local.set({ cachedGroupPolicies });
+    console.log('[Complyze][POLICY] Group policies cached:', orgPolicies.length, 'for org', currentUser.orgId);
+}
+
+/**
+ * Evaluate group policies against a prompt/action before allowing.
+ * Returns { blocked: boolean, action: string, reason: string, matchedRule: object|null }
+ */
+function evaluateGroupPolicies(aiTool, promptText) {
+    if (!cachedGroupPolicies || cachedGroupPolicies.length === 0) {
+        return { blocked: false, action: 'allow', reason: 'No group policies', matchedRule: null };
+    }
+
+    // Tool identifier mapping for policy matching
+    var toolTargets = [
+        'tool:' + aiTool.toLowerCase().replace(/\s+/g, '_'),
+        'tool:' + aiTool.toLowerCase().replace(/[^a-z0-9]/g, ''),
+        'type:ai_tool'
+    ];
+
+    for (var i = 0; i < cachedGroupPolicies.length; i++) {
+        var policy = cachedGroupPolicies[i];
+        var rules = policy.rules || [];
+
+        for (var j = 0; j < rules.length; j++) {
+            var rule = rules[j];
+            // Only process enabled rules
+            if (rule.enabled !== true) continue;
+
+            // Check if rule target matches the AI tool or type
+            var ruleTarget = (rule.target || '').toLowerCase();
+            var matched = toolTargets.some(function(t) { return ruleTarget === t; });
+
+            // Also match domain-based rules
+            if (!matched && rule.type === 'block_domain') {
+                var toolDomain = aiTool.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+                matched = ruleTarget.includes(toolDomain);
+            }
+
+            // Also match ai_tool type rules
+            if (!matched && (rule.type === 'ai_tool_block' || rule.type === 'ai_tool')) {
+                matched = toolTargets.some(function(t) { return ruleTarget === t; });
+            }
+
+            if (matched) {
+                var action = rule.action || 'allow';
+                console.log('[Complyze][POLICY] Group rule matched:', {
+                    policyId: policy.policyId,
+                    ruleId: rule.rule_id,
+                    target: rule.target,
+                    action: action,
+                    aiTool: aiTool
+                });
+                if (action === 'block') {
+                    return {
+                        blocked: true,
+                        action: 'block',
+                        reason: 'Blocked by group policy rule: ' + (rule.target || 'unknown'),
+                        matchedRule: rule
+                    };
+                }
+                return { blocked: false, action: action, reason: 'Group policy: ' + action, matchedRule: rule };
+            }
+        }
+    }
+
+    return { blocked: false, action: 'allow', reason: 'No matching group policy rules', matchedRule: null };
 }
 
 async function submitSyncEvent(eventType, data) {
@@ -409,6 +558,22 @@ async function submitSyncEvent(eventType, data) {
         policyVersion: effectivePolicy?.policyVersion || 0,
     }, data || {});
 
+    // ── Direct RTDB Write ──────────────────────────────────────────────────────
+    // Write to workspaces/{orgId}/extension_events/{eventId} for instant dashboard sync
+    var orgId = currentUser?.orgId || currentUser?.uid || 'default';
+    var rtdbPayload = {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        timestamp: event.timestamp,
+        userId: currentUser?.uid || '',
+        organizationId: orgId,
+        metadata: event.metadata || {},
+        decision: event.decision || event.eventType.replace('PROMPT_', ''),
+        syncedAt: new Date().toISOString()
+    };
+    writeToRTDB('workspaces/' + orgId + '/extension_events/' + event.eventId, rtdbPayload).catch(() => {});
+
+    // ── Also submit to API for full processing ────────────────────────────────
     try {
         await apiRequest('/api/events/ingest', 'POST', event);
         lastEventSyncStatus = 'ok:' + eventType;
@@ -438,6 +603,51 @@ async function flushEventQueue() {
 // ── Prompt scanning ────────────────────────────────────────────────────────────
 async function scanPrompt(payload) {
     await ensureFreshToken();
+
+    // ── PRE-SCAN: Group Policy Enforcement (Mandatory) ─────────────────────
+    // Before sending to backend, check cached group policies for immediate block rules.
+    // This ensures tool-level blocks are enforced instantly without a round-trip.
+    var aiTool = payload.aiTool || 'Unknown';
+    await fetchGroupPoliciesFromRTDB().catch(() => {});
+    var policyCheck = evaluateGroupPolicies(aiTool, payload.prompt || '');
+
+    if (policyCheck.blocked) {
+        console.log('[Complyze][SCAN] BLOCKED by group policy pre-scan:', policyCheck.reason);
+        // Write the block event directly to RTDB
+        var blockEventId = crypto.randomUUID();
+        var orgId = currentUser?.orgId || currentUser?.uid || 'default';
+        writeToRTDB('workspaces/' + orgId + '/extension_events/' + blockEventId, {
+            eventId: blockEventId,
+            eventType: 'PROMPT_BLOCKED',
+            timestamp: new Date().toISOString(),
+            userId: currentUser?.uid || '',
+            organizationId: orgId,
+            metadata: {
+                prompt: (payload.prompt || '').substring(0, 200),
+                target: aiTool.toLowerCase(),
+                enforcement: 'group_policy_pre_scan',
+                matchedRule: policyCheck.matchedRule
+            },
+            decision: 'BLOCKED',
+            syncedAt: new Date().toISOString()
+        }).catch(() => {});
+
+        return {
+            action: 'block',
+            message: policyCheck.reason,
+            riskScore: 100,
+            decision_source: 'group_policy',
+            model_used: false,
+            policy_used: true,
+            blocked_locally: true,
+            policy_decision: {
+                action: 'block',
+                reason: policyCheck.reason,
+                source: 'group_policy'
+            }
+        };
+    }
+
     var enrichedPayload = Object.assign({}, payload);
     if (effectivePolicy?.resolvedPolicy?.rules?.length > 0) {
         enrichedPayload.cachedPolicies = effectivePolicy.resolvedPolicy.rules;
@@ -461,9 +671,34 @@ async function scanPrompt(payload) {
         workspaceId: enrichedPayload.workspaceId,
         user_id: enrichedPayload.user_id,
         organization_id: enrichedPayload.organization_id,
+        groupPolicyAction: policyCheck.action,
     });
 
     var result = await apiRequest('/api/scanPrompt', 'POST', enrichedPayload);
+
+    // ── POST-SCAN: Write result to RTDB for real-time dashboard sync ────────
+    if (result && currentUser) {
+        var scanOrgId = currentUser.orgId || currentUser.uid || 'default';
+        var scanEventId = result.eventId || crypto.randomUUID();
+        writeToRTDB('workspaces/' + scanOrgId + '/extension_events/' + scanEventId, {
+            eventId: scanEventId,
+            eventType: result.action === 'block' ? 'PROMPT_BLOCKED' :
+                       result.action === 'redact' ? 'PROMPT_REDACTED' :
+                       result.action === 'warn' ? 'AUDIT_ONLY_FLAGGED' : 'PROMPT_SCANNED',
+            timestamp: new Date().toISOString(),
+            userId: currentUser.uid,
+            organizationId: scanOrgId,
+            metadata: {
+                prompt: (payload.prompt || '').substring(0, 200),
+                target: aiTool.toLowerCase(),
+                riskScore: result.riskScore,
+                model_used: result.model_used,
+                findings: (result.analysis_result?.findings || []).map(f => f.reason || f.category)
+            },
+            decision: (result.action || 'ALLOWED').toUpperCase(),
+            syncedAt: new Date().toISOString()
+        }).catch(() => {});
+    }
 
     console.log('[Complyze][SCAN] Backend response:', {
         action: result?.action,
@@ -620,6 +855,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalle
                     lastEventSyncStatus,
                     queuedEvents: eventQueue.length,
                     backendHealth: API_ENDPOINT,
+                    policyRules: (effectivePolicy?.resolvedPolicy?.rules || []).map(r => r.name || r.category || 'Rule'),
                 });
                 return;
             }
@@ -673,6 +909,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalle
 
             if (type === 'REFRESH_STATS') {
                 try {
+                    await fetchAndCachePolicies('manual_refresh');
                     var stats = await fetchStats();
                     // Merge local stats even on refresh to keep them live
                     const localStats = await chrome.storage.local.get(['sessionScanned', 'sessionBlocked']);
@@ -680,6 +917,14 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalle
                     stats.blockedToday = (stats.blockedToday || 0) + (localStats.sessionBlocked || 0);
                     sendResponse({ user: currentUser, stats });
                 } catch (e) { sendResponse({ user: currentUser, stats: null }); }
+                return;
+            }
+
+            if (type === 'SYNC_POLICIES') {
+                try {
+                    await fetchAndCachePolicies('manual_sync');
+                    sendResponse({ ok: true, policyVersion: effectivePolicy?.policyVersion });
+                } catch (e) { sendResponse({ error: e.message }); }
                 return;
             }
 

@@ -37,12 +37,18 @@ async function run() {
     // Extract other potential vars if present in prod env
     if (fs.existsSync(prodEnvPath)) {
         const content = fs.readFileSync(prodEnvPath, 'utf8');
-        const keys = ['FIREBASE_API_KEY', 'FIREBASE_AUTH_URL', 'FIREBASE_REFRESH_URL'];
+        const keys = ['FIREBASE_API_KEY', 'FIREBASE_AUTH_URL', 'FIREBASE_REFRESH_URL', 'RTDB_BASE_URL'];
         keys.forEach(k => {
             const m = content.match(new RegExp(`^${k}=(.*)$`, 'm'));
             if (m && m[1]) envVars[k] = m[1].trim();
         });
     }
+
+    // Capture RTDB_BASE_URL from env if not found in prod env (hardening)
+    if (!envVars.RTDB_BASE_URL) {
+        envVars.RTDB_BASE_URL = 'https://myagent-846c3.firebaseio.com';
+    }
+
 
     for (const fileName of filesToPatch) {
         const filePath = path.join(extDir, fileName);

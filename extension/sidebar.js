@@ -31,6 +31,11 @@ const statScanned = document.getElementById('stat-scanned');
 const statBlocked = document.getElementById('stat-blocked');
 const activityFeed = document.getElementById('activity-feed');
 
+// Connection & Policy Details
+const valPolicyVer = document.getElementById('val-policy-ver');
+const valSyncStatus = document.getElementById('val-sync-status');
+const sidebarPolicyTags = document.getElementById('sidebar-policy-tags');
+
 // --- Activity Log Management ---
 let activityLog = [];
 
@@ -128,6 +133,43 @@ function renderState(state, storage) {
 
     // Last Activity Pulse
     valLastSeen.textContent = lastScan ? timeSince(lastScan.timestamp) : '—';
+
+    // Connection & Policy Info
+    const lastPolicySync = state?.lastPolicySyncStatus;
+    const lastEventSync = state?.lastEventSyncStatus;
+    const queuedCount = state?.queuedEvents || 0;
+    const effectivePolicy = state?.effectivePolicy;
+
+    if (valPolicyVer) {
+        valPolicyVer.textContent = effectivePolicy?.policyVersion ? `v${effectivePolicy.policyVersion}` : 'v—';
+    }
+
+    if (valSyncStatus) {
+        if (queuedCount > 0) {
+            valSyncStatus.textContent = `${queuedCount} events pending`;
+            valSyncStatus.className = 'health-val warn';
+        } else if (lastEventSync === 'error') {
+            valSyncStatus.textContent = 'Sync Error';
+            valSyncStatus.className = 'health-val err';
+        } else if (lastPolicySync === 'error') {
+            valSyncStatus.textContent = 'Policy Error';
+            valSyncStatus.className = 'health-val err';
+        } else {
+            valSyncStatus.textContent = 'Synchronized';
+            valSyncStatus.className = 'health-val text-green-400';
+        }
+    }
+
+    if (sidebarPolicyTags) {
+        const rules = effectivePolicy?.resolvedPolicy?.rules || [];
+        // Extract unique names/categories and show top 3
+        const uniqueTags = [...new Set(rules.map(r => r.name || r.category).filter(Boolean))].slice(0, 3);
+        if (uniqueTags.length > 0) {
+            sidebarPolicyTags.innerHTML = uniqueTags.map(t => `<div class="policy-tag">${t}</div>`).join('');
+        } else {
+            sidebarPolicyTags.innerHTML = '<div style="font-size:10px; color:var(--muted); font-style:italic;">Default policy applied</div>';
+        }
+    }
 
     // Activity Feed
     if (lastScan) addEventToLog(lastScan);

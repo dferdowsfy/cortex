@@ -632,38 +632,97 @@
             background: linear-gradient(135deg, #1e40af, #2563eb);
         }
 
-        /* ── Footer ── */
-        .footer {
-            padding: 9px 16px 11px;
-            border-top: 1px solid var(--border);
+        /* ── Connection & Policy card ── */
+        .conn-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .conn-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            margin-bottom: 8px;
         }
 
-        .flink {
+        .conn-row:last-child {
+            margin-bottom: 0;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .conn-label {
             font-size: 11px;
             color: var(--muted);
-            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
-        .flink:hover {
-            color: var(--text);
-        }
-
-        .signout-btn {
-            background: none;
-            border: none;
-            color: var(--muted);
-            font-size: 11px;
-            cursor: pointer;
+        .conn-value {
+            font-size: 12px;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
         }
 
-        .signout-btn:hover {
+        .status-pill {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .status-pill.ok {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--green);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .status-pill.err {
+            background: rgba(239, 68, 68, 0.1);
             color: var(--red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .policy-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .policy-tag {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--blue);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .btn-mini {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+
+        .btn-mini:hover {
+            color: var(--text);
+            border-color: var(--blue);
+            background: rgba(59, 130, 246, 0.05);
         }
     </style>
 </head>
@@ -769,6 +828,33 @@
             <div class="scan-body" id="scan-body" style="display:none">
                 <div class="scan-snippet" id="scan-snippet"></div>
                 <div class="scan-findings" id="scan-findings"></div>
+            </div>
+        </div>
+
+        <!-- Connection & Policy Info -->
+        <div class="conn-card">
+            <div class="conn-row">
+                <span class="conn-label">Cloud Connection</span>
+                <div class="conn-value" id="conn-cloud-status">
+                    <span class="status-pill ok">CONNECTED</span>
+                    <button class="btn-mini" id="btn-sync-now">SYNC</button>
+                </div>
+            </div>
+            <div class="conn-row">
+                <span class="conn-label">Active Policy</span>
+                <div class="conn-value">
+                    <span id="conn-policy-ver">v—</span>
+                    <span class="scan-time" id="conn-policy-sync" style="font-weight:normal">—</span>
+                </div>
+            </div>
+            <div id="conn-policy-tags" class="policy-tags">
+                <!-- Populated via JS -->
+            </div>
+            <div class="conn-row" style="margin-top:8px">
+                <span class="conn-label">Activity Sync</span>
+                <div class="conn-value">
+                    <span id="conn-event-status">Synchronized</span>
+                </div>
             </div>
         </div>
 

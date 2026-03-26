@@ -6,6 +6,53 @@
         ".write": "auth != null && auth.uid == $uid"
       }
     },
+    "extension_users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      },
+      ".read": "auth != null",
+      ".indexOn": ["orgId", "email"]
+    },
+    "workspaces": {
+      "$orgId": {
+        "extension_events": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          ".indexOn": ["timestamp", "userId", "eventType"]
+        },
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "group_policies": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["org_id", "group_id"],
+      "$policyId": {
+        "rules": {
+          ".read": "auth != null"
+        }
+      }
+    },
+    "groups": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["org_id"]
+    },
+    "scoped_policies": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["scope_id", "scope_type"]
+    },
+    "policies": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "organizations": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "agent_registry": {
       ".read": "auth != null",
       ".write": "auth != null"
@@ -19,6 +66,14 @@
       ".write": "auth != null"
     },
     "proxy_alerts": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "devices": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "sso_tokens": {
       ".read": "auth != null",
       ".write": "auth != null"
     },
