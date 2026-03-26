@@ -77,7 +77,6 @@ async function loadLocalStorage() {
                 chrome.storage.local.set({ installationId });
             }
             if (data.currentUser) { currentUser = data.currentUser; }
-            if (data.apiEndpoint) { API_ENDPOINT = data.apiEndpoint; }
             if (data.effectivePolicy) { effectivePolicy = data.effectivePolicy; }
             if (Array.isArray(data.eventQueue)) { eventQueue = data.eventQueue; }
             if (data.inspectAttachments !== undefined) { inspectAttachments = data.inspectAttachments; }
