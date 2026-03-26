@@ -16,7 +16,7 @@
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 // The @complyze-build script replaces process.env values during deployment.
-var API_ENDPOINT = 'https://api.complyze.co';
+var API_ENDPOINT = 'https://web-one-beta-35.vercel.app';
 var FIREBASE_API_KEY = (typeof process !== 'undefined' && process.env.FIREBASE_API_KEY) || 'AIzaSyCXiD5MwlacKPF8f3sD8PSJPzbFgqGt04A';
 var FIREBASE_AUTH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_AUTH_URL) || 'https://identitytoolkit.googleapis.com/v1/accounts';
 var FIREBASE_REFRESH_URL = (typeof process !== 'undefined' && process.env.FIREBASE_REFRESH_URL) || 'https://securetoken.googleapis.com/v1/token';

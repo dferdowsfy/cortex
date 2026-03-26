@@ -42,7 +42,8 @@
         "https://complyze.co/*",
         "https://identitytoolkit.googleapis.com/*",
         "https://securetoken.googleapis.com/*",
-        "https://myagent-846c3.firebaseio.com/*"
+        "https://myagent-846c3.firebaseio.com/*",
+        "https://web-one-beta-35.vercel.app/*"
     ],
     "side_panel": {
         "default_path": "sidebar.html"
